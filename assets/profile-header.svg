@@ -1,64 +1,81 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">Chad Boyd profile header</title>
-  <desc id="desc">Editorial profile header for Chad Boyd, focused on local-first automation, security tooling, macOS repair, and AI agent systems.</desc>
-  <style>
-    :root {
-      --paper: oklch(96% 0.005 350);
-      --paper-white: oklch(98% 0 0);
-      --ink: oklch(10% 0 0);
-      --charcoal: oklch(25% 0 0);
-      --ash: oklch(55% 0 0);
-      --mist: oklch(92% 0 0);
-      --accent: oklch(60% 0.25 350);
-      --accent-soft: oklch(60% 0.25 350 / 0.14);
-    }
+  <title id="title">Chad Boyd cyberpunk profile header</title>
+  <desc id="desc">A dark synthwave profile header for Chad Boyd, showing neon grid lines, a magenta sun, and a terminal-style operator panel.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="oklch(10% 0.09 294)"/>
+      <stop offset="0.48" stop-color="oklch(14% 0.12 318)"/>
+      <stop offset="1" stop-color="oklch(8% 0.05 275)"/>
+    </linearGradient>
+    <radialGradient id="flare" cx="78%" cy="26%" r="42%">
+      <stop offset="0" stop-color="oklch(70% 0.29 340 / 0.55)"/>
+      <stop offset="0.42" stop-color="oklch(60% 0.25 350 / 0.18)"/>
+      <stop offset="1" stop-color="oklch(10% 0.09 294 / 0)"/>
+    </radialGradient>
+    <linearGradient id="sun" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="oklch(78% 0.2 70)"/>
+      <stop offset="0.48" stop-color="oklch(67% 0.28 25)"/>
+      <stop offset="1" stop-color="oklch(62% 0.29 350)"/>
+    </linearGradient>
+    <pattern id="scan" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="1" fill="oklch(95% 0.03 270 / 0.07)"/>
+    </pattern>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="sun-cut">
+      <circle cx="970" cy="144" r="86"/>
+    </clipPath>
+  </defs>
 
-    .label {
-      font: 600 15px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      fill: var(--ash);
-    }
+  <rect width="1200" height="520" fill="url(#sky)"/>
+  <rect width="1200" height="520" fill="url(#flare)"/>
+  <rect width="1200" height="520" fill="url(#scan)" opacity="0.65"/>
 
-    .display {
-      font: italic 300 104px/1 Georgia, "Times New Roman", serif;
-      fill: var(--ink);
-    }
+  <g opacity="0.72">
+    <path d="M0 398H1200" stroke="oklch(65% 0.24 350)" stroke-width="2"/>
+    <path d="M102 520 545 398M246 520 578 398M390 520 612 398M534 520 646 398M678 520 680 398M822 520 714 398M966 520 748 398M1110 520 782 398" stroke="oklch(72% 0.24 205 / 0.58)" stroke-width="1.4"/>
+    <path d="M0 488H1200M0 456H1200M0 430H1200M0 411H1200" stroke="oklch(70% 0.25 350 / 0.38)" stroke-width="1.4"/>
+  </g>
 
-    .lead {
-      font: 400 28px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      fill: var(--charcoal);
-    }
+  <g clip-path="url(#sun-cut)" filter="url(#glow)">
+    <circle cx="970" cy="144" r="86" fill="url(#sun)"/>
+    <rect x="875" y="112" width="190" height="8" fill="oklch(10% 0.09 294)"/>
+    <rect x="875" y="137" width="190" height="10" fill="oklch(10% 0.09 294)"/>
+    <rect x="875" y="165" width="190" height="13" fill="oklch(10% 0.09 294)"/>
+    <rect x="875" y="197" width="190" height="18" fill="oklch(10% 0.09 294)"/>
+  </g>
 
-    .meta {
-      font: 500 20px/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      fill: var(--charcoal);
-    }
+  <rect x="50" y="52" width="1100" height="368" rx="0" fill="oklch(12% 0.05 290 / 0.78)" stroke="oklch(62% 0.29 350)" stroke-width="2"/>
+  <path d="M50 98H1150M810 52V420" stroke="oklch(72% 0.24 205 / 0.42)" stroke-width="1"/>
+  <path d="M73 75H208" stroke="oklch(67% 0.28 25)" stroke-width="7" filter="url(#glow)"/>
+  <path d="M50 420 86 386M1150 420 1114 386M50 52 86 86M1150 52 1114 86" stroke="oklch(72% 0.24 205)" stroke-width="2"/>
 
-    .mono {
-      font: 500 17px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      fill: var(--ash);
-    }
-  </style>
+  <text x="74" y="84" fill="oklch(86% 0.12 205)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" letter-spacing="3">CBYD0319 / NIGHT OPS PROFILE</text>
+  <text x="72" y="216" fill="oklch(96% 0.02 290)" font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-size="96" font-weight="900" letter-spacing="4" filter="url(#glow)">CHAD BOYD</text>
+  <text x="77" y="262" fill="oklch(79% 0.2 350)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="700">LOCAL-FIRST AUTOMATION // SECURITY TOOLS</text>
+  <text x="77" y="296" fill="oklch(79% 0.2 350)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="700">MACOS REPAIR // AI AGENT SYSTEMS</text>
+  <text x="77" y="335" fill="oklch(83% 0.09 205)" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="23" font-weight="500">Tools for work that has to survive a real terminal.</text>
 
-  <rect width="1200" height="520" rx="0" fill="var(--paper)"/>
-  <rect x="38" y="38" width="1124" height="444" rx="18" fill="var(--paper-white)" stroke="var(--mist)" stroke-width="2"/>
-  <rect x="86" y="84" width="86" height="7" rx="3.5" fill="var(--accent)"/>
-  <circle cx="1090" cy="112" r="54" fill="var(--accent-soft)"/>
-  <circle cx="1090" cy="112" r="9" fill="var(--accent)"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="650">
+    <text x="842" y="96" fill="oklch(67% 0.28 25)">BOOT SEQUENCE</text>
+    <text x="842" y="138" fill="oklch(86% 0.12 205)">> local control: online</text>
+    <text x="842" y="174" fill="oklch(86% 0.12 205)">> telemetry: denied</text>
+    <text x="842" y="210" fill="oklch(86% 0.12 205)">> rollback: armed</text>
+    <text x="842" y="246" fill="oklch(86% 0.12 205)">> logs: required</text>
+  </g>
 
-  <text x="86" y="134" class="label">cboyd0319 / github profile</text>
-  <text x="82" y="246" class="display">Chad Boyd</text>
-  <text x="88" y="308" class="lead">Local-first automation, security tooling, macOS repair,</text>
-  <text x="88" y="350" class="lead">and AI agent systems for work that has to survive a real terminal.</text>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" font-weight="700">
+    <text x="78" y="368" fill="oklch(77% 0.2 205)">PYTHON</text>
+    <text x="184" y="368" fill="oklch(77% 0.2 205)">RUST</text>
+    <text x="264" y="368" fill="oklch(77% 0.2 205)">SHELL</text>
+    <text x="354" y="368" fill="oklch(77% 0.2 205)">POWERSHELL</text>
+    <text x="506" y="368" fill="oklch(77% 0.2 205)">TYPESCRIPT</text>
+  </g>
 
-  <line x1="86" y1="396" x2="1112" y2="396" stroke="var(--mist)" stroke-width="2"/>
-
-  <text x="88" y="438" class="mono">Python</text>
-  <text x="190" y="438" class="mono">Rust</text>
-  <text x="270" y="438" class="mono">Shell</text>
-  <text x="360" y="438" class="mono">PowerShell</text>
-  <text x="500" y="438" class="mono">TypeScript</text>
-
-  <text x="760" y="438" class="meta">Fix the boring failure modes first.</text>
+  <text x="842" y="362" fill="oklch(96% 0.02 290)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" font-weight="800">VERIFY BEFORE TRUST</text>
 </svg>

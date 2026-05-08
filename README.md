@@ -1,56 +1,62 @@
 <p align="center">
-  <img src="./assets/profile-header.svg" alt="Chad Boyd: local-first automation, security tooling, macOS repair, and AI agent systems." width="100%">
+  <img src="./assets/profile-header.svg" alt="Chad Boyd cyberpunk profile header for local-first automation, security tooling, macOS repair, and AI agent systems." width="100%">
 </p>
 
 <p align="center">
-  <a href="https://github.com/cboyd0319/WormsWMD-macOS-Fix">WormsWMD-macOS-Fix</a>
-  |
-  <a href="https://github.com/cboyd0319/JobSentinel">JobSentinel</a>
-  |
-  <a href="https://github.com/cboyd0319/PyGuard">PyGuard</a>
-  |
-  <a href="https://github.com/cboyd0319/PoshGuard">PoshGuard</a>
+  <a href="https://github.com/cboyd0319/WormsWMD-macOS-Fix">REPAIR NODE</a>
+  /
+  <a href="https://github.com/cboyd0319/JobSentinel">JOB RADAR</a>
+  /
+  <a href="https://github.com/cboyd0319/PyGuard">PY SENTRY</a>
+  /
+  <a href="https://github.com/cboyd0319/PoshGuard">PS SENTRY</a>
 </p>
 
-## I build tools that make real machines less annoying.
+## Local tools for the midnight terminal.
 
-Most of my repos start with a practical irritation: a game fails on a new macOS
-release, a job search turns repetitive, a static analyzer stack sprawls across
-seven tools, a new Mac needs to be rebuilt without guesswork. I like small
-systems with sharp edges: local first, private by default, documented enough to
-recover later.
+I build small systems for ugly failure modes: games that break after a macOS
+release, job searches that turn into manual polling, analyzer stacks that sprawl
+across too many tools, and fresh-machine setup that needs proof instead of
+memory. The bias is simple: keep the work local, show the logs, make recovery
+boring.
 
 ```yaml
-name: Chad Boyd
-focus:
-  - local-first automation
+operator: Chad Boyd
+handle: cboyd0319
+mode: local_first
+signal:
+  - automation for repeatable work
   - security and static analysis tooling
   - macOS setup, repair, and recovery
   - AI-assisted development workflows
-languages:
+stack:
   - Python
   - Rust
   - Shell
   - PowerShell
   - TypeScript
-private_lab:
+private_grid:
   - assistant profiles and agent routing
   - macOS security baselines
   - local desktop tools
   - personal automation
 ```
 
-## Top Ships
+<p align="center">
+  <img src="./assets/system-map.svg" alt="Neon system map connecting Chad Boyd's public projects to local control, security scanning, macOS repair, and automation." width="100%">
+</p>
+
+## Signal Nodes
 
 **[WormsWMD-macOS-Fix](https://github.com/cboyd0319/WormsWMD-macOS-Fix)**
 
-Community fix for Worms W.M.D black screen and stability problems on macOS 26
-Tahoe and later.
+Community repair kit for Worms W.M.D black screen and stability problems on
+macOS 26 Tahoe and later.
 
 **[JobSentinel](https://github.com/cboyd0319/JobSentinel)**
 
-Self-hosted job search automation: scrape, dedupe, score, and alert without
-giving up local control.
+Self-hosted job radar: scrape, dedupe, score, and alert without handing the
+search to someone else's cloud.
 
 **[PyGuard](https://github.com/cboyd0319/PyGuard)**
 
@@ -62,26 +68,27 @@ linters and SAST tools.
 AST-aware PowerShell QA and autofix tooling with diffs, rollback, and strict
 analyzer rules.
 
-## Latest Public Work
+## Live Public Feed
 
 <!-- public-work:start -->
-- [WormsWMD-macOS-Fix](https://github.com/cboyd0319/WormsWMD-macOS-Fix): Shell, 42 stars, pushed Apr 29, 2026. macOS 26 community fix for black screen and stability issues.
-- [JobSentinel](https://github.com/cboyd0319/JobSentinel): Rust, 9 stars, pushed Apr 20, 2026. Self-hosted job search automation with local scoring and alerts.
-- [PyGuard](https://github.com/cboyd0319/PyGuard): Python, 1 star, pushed Feb 3, 2026. Python security and quality scanner for local static analysis.
-- [PoshGuard](https://github.com/cboyd0319/PoshGuard): PowerShell, 2 stars, pushed Nov 21, 2025. PowerShell QA and autofix tooling backed by AST analysis.
+- [WormsWMD-macOS-Fix](https://github.com/cboyd0319/WormsWMD-macOS-Fix): Shell, 42 stars, pushed Apr 29, 2026. Tahoe repair kit for black screens and crash-prone sessions.
+- [JobSentinel](https://github.com/cboyd0319/JobSentinel): Rust, 9 stars, pushed Apr 20, 2026. Private-by-default job radar: scrape, score, alert.
+- [PyGuard](https://github.com/cboyd0319/PyGuard): Python, 1 star, pushed Feb 3, 2026. Python static-analysis gate for security and code quality.
+- [PoshGuard](https://github.com/cboyd0319/PoshGuard): PowerShell, 2 stars, pushed Nov 21, 2025. PowerShell analyzer and autofix rig with diffs and rollback.
 <!-- public-work:end -->
 
-## Operating Bias
+## Grid Rules
 
 - Local first unless the network is the product.
 - Private by default. Telemetry has to earn its place.
-- Automation that can be audited beats automation that feels magic.
-- Fix the boring failure modes: auth, setup, rollback, recovery, drift.
+- Logs beat vibes. Rollback beats regret.
+- Fix the boring failure modes: auth, setup, recovery, drift.
 
-## Current Edges
+## Open Circuits
 
 - Turning AI assistants from blank chat windows into role-aware working tools.
 - Building static analysis and autofix flows that show their work.
 - Keeping macOS setup reproducible enough to survive a wipe.
 
-Start with the public repos above. The pattern is local control plus boring verification.
+Start at the lit signs. The pattern underneath is local control plus boring
+verification.

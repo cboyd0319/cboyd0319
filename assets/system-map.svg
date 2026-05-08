@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">Public signal map</title>
+  <desc id="desc">A synthwave system map showing four public project nodes connected to local control.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="oklch(11% 0.08 285)"/>
+      <stop offset="0.6" stop-color="oklch(15% 0.1 320)"/>
+      <stop offset="1" stop-color="oklch(8% 0.05 275)"/>
+    </linearGradient>
+    <filter id="soft-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="micro-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M30 0H0V30" fill="none" stroke="oklch(74% 0.21 205 / 0.12)" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="420" fill="url(#panel)"/>
+  <rect width="1200" height="420" fill="url(#micro-grid)"/>
+  <rect x="38" y="36" width="1124" height="348" fill="oklch(9% 0.04 280 / 0.58)" stroke="oklch(62% 0.29 350)" stroke-width="2"/>
+
+  <text x="72" y="82" fill="oklch(67% 0.28 25)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="800" letter-spacing="3">PUBLIC SIGNAL MAP</text>
+  <text x="72" y="115" fill="oklch(86% 0.12 205)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="650">Four public nodes. One operating pattern: local control plus boring verification.</text>
+
+  <g stroke="oklch(72% 0.24 205 / 0.5)" stroke-width="2" fill="none">
+    <path d="M600 210 235 170"/>
+    <path d="M600 210 965 170"/>
+    <path d="M600 210 235 305"/>
+    <path d="M600 210 965 305"/>
+  </g>
+
+  <g filter="url(#soft-glow)">
+    <circle cx="600" cy="210" r="66" fill="oklch(13% 0.08 300)" stroke="oklch(62% 0.29 350)" stroke-width="4"/>
+    <text x="600" y="203" text-anchor="middle" fill="oklch(96% 0.02 290)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900">LOCAL</text>
+    <text x="600" y="229" text-anchor="middle" fill="oklch(79% 0.2 350)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900">CONTROL</text>
+  </g>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <g>
+      <rect x="78" y="136" width="314" height="76" fill="oklch(12% 0.06 290)" stroke="oklch(67% 0.28 25)" stroke-width="2"/>
+      <text x="100" y="166" fill="oklch(96% 0.02 290)" font-size="19" font-weight="900">WormsWMD-macOS-Fix</text>
+      <text x="100" y="194" fill="oklch(86% 0.12 205)" font-size="15" font-weight="650">macOS repair kit</text>
+    </g>
+    <g>
+      <rect x="808" y="136" width="314" height="76" fill="oklch(12% 0.06 290)" stroke="oklch(72% 0.24 205)" stroke-width="2"/>
+      <text x="830" y="166" fill="oklch(96% 0.02 290)" font-size="19" font-weight="900">JobSentinel</text>
+      <text x="830" y="194" fill="oklch(86% 0.12 205)" font-size="15" font-weight="650">self-hosted job radar</text>
+    </g>
+    <g>
+      <rect x="78" y="271" width="314" height="76" fill="oklch(12% 0.06 290)" stroke="oklch(62% 0.29 350)" stroke-width="2"/>
+      <text x="100" y="301" fill="oklch(96% 0.02 290)" font-size="19" font-weight="900">PyGuard</text>
+      <text x="100" y="329" fill="oklch(86% 0.12 205)" font-size="15" font-weight="650">Python security gate</text>
+    </g>
+    <g>
+      <rect x="808" y="271" width="314" height="76" fill="oklch(12% 0.06 290)" stroke="oklch(62% 0.29 350)" stroke-width="2"/>
+      <text x="830" y="301" fill="oklch(96% 0.02 290)" font-size="19" font-weight="900">PoshGuard</text>
+      <text x="830" y="329" fill="oklch(86% 0.12 205)" font-size="15" font-weight="650">PowerShell autofix rig</text>
+    </g>
+  </g>
+</svg>

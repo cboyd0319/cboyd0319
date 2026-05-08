@@ -19,6 +19,8 @@ const copy = new Map([
   ],
 ]);
 
+const accents = ["#ffd166", "#00e5ff", "#ff2f92", "#ff2f92"];
+
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -65,6 +67,21 @@ async function github(path) {
   return response.json();
 }
 
+function renderRow(repo, index) {
+  const y = 145 + index * 62;
+  const panelY = 125 + index * 62;
+  const accent = accents[index % accents.length];
+
+  return `
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <circle cx="86" cy="${y}" r="7" fill="${accent}" filter="url(#f-glow)"/>
+    <path d="M112 ${panelY}H1094L1118 ${panelY + 24}V${panelY + 58}H112Z" fill="#0d1a2b" fill-opacity="0.88" stroke="${accent}" stroke-opacity="0.58" stroke-width="1.4"/>
+    <text x="136" y="${y + 9}" fill="#f7fbff" font-size="21" font-weight="900">${escapeXml(repo.name)}</text>
+    <text x="740" y="${y + 9}" fill="#7df9ff" font-size="17" font-weight="800">${escapeXml(repo.language)} / ${escapeXml(repo.stars)} / ${escapeXml(repo.date)}</text>
+    <text x="136" y="${y + 33}" fill="#ff4fb3" font-size="16" font-weight="750">${escapeXml(repo.description)}</text>
+  </g>`;
+}
+
 const repos = await github(
   `/users/${username}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
 );
@@ -72,6 +89,7 @@ const repos = await github(
 const lines = repos
   .filter((repo) => !repo.fork && !repo.archived && copy.has(repo.name))
   .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
+  .slice(0, 4)
   .map((repo) => ({
     name: repo.name,
     language: repo.language || "Mixed",
@@ -84,33 +102,27 @@ if (!lines.length) {
   throw new Error("No public profile repositories matched the curated list.");
 }
 
-const rows = lines
-  .map((repo, index) => {
-    const y = 154 + index * 62;
-
-    return `
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <text x="86" y="${y}" fill="oklch(96% 0.02 290)" font-size="22" font-weight="900">${escapeXml(repo.name)}</text>
-    <text x="430" y="${y}" fill="oklch(86% 0.12 205)" font-size="18" font-weight="750">${escapeXml(repo.language)} / ${escapeXml(repo.stars)} / ${escapeXml(repo.date)}</text>
-    <text x="86" y="${y + 29}" fill="oklch(79% 0.2 350)" font-size="17" font-weight="750">${escapeXml(repo.description)}</text>
-  </g>`;
-  })
-  .join("\n");
+const rows = lines.map(renderRow).join("\n");
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
-  <title id="title">Live public feed</title>
-  <desc id="desc">A cyberpunk SVG panel with latest public repository activity for Chad Boyd.</desc>
+  <title id="title">Live public repository feed</title>
+  <desc id="desc">A synthwave public repository feed showing recent project activity for Chad Boyd.</desc>
   <defs>
-    <linearGradient id="feed-bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="oklch(9% 0.07 285)"/>
-      <stop offset="0.55" stop-color="oklch(14% 0.1 318)"/>
-      <stop offset="1" stop-color="oklch(8% 0.05 275)"/>
+    <linearGradient id="f-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#050713"/>
+      <stop offset="0.5" stop-color="#10152a"/>
+      <stop offset="1" stop-color="#061015"/>
     </linearGradient>
-    <pattern id="feed-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-      <path d="M28 0H0V28" fill="none" stroke="oklch(74% 0.21 205 / 0.1)" stroke-width="1"/>
+    <linearGradient id="f-hot" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#00e5ff"/>
+      <stop offset="0.52" stop-color="#ff2f92"/>
+      <stop offset="1" stop-color="#ffd166"/>
+    </linearGradient>
+    <pattern id="f-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#7df9ff" stroke-opacity="0.08" stroke-width="1"/>
     </pattern>
-    <filter id="feed-glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+    <filter id="f-glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -118,14 +130,13 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role
     </filter>
   </defs>
 
-  <rect width="1200" height="430" fill="url(#feed-bg)"/>
-  <rect width="1200" height="430" fill="url(#feed-grid)"/>
-  <rect x="38" y="36" width="1124" height="358" fill="oklch(9% 0.04 280 / 0.7)" stroke="oklch(62% 0.29 350)" stroke-width="2"/>
-  <path d="M70 96H1130" stroke="oklch(72% 0.24 205 / 0.42)" stroke-width="1"/>
-  <path d="M70 394 104 360M1130 394 1096 360M70 36 104 70M1130 36 1096 70" stroke="oklch(72% 0.24 205)" stroke-width="2"/>
-
-  <text x="72" y="78" fill="oklch(67% 0.28 25)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900" letter-spacing="3">LIVE PUBLIC FEED</text>
-  <text x="846" y="78" fill="oklch(79% 0.2 350)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" filter="url(#feed-glow)">AUTO-REFRESHED BY ACTIONS</text>
+  <rect width="1200" height="430" fill="url(#f-bg)"/>
+  <rect width="1200" height="430" fill="url(#f-grid)"/>
+  <path d="M52 42H1148V388H52Z" fill="#070d18" fill-opacity="0.78" stroke="#00e5ff" stroke-opacity="0.52" stroke-width="1.6"/>
+  <path d="M52 94H1148" stroke="url(#f-hot)" stroke-width="2.4" opacity="0.86"/>
+  <path d="M86 120V356" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>
+  <text x="74" y="78" fill="#ffd166" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900" letter-spacing="3">LIVE PUBLIC FEED</text>
+  <text x="874" y="78" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" letter-spacing="2" filter="url(#f-glow)">AUTO REFRESHED BY ACTIONS</text>
 ${rows}
 </svg>
 `;

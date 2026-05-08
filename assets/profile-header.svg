@@ -1,81 +1,113 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">Chad Boyd cyberpunk profile header</title>
-  <desc id="desc">A dark synthwave profile header for Chad Boyd, showing neon grid lines, a magenta sun, and a terminal-style operator panel.</desc>
+  <title id="title">Chad Boyd synthwave command deck</title>
+  <desc id="desc">A polished cyberpunk profile header for Chad Boyd with a neon horizon, command deck panels, and local-first automation signals.</desc>
   <defs>
-    <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="oklch(10% 0.09 294)"/>
-      <stop offset="0.48" stop-color="oklch(14% 0.12 318)"/>
-      <stop offset="1" stop-color="oklch(8% 0.05 275)"/>
+    <linearGradient id="h-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#050713"/>
+      <stop offset="0.45" stop-color="#15102d"/>
+      <stop offset="0.72" stop-color="#241034"/>
+      <stop offset="1" stop-color="#05070f"/>
     </linearGradient>
-    <radialGradient id="flare" cx="78%" cy="26%" r="42%">
-      <stop offset="0" stop-color="oklch(70% 0.29 340 / 0.55)"/>
-      <stop offset="0.42" stop-color="oklch(60% 0.25 350 / 0.18)"/>
-      <stop offset="1" stop-color="oklch(10% 0.09 294 / 0)"/>
+    <radialGradient id="h-sun-glow" cx="76%" cy="31%" r="38%">
+      <stop offset="0" stop-color="#ff3fb4" stop-opacity="0.62"/>
+      <stop offset="0.44" stop-color="#ff7a2f" stop-opacity="0.19"/>
+      <stop offset="1" stop-color="#050713" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="sun" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="oklch(78% 0.2 70)"/>
-      <stop offset="0.48" stop-color="oklch(67% 0.28 25)"/>
-      <stop offset="1" stop-color="oklch(62% 0.29 350)"/>
+    <linearGradient id="h-sun" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="0.45" stop-color="#ff6b35"/>
+      <stop offset="1" stop-color="#f72585"/>
     </linearGradient>
-    <pattern id="scan" width="8" height="8" patternUnits="userSpaceOnUse">
-      <rect width="8" height="1" fill="oklch(95% 0.03 270 / 0.07)"/>
+    <linearGradient id="h-panel" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#101827" stop-opacity="0.92"/>
+      <stop offset="0.58" stop-color="#121035" stop-opacity="0.86"/>
+      <stop offset="1" stop-color="#07111b" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="h-line" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0"/>
+      <stop offset="0.22" stop-color="#00e5ff"/>
+      <stop offset="0.52" stop-color="#ff2f92"/>
+      <stop offset="0.83" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="h-scan" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M0 1H12" stroke="#ffffff" stroke-opacity="0.055" stroke-width="1"/>
     </pattern>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+    <filter id="h-glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="3.2" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <clipPath id="sun-cut">
-      <circle cx="970" cy="144" r="86"/>
+    <clipPath id="h-sun-clip">
+      <circle cx="890" cy="164" r="106"/>
     </clipPath>
   </defs>
 
-  <rect width="1200" height="520" fill="url(#sky)"/>
-  <rect width="1200" height="520" fill="url(#flare)"/>
-  <rect width="1200" height="520" fill="url(#scan)" opacity="0.65"/>
+  <rect width="1200" height="520" fill="url(#h-bg)"/>
+  <rect width="1200" height="520" fill="url(#h-sun-glow)"/>
+  <rect width="1200" height="520" fill="url(#h-scan)" opacity="0.7"/>
 
   <g opacity="0.72">
-    <path d="M0 398H1200" stroke="oklch(65% 0.24 350)" stroke-width="2"/>
-    <path d="M102 520 545 398M246 520 578 398M390 520 612 398M534 520 646 398M678 520 680 398M822 520 714 398M966 520 748 398M1110 520 782 398" stroke="oklch(72% 0.24 205 / 0.58)" stroke-width="1.4"/>
-    <path d="M0 488H1200M0 456H1200M0 430H1200M0 411H1200" stroke="oklch(70% 0.25 350 / 0.38)" stroke-width="1.4"/>
+    <circle cx="92" cy="70" r="1.6" fill="#c8fbff"/>
+    <circle cx="186" cy="116" r="1.3" fill="#c8fbff"/>
+    <circle cx="342" cy="54" r="1.5" fill="#fbe7ff"/>
+    <circle cx="506" cy="116" r="1.2" fill="#c8fbff"/>
+    <circle cx="686" cy="62" r="1.4" fill="#fbe7ff"/>
+    <circle cx="1046" cy="84" r="1.5" fill="#c8fbff"/>
+    <circle cx="1112" cy="148" r="1.2" fill="#fbe7ff"/>
+    <path d="M63 143H127M998 58H1064M1080 233H1140" stroke="#00e5ff" stroke-opacity="0.28" stroke-width="1"/>
   </g>
 
-  <g clip-path="url(#sun-cut)" filter="url(#glow)">
-    <circle cx="970" cy="144" r="86" fill="url(#sun)"/>
-    <rect x="875" y="112" width="190" height="8" fill="oklch(10% 0.09 294)"/>
-    <rect x="875" y="137" width="190" height="10" fill="oklch(10% 0.09 294)"/>
-    <rect x="875" y="165" width="190" height="13" fill="oklch(10% 0.09 294)"/>
-    <rect x="875" y="197" width="190" height="18" fill="oklch(10% 0.09 294)"/>
+  <g clip-path="url(#h-sun-clip)" filter="url(#h-glow)">
+    <circle cx="890" cy="164" r="106" fill="url(#h-sun)"/>
+    <rect x="760" y="109" width="260" height="9" fill="#090919"/>
+    <rect x="760" y="137" width="260" height="12" fill="#090919"/>
+    <rect x="760" y="170" width="260" height="15" fill="#090919"/>
+    <rect x="760" y="207" width="260" height="19" fill="#090919"/>
   </g>
 
-  <rect x="50" y="52" width="1100" height="368" rx="0" fill="oklch(12% 0.05 290 / 0.78)" stroke="oklch(62% 0.29 350)" stroke-width="2"/>
-  <path d="M50 98H1150M810 52V420" stroke="oklch(72% 0.24 205 / 0.42)" stroke-width="1"/>
-  <path d="M73 75H208" stroke="oklch(67% 0.28 25)" stroke-width="7" filter="url(#glow)"/>
-  <path d="M50 420 86 386M1150 420 1114 386M50 52 86 86M1150 52 1114 86" stroke="oklch(72% 0.24 205)" stroke-width="2"/>
-
-  <text x="74" y="84" fill="oklch(86% 0.12 205)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" letter-spacing="3">CBYD0319 / NIGHT OPS PROFILE</text>
-  <text x="72" y="216" fill="oklch(96% 0.02 290)" font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-size="96" font-weight="900" letter-spacing="4" filter="url(#glow)">CHAD BOYD</text>
-  <text x="77" y="262" fill="oklch(79% 0.2 350)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="700">LOCAL-FIRST AUTOMATION // SECURITY TOOLS</text>
-  <text x="77" y="296" fill="oklch(79% 0.2 350)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="700">MACOS REPAIR // AI AGENT SYSTEMS</text>
-  <text x="77" y="335" fill="oklch(83% 0.09 205)" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="23" font-weight="500">Tools for work that has to survive a real terminal.</text>
-
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="650">
-    <text x="842" y="96" fill="oklch(67% 0.28 25)">BOOT SEQUENCE</text>
-    <text x="842" y="138" fill="oklch(86% 0.12 205)">> local control: online</text>
-    <text x="842" y="174" fill="oklch(86% 0.12 205)">> telemetry: denied</text>
-    <text x="842" y="210" fill="oklch(86% 0.12 205)">> rollback: armed</text>
-    <text x="842" y="246" fill="oklch(86% 0.12 205)">> logs: required</text>
+  <g opacity="0.68">
+    <path d="M0 353H1200" stroke="url(#h-line)" stroke-width="2.5"/>
+    <path d="M0 378H1200M0 405H1200M0 435H1200M0 468H1200M0 504H1200" stroke="#ff2f92" stroke-opacity="0.24" stroke-width="1.2"/>
+    <path d="M600 353 26 520M600 353 170 520M600 353 314 520M600 353 458 520M600 353 600 520M600 353 742 520M600 353 886 520M600 353 1030 520M600 353 1174 520" stroke="#00e5ff" stroke-opacity="0.36" stroke-width="1.2"/>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" font-weight="700">
-    <text x="78" y="368" fill="oklch(77% 0.2 205)">PYTHON</text>
-    <text x="184" y="368" fill="oklch(77% 0.2 205)">RUST</text>
-    <text x="264" y="368" fill="oklch(77% 0.2 205)">SHELL</text>
-    <text x="354" y="368" fill="oklch(77% 0.2 205)">POWERSHELL</text>
-    <text x="506" y="368" fill="oklch(77% 0.2 205)">TYPESCRIPT</text>
+  <g opacity="0.42">
+    <path d="M0 332H88V304H138V322H194V284H252V331H316V298H364V332H442V268H512V332H584V292H640V332H724V280H788V332H858V300H914V332H982V274H1034V332H1200V356H0Z" fill="#040611"/>
+    <path d="M0 332H88V304H138V322H194V284H252V331H316V298H364V332H442V268H512V332H584V292H640V332H724V280H788V332H858V300H914V332H982V274H1034V332H1200" fill="none" stroke="#00e5ff" stroke-opacity="0.24" stroke-width="1.4"/>
   </g>
 
-  <text x="842" y="362" fill="oklch(96% 0.02 290)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" font-weight="800">VERIFY BEFORE TRUST</text>
+  <path d="M44 78H720L759 118V332H44Z" fill="url(#h-panel)" stroke="#00e5ff" stroke-opacity="0.78" stroke-width="2"/>
+  <path d="M44 78H720L759 118" fill="none" stroke="#ff2f92" stroke-width="2.4" filter="url(#h-glow)"/>
+  <path d="M70 116H600" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>
+  <path d="M70 291H690" stroke="#ffd166" stroke-opacity="0.34" stroke-width="1"/>
+
+  <text x="70" y="104" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="800" letter-spacing="3">CBOYD0319 / LOCAL SYSTEMS OPERATOR</text>
+  <text x="70" y="196" fill="#f7fbff" font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-size="82" font-weight="900" letter-spacing="2" filter="url(#h-glow)">CHAD BOYD</text>
+  <text x="74" y="237" fill="#ff4fb3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="800">SECURITY TOOLS / AUTOMATION / MACOS RECOVERY</text>
+  <text x="74" y="271" fill="#b8f7ff" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="21" font-weight="650">Local-first systems built for real terminals.</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="850">
+    <text x="75" y="318" fill="#ffd166">PYTHON</text>
+    <text x="162" y="318" fill="#7df9ff">RUST</text>
+    <text x="232" y="318" fill="#7df9ff">SHELL</text>
+    <text x="316" y="318" fill="#7df9ff">POWERSHELL</text>
+    <text x="466" y="318" fill="#7df9ff">TYPESCRIPT</text>
+  </g>
+
+  <g>
+    <path d="M812 76H1138V318L1108 348H812Z" fill="#08111f" fill-opacity="0.86" stroke="#ff2f92" stroke-opacity="0.8" stroke-width="2"/>
+    <path d="M834 113H1096M834 165H1096M834 217H1096M834 269H1096" stroke="#ffffff" stroke-opacity="0.1"/>
+    <path d="M834 113H930M834 165H1018M834 217H966M834 269H1048" stroke="#00e5ff" stroke-width="3" filter="url(#h-glow)"/>
+    <text x="834" y="104" fill="#ffd166" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" letter-spacing="2">COMMAND DECK</text>
+    <text x="834" y="145" fill="#f7fbff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="800">VERIFY BEFORE TRUST</text>
+    <text x="834" y="197" fill="#f7fbff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="800">PRIVATE BY DEFAULT</text>
+    <text x="834" y="249" fill="#f7fbff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="800">ROLLBACKS READY</text>
+    <text x="834" y="301" fill="#f7fbff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="800">LOGS OVER VIBES</text>
+  </g>
+
+  <path d="M44 418H1156" stroke="url(#h-line)" stroke-width="2.5"/>
+  <text x="74" y="457" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="800" letter-spacing="2">BUILD SMALL / SHIP REPRODUCIBLE / KEEP CONTROL LOCAL</text>
 </svg>

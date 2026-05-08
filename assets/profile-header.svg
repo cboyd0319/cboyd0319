@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Chad Boyd profile header</title>
+  <desc id="desc">Editorial profile header for Chad Boyd, focused on local-first automation, security tooling, macOS repair, and AI agent systems.</desc>
+  <style>
+    :root {
+      --paper: oklch(96% 0.005 350);
+      --paper-white: oklch(98% 0 0);
+      --ink: oklch(10% 0 0);
+      --charcoal: oklch(25% 0 0);
+      --ash: oklch(55% 0 0);
+      --mist: oklch(92% 0 0);
+      --accent: oklch(60% 0.25 350);
+      --accent-soft: oklch(60% 0.25 350 / 0.14);
+    }
+
+    .label {
+      font: 600 15px/1.2 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      fill: var(--ash);
+    }
+
+    .display {
+      font: italic 300 104px/1 Georgia, "Times New Roman", serif;
+      fill: var(--ink);
+    }
+
+    .lead {
+      font: 400 28px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      fill: var(--charcoal);
+    }
+
+    .meta {
+      font: 500 20px/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      fill: var(--charcoal);
+    }
+
+    .mono {
+      font: 500 17px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      fill: var(--ash);
+    }
+  </style>
+
+  <rect width="1200" height="520" rx="0" fill="var(--paper)"/>
+  <rect x="38" y="38" width="1124" height="444" rx="18" fill="var(--paper-white)" stroke="var(--mist)" stroke-width="2"/>
+  <rect x="86" y="84" width="86" height="7" rx="3.5" fill="var(--accent)"/>
+  <circle cx="1090" cy="112" r="54" fill="var(--accent-soft)"/>
+  <circle cx="1090" cy="112" r="9" fill="var(--accent)"/>
+
+  <text x="86" y="134" class="label">cboyd0319 / github profile</text>
+  <text x="82" y="246" class="display">Chad Boyd</text>
+  <text x="88" y="308" class="lead">Local-first automation, security tooling, macOS repair,</text>
+  <text x="88" y="350" class="lead">and AI agent systems for work that has to survive a real terminal.</text>
+
+  <line x1="86" y1="396" x2="1112" y2="396" stroke="var(--mist)" stroke-width="2"/>
+
+  <text x="88" y="438" class="mono">Python</text>
+  <text x="190" y="438" class="mono">Rust</text>
+  <text x="270" y="438" class="mono">Shell</text>
+  <text x="360" y="438" class="mono">PowerShell</text>
+  <text x="500" y="438" class="mono">TypeScript</text>
+
+  <text x="760" y="438" class="meta">Fix the boring failure modes first.</text>
+</svg>

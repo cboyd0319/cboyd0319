@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Terminal manifest</title>
+  <desc id="desc">A synthwave terminal manifest describing Chad Boyd's operating mode, stack, grid rules, and open circuits.</desc>
+  <defs>
+    <linearGradient id="core-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="oklch(9% 0.07 285)"/>
+      <stop offset="0.52" stop-color="oklch(13% 0.1 315)"/>
+      <stop offset="1" stop-color="oklch(8% 0.05 275)"/>
+    </linearGradient>
+    <pattern id="core-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="oklch(74% 0.21 205 / 0.1)" stroke-width="1"/>
+    </pattern>
+    <filter id="core-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="620" fill="url(#core-bg)"/>
+  <rect width="1200" height="620" fill="url(#core-grid)"/>
+  <rect x="38" y="36" width="1124" height="548" fill="oklch(9% 0.04 280 / 0.72)" stroke="oklch(62% 0.29 350)" stroke-width="2"/>
+
+  <path d="M70 94H1130M70 454H1130M600 94V454" stroke="oklch(72% 0.24 205 / 0.35)" stroke-width="1"/>
+  <path d="M70 94 96 68M1130 94 1104 68M70 454 96 480M1130 454 1104 480" stroke="oklch(72% 0.24 205)" stroke-width="2"/>
+
+  <text x="72" y="76" fill="oklch(67% 0.28 25)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900" letter-spacing="3">OPERATOR MANIFEST</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21" font-weight="750">
+    <text x="88" y="136" fill="oklch(79% 0.2 350)">operator:</text>
+    <text x="248" y="136" fill="oklch(96% 0.02 290)">Chad Boyd</text>
+    <text x="88" y="174" fill="oklch(79% 0.2 350)">handle:</text>
+    <text x="248" y="174" fill="oklch(96% 0.02 290)">cboyd0319</text>
+    <text x="88" y="212" fill="oklch(79% 0.2 350)">mode:</text>
+    <text x="248" y="212" fill="oklch(96% 0.02 290)">local_first</text>
+    <text x="88" y="266" fill="oklch(67% 0.28 25)">signal:</text>
+    <text x="122" y="306" fill="oklch(86% 0.12 205)">- repeatable automation</text>
+    <text x="122" y="342" fill="oklch(86% 0.12 205)">- security and static analysis</text>
+    <text x="122" y="378" fill="oklch(86% 0.12 205)">- macOS repair and recovery</text>
+    <text x="122" y="414" fill="oklch(86% 0.12 205)">- AI-assisted dev workflows</text>
+  </g>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21" font-weight="750">
+    <text x="630" y="136" fill="oklch(67% 0.28 25)">stack:</text>
+    <text x="664" y="176" fill="oklch(86% 0.12 205)">Python / Rust / Shell</text>
+    <text x="664" y="212" fill="oklch(86% 0.12 205)">PowerShell / TypeScript</text>
+    <text x="630" y="266" fill="oklch(67% 0.28 25)">private_grid:</text>
+    <text x="664" y="306" fill="oklch(86% 0.12 205)">assistant profiles and routing</text>
+    <text x="664" y="342" fill="oklch(86% 0.12 205)">macOS security baselines</text>
+    <text x="664" y="378" fill="oklch(86% 0.12 205)">local desktop tools</text>
+    <text x="664" y="414" fill="oklch(86% 0.12 205)">personal automation</text>
+  </g>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="76" y="512" fill="oklch(67% 0.28 25)" font-size="17" font-weight="900" letter-spacing="3">GRID RULES</text>
+    <text x="76" y="548" fill="oklch(96% 0.02 290)" font-size="20" font-weight="800">LOCAL FIRST / PRIVATE BY DEFAULT / LOGS BEAT VIBES / ROLLBACK BEATS REGRET</text>
+    <text x="76" y="576" fill="oklch(79% 0.2 350)" font-size="15" font-weight="800">OPEN CIRCUITS: ROLE-AWARE AI TOOLS / STATIC ANALYSIS FLOWS / REPRODUCIBLE MACOS SETUP</text>
+  </g>
+</svg>

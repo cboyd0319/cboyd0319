@@ -25,15 +25,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit README changes
+      - name: Commit feed changes
         run: |
-          if git diff --quiet README.md; then
-            echo "README is already current."
+          if git diff --quiet assets/live-feed.svg; then
+            echo "Live feed is already current."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md
+          git add assets/live-feed.svg
           git commit -m "Update profile activity"
           git push

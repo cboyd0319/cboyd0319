@@ -5,19 +5,19 @@ const markerEnd = "<!-- public-work:end -->";
 const copy = new Map([
   [
     "WormsWMD-macOS-Fix",
-    "macOS 26 community fix for black screen and stability issues.",
+    "Tahoe repair kit for black screens and crash-prone sessions.",
   ],
   [
     "JobSentinel",
-    "Self-hosted job search automation with local scoring and alerts.",
+    "Private-by-default job radar: scrape, score, alert.",
   ],
   [
     "PyGuard",
-    "Python security and quality scanner for local static analysis.",
+    "Python static-analysis gate for security and code quality.",
   ],
   [
     "PoshGuard",
-    "PowerShell QA and autofix tooling backed by AST analysis.",
+    "PowerShell analyzer and autofix rig with diffs and rollback.",
   ],
 ]);
 

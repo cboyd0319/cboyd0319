@@ -1,83 +1,142 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">Chad Boyd Tokyo neon synthwave profile header</title>
-  <desc id="desc">A Tokyo neon synthwave profile header with wet street reflections, sparse rain, vertical signs, and glowing night typography.</desc>
+  <title id="title">CBOYD0319 Tokyo neon synthwave profile header</title>
+  <desc id="desc">A Tokyo neon synthwave GitHub profile header with a striped sunset, skyline, tower, wet road reflections, retro car, and glowing CBOYD0319 typography.</desc>
   <defs>
-    <linearGradient id="h-bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#040611"/>
-      <stop offset="0.48" stop-color="#090b1d"/>
-      <stop offset="1" stop-color="#041214"/>
+    <linearGradient id="h-sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#02030a"/>
+      <stop offset="0.48" stop-color="#090821"/>
+      <stop offset="1" stop-color="#03050d"/>
     </linearGradient>
-    <radialGradient id="h-pink-bloom" cx="78%" cy="44%" r="46%">
-      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.42"/>
-      <stop offset="0.46" stop-color="#ff2f92" stop-opacity="0.12"/>
-      <stop offset="1" stop-color="#040611" stop-opacity="0"/>
+    <radialGradient id="h-sun" cx="50%" cy="43%" r="54%">
+      <stop offset="0" stop-color="#ffe66d"/>
+      <stop offset="0.38" stop-color="#ff5bb6"/>
+      <stop offset="0.72" stop-color="#7c36ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#050713" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="h-cyan-bloom" cx="18%" cy="76%" r="40%">
-      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.28"/>
-      <stop offset="1" stop-color="#040611" stop-opacity="0"/>
+    <radialGradient id="h-cyan-bloom" cx="22%" cy="68%" r="48%">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.32"/>
+      <stop offset="0.58" stop-color="#00e5ff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#00e5ff" stop-opacity="0"/>
     </radialGradient>
+    <radialGradient id="h-pink-bloom" cx="84%" cy="54%" r="48%">
+      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.38"/>
+      <stop offset="0.62" stop-color="#ff2f92" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#ff2f92" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="h-road" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#090a19" stop-opacity="0.55"/>
+      <stop offset="0.58" stop-color="#050713" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#010207"/>
+    </linearGradient>
     <linearGradient id="h-hot" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#00e5ff" stop-opacity="0"/>
-      <stop offset="0.22" stop-color="#00e5ff"/>
-      <stop offset="0.58" stop-color="#ff2f92"/>
+      <stop offset="0.18" stop-color="#00e5ff"/>
+      <stop offset="0.52" stop-color="#ff2f92"/>
+      <stop offset="0.84" stop-color="#ffe66d"/>
       <stop offset="1" stop-color="#ffe66d" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="h-road" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#070817" stop-opacity="0"/>
-      <stop offset="0.58" stop-color="#050713" stop-opacity="0.68"/>
-      <stop offset="1" stop-color="#03050b"/>
-    </linearGradient>
-    <linearGradient id="h-reflect" x1="0" x2="1" y1="0" y2="0">
+    <linearGradient id="h-reflection" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#00e5ff" stop-opacity="0"/>
-      <stop offset="0.34" stop-color="#00e5ff" stop-opacity="0.34"/>
-      <stop offset="0.64" stop-color="#ff2f92" stop-opacity="0.4"/>
+      <stop offset="0.25" stop-color="#00e5ff" stop-opacity="0.62"/>
+      <stop offset="0.55" stop-color="#ff2f92" stop-opacity="0.72"/>
+      <stop offset="0.82" stop-color="#ffe66d" stop-opacity="0.48"/>
       <stop offset="1" stop-color="#ffe66d" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="h-name" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#f4fbff"/>
+      <stop offset="0.44" stop-color="#ff7adf"/>
+      <stop offset="0.72" stop-color="#00e5ff"/>
+      <stop offset="1" stop-color="#f4fbff"/>
     </linearGradient>
     <filter id="h-glow" x="-35%" y="-35%" width="170%" height="170%">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
+    <filter id="h-soft-glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="h-sun-clip">
+      <circle cx="760" cy="188" r="132"/>
+    </clipPath>
   </defs>
 
-  <rect width="1200" height="520" fill="url(#h-bg)"/>
-  <rect width="1200" height="520" fill="url(#h-pink-bloom)"/>
+  <rect width="1200" height="520" fill="url(#h-sky)"/>
   <rect width="1200" height="520" fill="url(#h-cyan-bloom)"/>
+  <rect width="1200" height="520" fill="url(#h-pink-bloom)"/>
 
-  <g opacity="0.18" stroke="#9df8ff" stroke-width="1.1" stroke-linecap="round">
-    <path d="M148 20 132 102M312 60 296 152M532 18 516 110M718 70 702 160M1038 24 1024 120M1126 82 1112 164"/>
-    <path d="M88 184 78 238M442 198 430 276M816 174 804 246M994 196 982 270"/>
+  <g opacity="0.2" stroke="#7df9ff" stroke-linecap="round">
+    <path d="M92 40l-14 84M184 86l-11 62M374 24l-12 86M818 58l-12 82M1012 36l-16 102M1112 88l-10 72" stroke-width="1"/>
+    <path d="M36 214l-8 58M260 226l-10 66M910 206l-9 64M1160 194l-8 62" stroke-width="1"/>
   </g>
 
-  <g opacity="0.52">
-    <path d="M0 284H80V208H128V284H214V176H274V284H368V236H430V284H502V192H562V284H636V224H700V284H792V158H864V284H930V214H986V284H1200V348H0Z" fill="#03050d"/>
-    <path d="M0 284H80V208H128V284H214V176H274V284H368V236H430V284H502V192H562V284H636V224H700V284H792V158H864V284H930V214H986V284H1200" fill="none" stroke="#00e5ff" stroke-opacity="0.2"/>
+  <g filter="url(#h-soft-glow)">
+    <circle cx="760" cy="188" r="132" fill="url(#h-sun)"/>
+    <g clip-path="url(#h-sun-clip)" stroke="#050713" stroke-opacity="0.74" stroke-width="8">
+      <path d="M628 136H892M628 164H892M628 192H892M628 220H892M628 248H892M628 276H892"/>
+    </g>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="900" filter="url(#h-glow)">
-    <path d="M906 80H1034L1054 102V276H906Z" fill="#070d18" fill-opacity="0.84" stroke="#ff2f92" stroke-width="2"/>
-    <text x="938" y="130" fill="#ffe66d" font-size="18" letter-spacing="4">TOKYO</text>
-    <text x="936" y="178" fill="#f4fbff" font-size="20" letter-spacing="2">NEON</text>
-    <path d="M1080 134H1142V260H1080Z" fill="#07101a" fill-opacity="0.78" stroke="#00e5ff" stroke-width="2"/>
-    <text x="1111" y="188" text-anchor="middle" fill="#ff4fb3" font-size="14" letter-spacing="2">LOCAL</text>
+  <g opacity="0.94">
+    <path d="M0 304H54V238H104V304H154V212H204V304H252V176H314V304H360V238H414V304H468V222H520V304H568V258H632V304H684V204H744V304H792V166H858V304H908V230H958V304H1002V198H1068V304H1200V354H0Z" fill="#02040b"/>
+    <path d="M0 304H54V238H104V304H154V212H204V304H252V176H314V304H360V238H414V304H468V222H520V304H568V258H632V304H684V204H744V304H792V166H858V304H908V230H958V304H1002V198H1068V304H1200" fill="none" stroke="#00e5ff" stroke-opacity="0.24"/>
   </g>
 
-  <path d="M0 348H1200" stroke="url(#h-hot)" stroke-width="2.2"/>
-  <rect y="348" width="1200" height="172" fill="url(#h-road)"/>
-  <g opacity="0.42" stroke-linecap="round">
-    <path d="M600 348 218 520M600 348 420 520M600 348 600 520M600 348 780 520M600 348 982 520" stroke="#00e5ff" stroke-width="1"/>
-    <path d="M156 416H1044M246 468H954" stroke="#ff2f92" stroke-width="1"/>
-    <path d="M128 392H394M470 438H736M812 404H1088M260 494H524M676 486H1014" stroke="url(#h-reflect)" stroke-width="5" opacity="0.56"/>
+  <g filter="url(#h-glow)">
+    <g transform="translate(920 92)">
+      <path d="M40 0 18 212H62Z" fill="#060713" fill-opacity="0.4" stroke="#ff4fb3" stroke-width="3"/>
+      <path d="M40 0 40 212M24 92H56M18 146H62M30 48H50M20 186H60" stroke="#ffe66d" stroke-width="2" stroke-opacity="0.84"/>
+      <path d="M8 212H72" stroke="#ff2f92" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="900">
+      <path d="M1044 112H1128L1148 132V260H1044Z" fill="#07101a" fill-opacity="0.78" stroke="#00e5ff" stroke-width="2"/>
+      <text x="1086" y="154" text-anchor="middle" fill="#7df9ff" font-size="13" letter-spacing="2">NODE</text>
+      <text x="1086" y="188" text-anchor="middle" fill="#ff4fb3" font-size="16" letter-spacing="2">ONLINE</text>
+      <path d="M1064 220H1108" stroke="#ffe66d" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <path d="M0 340H1200" stroke="url(#h-hot)" stroke-width="2.4"/>
+  <rect y="340" width="1200" height="180" fill="url(#h-road)"/>
+  <g opacity="0.48" stroke-linecap="round">
+    <path d="M602 340 170 520M602 340 392 520M602 340 602 520M602 340 812 520M602 340 1030 520" stroke="#00e5ff" stroke-width="1.2"/>
+    <path d="M130 390H1070M208 430H992M294 476H906" stroke="#ff2f92" stroke-width="1"/>
+    <path d="M104 388H386M442 424H720M790 396H1108M248 492H552M674 486H1032" stroke="url(#h-reflection)" stroke-width="5" opacity="0.58"/>
+    <path d="M482 358H918M552 372H848M606 388H798" stroke="#ffe66d" stroke-width="3" opacity="0.4"/>
+  </g>
+
+  <g transform="translate(214 300)" filter="url(#h-glow)">
+    <path d="M12 72C30 34 88 18 150 18H236C274 20 306 40 334 72H366C382 72 394 84 394 98H0C0 84 4 76 12 72Z" fill="#050611" stroke="#ff2f92" stroke-width="2.4"/>
+    <path d="M110 26H220C242 28 264 42 286 64H72C82 44 94 32 110 26Z" fill="#0b1430" stroke="#00e5ff" stroke-opacity="0.62" stroke-width="1.5"/>
+    <path d="M20 78H88" stroke="#ff2f92" stroke-width="8" stroke-linecap="round"/>
+    <path d="M304 78H376" stroke="#ffe66d" stroke-width="5" stroke-linecap="round" opacity="0.72"/>
+    <circle cx="92" cy="98" r="22" fill="#02030a" stroke="#7df9ff" stroke-width="3"/>
+    <circle cx="302" cy="98" r="22" fill="#02030a" stroke="#7df9ff" stroke-width="3"/>
+    <path d="M92 98H302" stroke="#ff2f92" stroke-opacity="0.5" stroke-width="3"/>
   </g>
 
   <g font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-weight="900">
-    <text x="74" y="210" fill="#ff2f92" fill-opacity="0.72" font-size="88">CHAD BOYD</text>
-    <text x="79" y="205" fill="#f4fbff" font-size="88" filter="url(#h-glow)">CHAD BOYD</text>
+    <text x="82" y="168" fill="#00e5ff" fill-opacity="0.72" font-size="92" letter-spacing="2">CBOYD0319</text>
+    <text x="76" y="162" fill="#ff2f92" fill-opacity="0.74" font-size="92" letter-spacing="2">CBOYD0319</text>
+    <text x="79" y="165" fill="url(#h-name)" stroke="#ffd1f3" stroke-width="0.8" font-size="92" letter-spacing="2" filter="url(#h-glow)">CBOYD0319</text>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="850">
-    <text x="82" y="266" fill="#7df9ff" font-size="17" letter-spacing="4">SHINJUKU NIGHT BUILD</text>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="900">
+    <text x="88" y="226" fill="#00e5ff" font-size="20" letter-spacing="9" filter="url(#h-glow)">BUILD / AUTOMATE / SHIP</text>
+    <text x="38" y="46" fill="#7df9ff" font-size="12" letter-spacing="2">USER: CBOYD0319</text>
+    <text x="286" y="46" fill="#ff4fb3" font-size="12" letter-spacing="2">SESSION: ACTIVE</text>
+    <text x="958" y="46" fill="#7df9ff" font-size="12" letter-spacing="2">BUILD MODE: ENABLED</text>
+  </g>
+
+  <g fill="none" stroke-linejoin="round">
+    <path d="M18 18H224L242 38H528L548 18H1182V502H970L950 482H622L602 502H18Z" stroke="#31206b" stroke-width="2"/>
+    <path d="M18 18H128M1072 18H1182M18 502H150M1050 502H1182" stroke="url(#h-hot)" stroke-width="2.2"/>
+    <path d="M38 36h42M1120 36h42M38 484h42M1120 484h42" stroke="#ff2f92" stroke-width="3"/>
   </g>
 </svg>

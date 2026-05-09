@@ -7,7 +7,14 @@ const curatedRepos = new Set([
   "PoshGuard",
 ]);
 
-const accents = ["#ffe66d", "#00e5ff", "#ff2f92", "#ff4fb3"];
+const fallbackDescriptions = new Map([
+  ["PyGuard", "Python security tooling and checks"],
+  ["WormsWMD-macOS-Fix", "macOS compatibility repair workflow"],
+  ["JobSentinel", "Job search signals and automation"],
+  ["PoshGuard", "PowerShell security guardrails"],
+]);
+
+const accents = ["#ff2f92", "#00e5ff", "#ffe66d", "#a855ff"];
 
 function escapeXml(value) {
   return String(value)
@@ -15,6 +22,15 @@ function escapeXml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll("\"", "&quot;");
+}
+
+function shortText(value, maxLength) {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
 async function github(path) {
@@ -38,15 +54,34 @@ async function github(path) {
 }
 
 function renderRow(repo, index) {
-  const y = 158 + index * 52;
-  const lineY = y + 20;
+  const y = 134 + index * 66;
   const accent = accents[index % accents.length];
+  const signal = String(index + 1).padStart(2, "0");
+  const description = shortText(
+    repo.description || fallbackDescriptions.get(repo.name) || "Public build signal",
+    58,
+  );
+  const language = shortText(repo.language || "Public", 14).toUpperCase();
+  const barX = 920;
+  const bars = Array.from({ length: 8 }, (_, barIndex) => {
+    const x = barX + barIndex * 18;
+    const height = 8 + ((barIndex + index) % 5) * 5;
+    return `<rect x="${x}" y="${y + 34 - height}" width="10" height="${height}" rx="1.5" fill="${accent}" opacity="${0.45 + barIndex * 0.06}"/>`;
+  }).join("");
 
   return `
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <circle cx="96" cy="${y}" r="7" fill="${accent}" filter="url(#f-glow)"/>
-    <text x="136" y="${y + 7}" fill="#f4fbff" font-size="22" font-weight="900">${escapeXml(repo.name)}</text>
-    <path d="M96 ${lineY}H680" stroke="${accent}" stroke-opacity="0.3"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" filter="url(#f-glow)">
+    <path d="M76 ${y - 34}H1124L1142 ${y - 16}V${y + 38}H76Z" fill="#07101a" fill-opacity="0.66" stroke="${accent}" stroke-opacity="0.45"/>
+    <path d="M76 ${y - 34}V${y + 38}" stroke="${accent}" stroke-width="5"/>
+    <rect x="104" y="${y - 18}" width="44" height="36" rx="5" fill="#050916" stroke="${accent}" stroke-opacity="0.8"/>
+    <text x="126" y="${y + 6}" text-anchor="middle" fill="${accent}" font-size="16" font-weight="900">${signal}</text>
+    <circle cx="176" cy="${y}" r="7" fill="${accent}">
+      <animate attributeName="opacity" values="1;0.45;1" dur="${2.2 + index * 0.35}s" repeatCount="indefinite"/>
+    </circle>
+    <text x="204" y="${y - 4}" fill="#f4fbff" font-size="22" font-weight="900">${escapeXml(repo.name)}</text>
+    <text x="204" y="${y + 22}" fill="#aebbe4" font-size="15" font-weight="700">${escapeXml(description)}</text>
+    <text x="760" y="${y + 5}" fill="${accent}" font-size="13" font-weight="900" letter-spacing="2">${escapeXml(language)}</text>
+    ${bars}
   </g>`;
 }
 
@@ -60,6 +95,8 @@ const lines = repos
   .slice(0, 4)
   .map((repo) => ({
     name: repo.name,
+    description: repo.description,
+    language: repo.language,
   }));
 
 if (!lines.length) {
@@ -69,8 +106,8 @@ if (!lines.length) {
 const rows = lines.map(renderRow).join("\n");
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
-  <title id="title">Tokyo neon public repository feed</title>
-  <desc id="desc">A minimal Tokyo neon station-board feed showing recent public repositories for Chad Boyd.</desc>
+  <title id="title">CBOYD0319 Tokyo neon recent signals</title>
+  <desc id="desc">A Tokyo neon station-board feed showing curated public repositories for CBOYD0319 with colored signal rows and status bars.</desc>
   <defs>
     <linearGradient id="f-bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#050713"/>
@@ -78,7 +115,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role
       <stop offset="1" stop-color="#041216"/>
     </linearGradient>
     <radialGradient id="f-bloom" cx="84%" cy="24%" r="38%">
-      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.28"/>
+      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.3"/>
       <stop offset="1" stop-color="#050713" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="f-hot" x1="0" x2="1" y1="0" y2="0">
@@ -100,12 +137,14 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role
   <g opacity="0.16" stroke="#9df8ff" stroke-width="1.1" stroke-linecap="round">
     <path d="M158 18 144 96M438 44 422 128M948 20 934 112M1090 72 1078 148"/>
   </g>
-  <path d="M58 48H1142V374H58Z" fill="#050916" fill-opacity="0.54" stroke="#7df9ff" stroke-opacity="0.22"/>
-  <path d="M58 96H342" stroke="url(#f-hot)" stroke-width="2.2"/>
-  <path d="M874 374H1142" stroke="url(#f-hot)" stroke-width="2.2"/>
-  <text x="82" y="82" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="900" letter-spacing="3">RECENT SIGNALS</text>
-  <text x="876" y="82" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">PUBLIC WORK</text>
+  <path d="M44 42H1156V388H44Z" fill="#050916" fill-opacity="0.54" stroke="#7df9ff" stroke-opacity="0.22"/>
+  <path d="M44 92H372" stroke="url(#f-hot)" stroke-width="2.2"/>
+  <path d="M842 388H1156" stroke="url(#f-hot)" stroke-width="2.2"/>
+  <text x="76" y="80" fill="#ff4fb3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="900" letter-spacing="4" filter="url(#f-glow)">RECENT SIGNALS</text>
+  <circle cx="894" cy="72" r="6" fill="#31ffb6" filter="url(#f-glow)"/>
+  <text x="916" y="78" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">LIVE FEED</text>
 ${rows}
+  <text x="600" y="408" text-anchor="middle" fill="#00e5ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="8">TURNING IDEAS INTO SYSTEMS</text>
 </svg>
 `;
 

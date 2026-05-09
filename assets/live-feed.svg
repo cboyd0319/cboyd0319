@@ -38,25 +38,25 @@
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
     <circle cx="86" cy="142" r="8" fill="#ffe66d" filter="url(#f-glow)"/>
     <path d="M112 120H1092L1118 146V180H112Z" fill="#0b1424" fill-opacity="0.9" stroke="#ffe66d" stroke-opacity="0.62"/>
-    <text x="136" y="151" fill="#f7fbff" font-size="21" font-weight="900">WormsWMD-macOS-Fix</text>
-    <text x="740" y="151" fill="#7df9ff" font-size="17" font-weight="850">Shell / 42 stars / Apr 29, 2026</text>
-    <text x="136" y="175" fill="#ff4fb3" font-size="16" font-weight="800">Tahoe repair kit for black screens and crash-prone sessions.</text>
+    <text x="136" y="151" fill="#f7fbff" font-size="21" font-weight="900">PyGuard</text>
+    <text x="740" y="151" fill="#7df9ff" font-size="17" font-weight="850">Python / 1 star / May 9, 2026</text>
+    <text x="136" y="175" fill="#ff4fb3" font-size="16" font-weight="800">Python static-analysis gate for security and code quality.</text>
   </g>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
     <circle cx="86" cy="206" r="8" fill="#00e5ff" filter="url(#f-glow)"/>
     <path d="M112 184H1092L1118 210V244H112Z" fill="#0b1424" fill-opacity="0.9" stroke="#00e5ff" stroke-opacity="0.62"/>
-    <text x="136" y="215" fill="#f7fbff" font-size="21" font-weight="900">JobSentinel</text>
-    <text x="740" y="215" fill="#7df9ff" font-size="17" font-weight="850">Rust / 9 stars / Apr 20, 2026</text>
-    <text x="136" y="239" fill="#ff4fb3" font-size="16" font-weight="800">Private-by-default job radar: scrape, score, alert.</text>
+    <text x="136" y="215" fill="#f7fbff" font-size="21" font-weight="900">WormsWMD-macOS-Fix</text>
+    <text x="740" y="215" fill="#7df9ff" font-size="17" font-weight="850">Shell / 42 stars / Apr 29, 2026</text>
+    <text x="136" y="239" fill="#ff4fb3" font-size="16" font-weight="800">Tahoe repair kit for black screens and crash-prone sessions.</text>
   </g>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
     <circle cx="86" cy="270" r="8" fill="#ff2f92" filter="url(#f-glow)"/>
     <path d="M112 248H1092L1118 274V308H112Z" fill="#0b1424" fill-opacity="0.9" stroke="#ff2f92" stroke-opacity="0.62"/>
-    <text x="136" y="279" fill="#f7fbff" font-size="21" font-weight="900">PyGuard</text>
-    <text x="740" y="279" fill="#7df9ff" font-size="17" font-weight="850">Python / 1 star / Feb 3, 2026</text>
-    <text x="136" y="303" fill="#ff4fb3" font-size="16" font-weight="800">Python static-analysis gate for security and code quality.</text>
+    <text x="136" y="279" fill="#f7fbff" font-size="21" font-weight="900">JobSentinel</text>
+    <text x="740" y="279" fill="#7df9ff" font-size="17" font-weight="850">Rust / 9 stars / Apr 20, 2026</text>
+    <text x="136" y="303" fill="#ff4fb3" font-size="16" font-weight="800">Private-by-default job radar: scrape, score, alert.</text>
   </g>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">

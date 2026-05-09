@@ -1,20 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
-  <title id="title">Public project neon route map</title>
-  <desc id="desc">A cyberpunk synthwave route map connecting Chad Boyd's public projects through a glowing local control hub.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Tokyo neon route glow</title>
+  <desc id="desc">A sparse Tokyo subway inspired neon route graphic with a local junction and minimal labels.</desc>
   <defs>
     <linearGradient id="m-bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#050713"/>
-      <stop offset="0.5" stop-color="#11172c"/>
-      <stop offset="1" stop-color="#061015"/>
+      <stop offset="0.58" stop-color="#0a0d20"/>
+      <stop offset="1" stop-color="#041216"/>
     </linearGradient>
+    <radialGradient id="m-glow-bg" cx="52%" cy="52%" r="45%">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.14"/>
+      <stop offset="0.5" stop-color="#ff2f92" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#050713" stop-opacity="0"/>
+    </radialGradient>
     <linearGradient id="m-hot" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#00e5ff"/>
-      <stop offset="0.5" stop-color="#ff2f92"/>
+      <stop offset="0.52" stop-color="#ff2f92"/>
       <stop offset="1" stop-color="#ffe66d"/>
     </linearGradient>
-    <pattern id="m-grid" width="30" height="30" patternUnits="userSpaceOnUse">
-      <path d="M30 0H0V30" fill="none" stroke="#7df9ff" stroke-opacity="0.08"/>
-    </pattern>
     <filter id="m-glow" x="-35%" y="-35%" width="170%" height="170%">
       <feGaussianBlur stdDeviation="3" result="blur"/>
       <feMerge>
@@ -24,56 +26,34 @@
     </filter>
   </defs>
 
-  <rect width="1200" height="420" fill="url(#m-bg)"/>
-  <rect width="1200" height="420" fill="url(#m-grid)"/>
-  <rect x="50" y="44" width="1100" height="332" fill="#060b16" fill-opacity="0.72" stroke="#00e5ff" stroke-opacity="0.45"/>
-  <path d="M50 94H1150" stroke="url(#m-hot)" stroke-width="2.4"/>
+  <rect width="1200" height="360" fill="url(#m-bg)"/>
+  <rect width="1200" height="360" fill="url(#m-glow-bg)"/>
+  <path d="M72 58H1128V296H72Z" fill="#050916" fill-opacity="0.42" stroke="#7df9ff" stroke-opacity="0.2"/>
+  <path d="M72 104H308" stroke="url(#m-hot)" stroke-width="2"/>
 
-  <text x="74" y="78" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900" letter-spacing="3">PUBLIC SIGNAL ROUTES</text>
-  <text x="756" y="78" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" letter-spacing="2">NEON MAP / LOCAL BUS</text>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="850">
+    <text x="96" y="90" fill="#ffe66d" font-size="16" letter-spacing="3">NEON ROUTES</text>
+    <text x="924" y="90" fill="#7df9ff" font-size="13" letter-spacing="2">PUBLIC WORK</text>
+  </g>
 
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M220 154C344 154 420 214 534 214" stroke="#ffe66d" stroke-opacity="0.28" stroke-width="10"/>
-    <path d="M220 154C344 154 420 214 534 214" stroke="#ffe66d" stroke-width="3" filter="url(#m-glow)"/>
-    <path d="M980 154C856 154 780 214 666 214" stroke="#00e5ff" stroke-opacity="0.28" stroke-width="10"/>
-    <path d="M980 154C856 154 780 214 666 214" stroke="#00e5ff" stroke-width="3" filter="url(#m-glow)"/>
-    <path d="M220 300C344 300 420 226 534 226" stroke="#ff2f92" stroke-opacity="0.28" stroke-width="10"/>
-    <path d="M220 300C344 300 420 226 534 226" stroke="#ff2f92" stroke-width="3" filter="url(#m-glow)"/>
-    <path d="M980 300C856 300 780 226 666 226" stroke="#ff2f92" stroke-opacity="0.28" stroke-width="10"/>
-    <path d="M980 300C856 300 780 226 666 226" stroke="#ff2f92" stroke-width="3" filter="url(#m-glow)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#m-glow)">
+    <path d="M194 146H420C492 146 526 172 560 186" stroke="#ffe66d" stroke-width="3"/>
+    <path d="M1006 146H780C708 146 674 172 640 186" stroke="#00e5ff" stroke-width="3"/>
+    <path d="M194 248H420C492 248 526 212 560 202" stroke="#ff2f92" stroke-width="3"/>
+    <path d="M1006 248H780C708 248 674 212 640 202" stroke="#ff4fb3" stroke-width="3"/>
   </g>
 
   <g filter="url(#m-glow)">
-    <path d="M600 144 690 220 600 296 510 220Z" fill="#08111f" stroke="#00e5ff" stroke-width="3"/>
-    <path d="M600 174 654 220 600 266 546 220Z" fill="#160a22" stroke="#ff2f92" stroke-width="2"/>
-    <text x="600" y="216" text-anchor="middle" fill="#f7fbff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900">LOCAL</text>
-    <text x="600" y="242" text-anchor="middle" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900">BUS</text>
+    <circle cx="600" cy="194" r="58" fill="#07101a" fill-opacity="0.86" stroke="#00e5ff" stroke-width="2.6"/>
+    <circle cx="600" cy="194" r="34" fill="#13091d" fill-opacity="0.7" stroke="#ff2f92" stroke-width="2"/>
+    <text x="600" y="191" text-anchor="middle" fill="#f4fbff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="900">LOCAL</text>
+    <text x="600" y="217" text-anchor="middle" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="900">JCT</text>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <g>
-      <circle cx="220" cy="154" r="10" fill="#ffe66d" filter="url(#m-glow)"/>
-      <path d="M86 116H388L416 144V194H86Z" fill="#0b1424" fill-opacity="0.9" stroke="#ffe66d" stroke-opacity="0.8"/>
-      <text x="112" y="150" fill="#f7fbff" font-size="19" font-weight="900">WormsWMD-macOS-Fix</text>
-      <text x="112" y="176" fill="#7df9ff" font-size="15" font-weight="800">macOS repair kit</text>
-    </g>
-    <g>
-      <circle cx="980" cy="154" r="10" fill="#00e5ff" filter="url(#m-glow)"/>
-      <path d="M784 116H1088L1116 144V194H784Z" fill="#0b1424" fill-opacity="0.9" stroke="#00e5ff" stroke-opacity="0.8"/>
-      <text x="812" y="150" fill="#f7fbff" font-size="19" font-weight="900">JobSentinel</text>
-      <text x="812" y="176" fill="#7df9ff" font-size="15" font-weight="800">self-hosted job radar</text>
-    </g>
-    <g>
-      <circle cx="220" cy="300" r="10" fill="#ff2f92" filter="url(#m-glow)"/>
-      <path d="M86 262H388L416 290V340H86Z" fill="#0b1424" fill-opacity="0.9" stroke="#ff2f92" stroke-opacity="0.8"/>
-      <text x="112" y="296" fill="#f7fbff" font-size="19" font-weight="900">PyGuard</text>
-      <text x="112" y="322" fill="#7df9ff" font-size="15" font-weight="800">Python security gate</text>
-    </g>
-    <g>
-      <circle cx="980" cy="300" r="10" fill="#ff2f92" filter="url(#m-glow)"/>
-      <path d="M784 262H1088L1116 290V340H784Z" fill="#0b1424" fill-opacity="0.9" stroke="#ff2f92" stroke-opacity="0.8"/>
-      <text x="812" y="296" fill="#f7fbff" font-size="19" font-weight="900">PoshGuard</text>
-      <text x="812" y="322" fill="#7df9ff" font-size="15" font-weight="800">PowerShell autofix rig</text>
-    </g>
+  <g filter="url(#m-glow)">
+    <circle cx="194" cy="146" r="7" fill="#ffe66d"/>
+    <circle cx="1006" cy="146" r="7" fill="#00e5ff"/>
+    <circle cx="194" cy="248" r="7" fill="#ff2f92"/>
+    <circle cx="1006" cy="248" r="7" fill="#ff4fb3"/>
   </g>
 </svg>

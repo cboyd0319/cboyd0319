@@ -1,130 +1,83 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">Chad Boyd synthwave cyberpunk profile header</title>
-  <desc id="desc">A synthwave and cyberpunk profile header for Chad Boyd with a neon city, striped sunset, VHS scanlines, rain, palms, and a glowing horizon grid.</desc>
+  <title id="title">Chad Boyd Tokyo neon synthwave profile header</title>
+  <desc id="desc">A Tokyo neon synthwave profile header with wet street reflections, sparse rain, vertical signs, and glowing night typography.</desc>
   <defs>
-    <linearGradient id="h-sky" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#040411"/>
-      <stop offset="0.36" stop-color="#16062f"/>
-      <stop offset="0.68" stop-color="#30113e"/>
-      <stop offset="1" stop-color="#05070e"/>
+    <linearGradient id="h-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#040611"/>
+      <stop offset="0.48" stop-color="#090b1d"/>
+      <stop offset="1" stop-color="#041214"/>
     </linearGradient>
-    <radialGradient id="h-afterglow" cx="73%" cy="34%" r="48%">
-      <stop offset="0" stop-color="#ff3eb5" stop-opacity="0.58"/>
-      <stop offset="0.42" stop-color="#ff8a3d" stop-opacity="0.24"/>
-      <stop offset="1" stop-color="#05070e" stop-opacity="0"/>
+    <radialGradient id="h-pink-bloom" cx="78%" cy="44%" r="46%">
+      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.42"/>
+      <stop offset="0.46" stop-color="#ff2f92" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#040611" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="h-sun" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#ffe66d"/>
-      <stop offset="0.5" stop-color="#ff7a32"/>
-      <stop offset="1" stop-color="#ff2f92"/>
-    </linearGradient>
-    <linearGradient id="h-neon" x1="0" x2="1" y1="0" y2="0">
+    <radialGradient id="h-cyan-bloom" cx="18%" cy="76%" r="40%">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#040611" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="h-hot" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#00e5ff" stop-opacity="0"/>
-      <stop offset="0.2" stop-color="#00e5ff"/>
-      <stop offset="0.5" stop-color="#ff2f92"/>
-      <stop offset="0.8" stop-color="#ffe66d"/>
+      <stop offset="0.22" stop-color="#00e5ff"/>
+      <stop offset="0.58" stop-color="#ff2f92"/>
       <stop offset="1" stop-color="#ffe66d" stop-opacity="0"/>
     </linearGradient>
     <linearGradient id="h-road" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#09051a" stop-opacity="0.1"/>
-      <stop offset="1" stop-color="#03040a" stop-opacity="0.98"/>
+      <stop offset="0" stop-color="#070817" stop-opacity="0"/>
+      <stop offset="0.58" stop-color="#050713" stop-opacity="0.68"/>
+      <stop offset="1" stop-color="#03050b"/>
     </linearGradient>
-    <pattern id="h-scan" width="10" height="10" patternUnits="userSpaceOnUse">
-      <path d="M0 1H10" stroke="#ffffff" stroke-opacity="0.055" stroke-width="1"/>
-    </pattern>
+    <linearGradient id="h-reflect" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0"/>
+      <stop offset="0.34" stop-color="#00e5ff" stop-opacity="0.34"/>
+      <stop offset="0.64" stop-color="#ff2f92" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#ffe66d" stop-opacity="0"/>
+    </linearGradient>
     <filter id="h-glow" x="-35%" y="-35%" width="170%" height="170%">
-      <feGaussianBlur stdDeviation="3.1" result="blur"/>
+      <feGaussianBlur stdDeviation="3" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <clipPath id="h-sun-cut">
-      <circle cx="870" cy="178" r="132"/>
-    </clipPath>
   </defs>
 
-  <rect width="1200" height="520" fill="url(#h-sky)"/>
-  <rect width="1200" height="520" fill="url(#h-afterglow)"/>
-  <rect width="1200" height="520" fill="url(#h-scan)" opacity="0.75"/>
+  <rect width="1200" height="520" fill="url(#h-bg)"/>
+  <rect width="1200" height="520" fill="url(#h-pink-bloom)"/>
+  <rect width="1200" height="520" fill="url(#h-cyan-bloom)"/>
 
-  <g opacity="0.72">
-    <circle cx="90" cy="72" r="1.5" fill="#d7fbff"/>
-    <circle cx="220" cy="42" r="1.2" fill="#ffffff"/>
-    <circle cx="354" cy="106" r="1.4" fill="#d7fbff"/>
-    <circle cx="502" cy="62" r="1.1" fill="#ffffff"/>
-    <circle cx="674" cy="90" r="1.5" fill="#fbe8ff"/>
-    <circle cx="1048" cy="62" r="1.3" fill="#d7fbff"/>
-    <circle cx="1128" cy="138" r="1.2" fill="#ffffff"/>
-    <path d="M62 140H138M994 86H1064M1052 230H1144" stroke="#7df9ff" stroke-opacity="0.28"/>
+  <g opacity="0.18" stroke="#9df8ff" stroke-width="1.1" stroke-linecap="round">
+    <path d="M148 20 132 102M312 60 296 152M532 18 516 110M718 70 702 160M1038 24 1024 120M1126 82 1112 164"/>
+    <path d="M88 184 78 238M442 198 430 276M816 174 804 246M994 196 982 270"/>
   </g>
 
-  <g clip-path="url(#h-sun-cut)" filter="url(#h-glow)">
-    <circle cx="870" cy="178" r="132" fill="url(#h-sun)"/>
-    <rect x="720" y="112" width="300" height="9" fill="#090616"/>
-    <rect x="720" y="143" width="300" height="12" fill="#090616"/>
-    <rect x="720" y="178" width="300" height="16" fill="#090616"/>
-    <rect x="720" y="218" width="300" height="21" fill="#090616"/>
-    <rect x="720" y="264" width="300" height="27" fill="#090616"/>
+  <g opacity="0.52">
+    <path d="M0 284H80V208H128V284H214V176H274V284H368V236H430V284H502V192H562V284H636V224H700V284H792V158H864V284H930V214H986V284H1200V348H0Z" fill="#03050d"/>
+    <path d="M0 284H80V208H128V284H214V176H274V284H368V236H430V284H502V192H562V284H636V224H700V284H792V158H864V284H930V214H986V284H1200" fill="none" stroke="#00e5ff" stroke-opacity="0.2"/>
   </g>
 
-  <g opacity="0.5">
-    <path d="M0 296H76V248H118V286H166V214H220V296H282V238H330V296H390V182H458V296H520V230H574V296H648V204H706V296H774V252H824V296H896V198H958V296H1016V232H1066V296H1200V334H0Z" fill="#030510"/>
-    <path d="M0 296H76V248H118V286H166V214H220V296H282V238H330V296H390V182H458V296H520V230H574V296H648V204H706V296H774V252H824V296H896V198H958V296H1016V232H1066V296H1200" fill="none" stroke="#00e5ff" stroke-opacity="0.3" stroke-width="1.4"/>
-    <g fill="#ff2f92" fill-opacity="0.28">
-      <rect x="404" y="204" width="8" height="18"/>
-      <rect x="430" y="226" width="8" height="18"/>
-      <rect x="666" y="226" width="8" height="18"/>
-      <rect x="684" y="250" width="8" height="18"/>
-      <rect x="910" y="220" width="8" height="18"/>
-      <rect x="934" y="246" width="8" height="18"/>
-    </g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="900" filter="url(#h-glow)">
+    <path d="M906 80H1034L1054 102V276H906Z" fill="#070d18" fill-opacity="0.84" stroke="#ff2f92" stroke-width="2"/>
+    <text x="938" y="130" fill="#ffe66d" font-size="18" letter-spacing="4">TOKYO</text>
+    <text x="936" y="178" fill="#f4fbff" font-size="20" letter-spacing="2">NEON</text>
+    <path d="M1080 134H1142V260H1080Z" fill="#07101a" fill-opacity="0.78" stroke="#00e5ff" stroke-width="2"/>
+    <text x="1111" y="188" text-anchor="middle" fill="#ff4fb3" font-size="14" letter-spacing="2">LOCAL</text>
   </g>
 
-  <g opacity="0.55">
-    <path d="M105 314C82 284 70 258 72 236" fill="none" stroke="#061017" stroke-width="9" stroke-linecap="round"/>
-    <path d="M72 236C38 224 26 210 18 190M74 237C44 238 24 246 8 260M74 236C86 206 100 190 130 176M76 238C112 232 140 240 166 260M74 238C104 214 130 210 162 216" fill="none" stroke="#061017" stroke-width="8" stroke-linecap="round"/>
-    <path d="M1098 338C1076 298 1070 268 1078 238" fill="none" stroke="#061017" stroke-width="10" stroke-linecap="round"/>
-    <path d="M1078 238C1038 224 1024 204 1012 184M1078 238C1044 246 1018 260 998 282M1080 238C1090 204 1110 180 1142 166M1080 238C1116 226 1148 230 1182 250M1078 240C1116 252 1140 270 1158 302" fill="none" stroke="#061017" stroke-width="8" stroke-linecap="round"/>
+  <path d="M0 348H1200" stroke="url(#h-hot)" stroke-width="2.2"/>
+  <rect y="348" width="1200" height="172" fill="url(#h-road)"/>
+  <g opacity="0.42" stroke-linecap="round">
+    <path d="M600 348 218 520M600 348 420 520M600 348 600 520M600 348 780 520M600 348 982 520" stroke="#00e5ff" stroke-width="1"/>
+    <path d="M156 416H1044M246 468H954" stroke="#ff2f92" stroke-width="1"/>
+    <path d="M128 392H394M470 438H736M812 404H1088M260 494H524M676 486H1014" stroke="url(#h-reflect)" stroke-width="5" opacity="0.56"/>
   </g>
 
-  <g opacity="0.58">
-    <path d="M0 340H1200" stroke="url(#h-neon)" stroke-width="2.4"/>
-    <rect y="340" width="1200" height="180" fill="url(#h-road)"/>
-    <path d="M0 374H1200M0 405H1200M0 438H1200M0 474H1200M0 512H1200" stroke="#ff2f92" stroke-opacity="0.24" stroke-width="1.2"/>
-    <path d="M600 340 26 520M600 340 170 520M600 340 314 520M600 340 458 520M600 340 600 520M600 340 742 520M600 340 886 520M600 340 1030 520M600 340 1174 520" stroke="#00e5ff" stroke-opacity="0.36" stroke-width="1.2"/>
+  <g font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-weight="900">
+    <text x="74" y="210" fill="#ff2f92" fill-opacity="0.72" font-size="88">CHAD BOYD</text>
+    <text x="79" y="205" fill="#f4fbff" font-size="88" filter="url(#h-glow)">CHAD BOYD</text>
   </g>
 
-  <g opacity="0.18" stroke="#d7fbff" stroke-width="1.5">
-    <path d="M136 10 88 166M398 0 330 206M724 0 652 208M1088 0 1018 210"/>
-    <path d="M212 20 170 174M528 10 470 198M842 8 780 210M1168 18 1108 214"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="850">
+    <text x="82" y="266" fill="#7df9ff" font-size="17" letter-spacing="4">SHINJUKU NIGHT BUILD</text>
   </g>
-
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="900">
-    <text x="70" y="82" fill="#7df9ff" font-size="15" letter-spacing="4">RETRO-FUTURE SYSTEMS // CBOYD0319</text>
-    <path d="M70 100H530" stroke="#00e5ff" stroke-width="2" filter="url(#h-glow)"/>
-    <text x="71" y="178" fill="#00e5ff" fill-opacity="0.72" font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-size="88" letter-spacing="2">CHAD BOYD</text>
-    <text x="66" y="174" fill="#ff2f92" fill-opacity="0.74" font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-size="88" letter-spacing="2">CHAD BOYD</text>
-    <text x="68" y="176" fill="#f7fbff" font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-size="88" letter-spacing="2" filter="url(#h-glow)">CHAD BOYD</text>
-    <text x="74" y="224" fill="#ff4fb3" font-size="22">SECURITY TOOLS / AUTOMATION / MACOS RECOVERY</text>
-    <text x="76" y="260" fill="#c9fbff" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="22" font-weight="700">Local-first systems for terminals, agents, and repair work.</text>
-  </g>
-
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="900">
-    <path d="M72 304H642" stroke="#ffe66d" stroke-opacity="0.42"/>
-    <text x="74" y="330" fill="#ffe66d">PYTHON</text>
-    <text x="164" y="330" fill="#7df9ff">RUST</text>
-    <text x="236" y="330" fill="#7df9ff">SHELL</text>
-    <text x="318" y="330" fill="#7df9ff">POWERSHELL</text>
-    <text x="468" y="330" fill="#7df9ff">TYPESCRIPT</text>
-  </g>
-
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900">
-    <path d="M812 56H1128L1152 80V166L1128 190H812Z" fill="#060d18" fill-opacity="0.72" stroke="#ff2f92" stroke-width="1.8" filter="url(#h-glow)"/>
-    <text x="836" y="92" fill="#ffe66d" letter-spacing="2">NIGHT BUILD PRINCIPLES</text>
-    <text x="836" y="126" fill="#f7fbff">VERIFY BEFORE TRUST</text>
-    <text x="836" y="154" fill="#7df9ff">PRIVATE BY DEFAULT</text>
-  </g>
-
-  <text x="74" y="462" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="900" letter-spacing="3">BUILD SMALL / SHIP REPRODUCIBLE / KEEP CONTROL LOCAL</text>
 </svg>

@@ -1,17 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
-  <title id="title">Tokyo neon profile sign wall</title>
-  <desc id="desc">A quiet Tokyo neon sign wall for Chad Boyd with minimal copy and large dark space.</desc>
+  <title id="title">CBOYD0319 neon operator profile panel</title>
+  <desc id="desc">A Tokyo neon operator profile panel for CBOYD0319 with avatar, status details, tool icons, and cyberpunk control panels.</desc>
   <defs>
     <linearGradient id="c-bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#050713"/>
       <stop offset="0.58" stop-color="#0b0d22"/>
       <stop offset="1" stop-color="#041216"/>
     </linearGradient>
-    <radialGradient id="c-cyan" cx="28%" cy="64%" r="38%">
-      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.16"/>
+    <radialGradient id="c-avatar-sky" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.65"/>
+      <stop offset="0.48" stop-color="#1f1a55"/>
+      <stop offset="1" stop-color="#02030a"/>
+    </radialGradient>
+    <radialGradient id="c-cyan" cx="34%" cy="62%" r="42%">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.18"/>
       <stop offset="1" stop-color="#050713" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="c-pink" cx="78%" cy="28%" r="36%">
+    <radialGradient id="c-pink" cx="82%" cy="28%" r="38%">
       <stop offset="0" stop-color="#ff2f92" stop-opacity="0.3"/>
       <stop offset="1" stop-color="#050713" stop-opacity="0"/>
     </radialGradient>
@@ -19,6 +24,11 @@
       <stop offset="0" stop-color="#00e5ff"/>
       <stop offset="0.52" stop-color="#ff2f92"/>
       <stop offset="1" stop-color="#ffe66d"/>
+    </linearGradient>
+    <linearGradient id="c-name" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#ff7adf"/>
+      <stop offset="0.42" stop-color="#ff2f92"/>
+      <stop offset="1" stop-color="#00e5ff"/>
     </linearGradient>
     <filter id="c-glow" x="-35%" y="-35%" width="170%" height="170%">
       <feGaussianBlur stdDeviation="3" result="blur"/>
@@ -32,35 +42,71 @@
   <rect width="1200" height="500" fill="url(#c-bg)"/>
   <rect width="1200" height="500" fill="url(#c-cyan)"/>
   <rect width="1200" height="500" fill="url(#c-pink)"/>
-  <path d="M72 72H1128V420H72Z" fill="#050916" fill-opacity="0.44" stroke="#7df9ff" stroke-opacity="0.2"/>
-  <path d="M72 72H364" stroke="url(#c-hot)" stroke-width="2.2"/>
-  <path d="M844 420H1128" stroke="url(#c-hot)" stroke-width="2.2"/>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="850">
-    <text x="96" y="120" fill="#ffe66d" font-size="15" letter-spacing="4">NIGHT OPERATOR</text>
+  <path d="M24 22H1176V478H24Z" fill="#050916" fill-opacity="0.48" stroke="#7df9ff" stroke-opacity="0.18"/>
+  <path d="M24 22H332" stroke="url(#c-hot)" stroke-width="2.2"/>
+  <path d="M850 478H1176" stroke="url(#c-hot)" stroke-width="2.2"/>
+
+  <g transform="translate(54 54)">
+    <path d="M0 0H338L366 28V392H0Z" fill="#060915" fill-opacity="0.82" stroke="#ff2f92" stroke-width="2"/>
+    <path d="M22 22H344V370H22Z" fill="none" stroke="#7df9ff" stroke-opacity="0.16"/>
+    <g filter="url(#c-glow)">
+      <circle cx="183" cy="136" r="100" fill="url(#c-avatar-sky)" stroke="#00e5ff" stroke-width="3"/>
+      <circle cx="183" cy="136" r="104" fill="none" stroke="#ff2f92" stroke-width="3"/>
+      <path d="M78 188H128V132H160V188H210V104H248V188H286V140H320V216H78Z" fill="#02040b" opacity="0.8"/>
+      <path d="M142 88C166 48 224 48 238 94C250 132 224 166 184 170C146 166 126 126 142 88Z" fill="#02030a"/>
+      <path d="M132 228H236" stroke="#ff2f92" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <g font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-weight="900">
+      <text x="36" y="282" fill="#ff2f92" fill-opacity="0.66" font-size="42" letter-spacing="1">CBOYD0319</text>
+      <text x="40" y="278" fill="url(#c-name)" font-size="42" letter-spacing="1" filter="url(#c-glow)">CBOYD0319</text>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="850" fill="#c9d7ff">
+      <path d="M48 304l8-8 8 8-8 20Z" fill="#4d7dff" filter="url(#c-glow)"/>
+      <text x="82" y="314" font-size="15" letter-spacing="2">NORTH CAROLINA, USA</text>
+      <path d="M46 330H66V350H46ZM52 336l8 4-8 4" fill="none" stroke="#4d7dff" stroke-width="2"/>
+      <text x="82" y="346" font-size="15" letter-spacing="2">AUTOMATION ENTHUSIAST</text>
+      <path d="M58 360l-12 20h14l-8 16 22-26H60l8-10Z" fill="#4d7dff" filter="url(#c-glow)"/>
+      <text x="82" y="378" font-size="15" letter-spacing="2">ALWAYS BUILDING</text>
+    </g>
   </g>
 
-  <g font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-weight="900">
-    <text x="96" y="212" fill="#ff2f92" fill-opacity="0.58" font-size="62">CHAD BOYD</text>
-    <text x="100" y="208" fill="#f4fbff" font-size="62" filter="url(#c-glow)">CHAD BOYD</text>
+  <g transform="translate(466 58)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <path d="M0 0H656L684 28V184H0Z" fill="#060915" fill-opacity="0.82" stroke="#00e5ff" stroke-width="2"/>
+    <text x="30" y="42" fill="#ff4fb3" font-size="22" font-weight="900" letter-spacing="4" filter="url(#c-glow)">LOCAL TOOLCHAIN</text>
+    <text x="540" y="42" fill="#31ffb6" font-size="13" font-weight="900" letter-spacing="2">ONLINE</text>
+    <g font-weight="850">
+      <path d="M32 76H270" stroke="#263657"/>
+      <path d="M32 112H270" stroke="#263657"/>
+      <path d="M32 148H270" stroke="#263657"/>
+      <circle cx="48" cy="92" r="7" fill="#00e5ff" filter="url(#c-glow)"/>
+      <circle cx="48" cy="128" r="7" fill="#ff2f92" filter="url(#c-glow)"/>
+      <circle cx="48" cy="164" r="7" fill="#ffe66d" filter="url(#c-glow)"/>
+      <text x="74" y="98" fill="#f4fbff" font-size="17">REPAIR WORKFLOWS</text>
+      <text x="74" y="134" fill="#f4fbff" font-size="17">SECURITY GUARDRAILS</text>
+      <text x="74" y="170" fill="#f4fbff" font-size="17">AGENT ORCHESTRATION</text>
+    </g>
+    <g transform="translate(356 74)" filter="url(#c-glow)">
+      <path d="M0 0H248L272 24V88H0Z" fill="#07101a" fill-opacity="0.82" stroke="#ff2f92" stroke-width="2"/>
+      <text x="24" y="34" fill="#ffe66d" font-size="16" font-weight="900" letter-spacing="3">BUILD STATUS</text>
+      <text x="24" y="66" fill="#31ffb6" font-size="20" font-weight="900">SYSTEMS GREEN</text>
+    </g>
   </g>
 
-  <g filter="url(#c-glow)">
-    <path d="M720 126H1016L1048 158V246H720Z" fill="#07101a" fill-opacity="0.82" stroke="#ff2f92" stroke-width="2.4"/>
-    <text x="760" y="176" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21" font-weight="900" letter-spacing="3">LOCAL TOOLS</text>
-    <text x="760" y="216" fill="#9df8ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="850">REPAIR / SECURITY / AGENTS</text>
+  <g transform="translate(466 286)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" filter="url(#c-glow)">
+    <path d="M0 0H248L270 22V118H0Z" fill="#060915" fill-opacity="0.82" stroke="#ff2f92" stroke-width="2"/>
+    <text x="24" y="38" fill="#ff4fb3" font-size="15" font-weight="900" letter-spacing="3">SIGNAL</text>
+    <path d="M24 74h14l10-24 16 48 14-30 12 18h130" fill="none" stroke="#ff2f92" stroke-width="3"/>
   </g>
 
-  <g opacity="0.7" filter="url(#c-glow)">
-    <path d="M290 318H506L534 346V390H290Z" fill="#07101a" fill-opacity="0.82" stroke="#00e5ff" stroke-width="2"/>
-    <circle cx="360" cy="354" r="24" fill="none" stroke="#ff2f92" stroke-width="3"/>
-    <circle cx="444" cy="354" r="24" fill="none" stroke="#ffe66d" stroke-width="3"/>
-    <path d="M360 354H444" stroke="#00e5ff" stroke-width="2.4"/>
-  </g>
-
-  <g opacity="0.58" stroke-linecap="round">
-    <path d="M760 310H1080" stroke="#00e5ff" stroke-width="2.4" filter="url(#c-glow)"/>
-    <path d="M720 354H1030" stroke="#ff2f92" stroke-width="2.4" filter="url(#c-glow)"/>
-    <path d="M812 386H1100" stroke="#ffe66d" stroke-width="2.4" filter="url(#c-glow)"/>
+  <g transform="translate(766 286)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" filter="url(#c-glow)">
+    <path d="M0 0H340L366 26V118H0Z" fill="#060915" fill-opacity="0.82" stroke="#00e5ff" stroke-width="2"/>
+    <text x="26" y="38" fill="#00e5ff" font-size="15" font-weight="900" letter-spacing="3">QUICK COMMANDS</text>
+    <path d="M26 64H322M26 92H322" stroke="#263657"/>
+    <text x="26" y="80" fill="#f4fbff" font-size="14">build --ship</text>
+    <text x="26" y="108" fill="#f4fbff" font-size="14">guard --verify</text>
+    <path d="M310 70l12 8-12 8M310 98l12 8-12 8" fill="none" stroke="#ffe66d" stroke-width="2"/>
   </g>
 </svg>

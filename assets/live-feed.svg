@@ -1,25 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
-  <title id="title">Live public repository broadcast</title>
-  <desc id="desc">A VHS-inspired synthwave broadcast panel showing recent public repository activity for Chad Boyd.</desc>
+  <title id="title">Tokyo neon public repository feed</title>
+  <desc id="desc">A minimal Tokyo neon station-board feed showing recent public repositories for Chad Boyd.</desc>
   <defs>
     <linearGradient id="f-bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#050713"/>
-      <stop offset="0.52" stop-color="#15102d"/>
-      <stop offset="1" stop-color="#061015"/>
+      <stop offset="0.58" stop-color="#0b0d22"/>
+      <stop offset="1" stop-color="#041216"/>
     </linearGradient>
+    <radialGradient id="f-bloom" cx="84%" cy="24%" r="38%">
+      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#050713" stop-opacity="0"/>
+    </radialGradient>
     <linearGradient id="f-hot" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#00e5ff"/>
       <stop offset="0.52" stop-color="#ff2f92"/>
       <stop offset="1" stop-color="#ffe66d"/>
     </linearGradient>
-    <pattern id="f-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-      <path d="M28 0H0V28" fill="none" stroke="#7df9ff" stroke-opacity="0.075"/>
-    </pattern>
-    <pattern id="f-scan" width="8" height="8" patternUnits="userSpaceOnUse">
-      <path d="M0 1H8" stroke="#ffffff" stroke-opacity="0.045"/>
-    </pattern>
     <filter id="f-glow" x="-35%" y="-35%" width="170%" height="170%">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -28,42 +26,37 @@
   </defs>
 
   <rect width="1200" height="430" fill="url(#f-bg)"/>
-  <rect width="1200" height="430" fill="url(#f-grid)"/>
-  <rect width="1200" height="430" fill="url(#f-scan)" opacity="0.7"/>
-  <path d="M52 42H1148V388H52Z" fill="#060b16" fill-opacity="0.78" stroke="#00e5ff" stroke-opacity="0.5"/>
-  <path d="M52 94H1148" stroke="url(#f-hot)" stroke-width="2.4"/>
-  <text x="74" y="78" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900" letter-spacing="3">LIVE PUBLIC BROADCAST</text>
-  <text x="842" y="78" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" letter-spacing="2" filter="url(#f-glow)">AUTO REFRESHED BY ACTIONS</text>
+  <rect width="1200" height="430" fill="url(#f-bloom)"/>
+  <g opacity="0.16" stroke="#9df8ff" stroke-width="1.1" stroke-linecap="round">
+    <path d="M158 18 144 96M438 44 422 128M948 20 934 112M1090 72 1078 148"/>
+  </g>
+  <path d="M58 48H1142V374H58Z" fill="#050916" fill-opacity="0.54" stroke="#7df9ff" stroke-opacity="0.22"/>
+  <path d="M58 96H342" stroke="url(#f-hot)" stroke-width="2.2"/>
+  <path d="M874 374H1142" stroke="url(#f-hot)" stroke-width="2.2"/>
+  <text x="82" y="82" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="900" letter-spacing="3">RECENT SIGNALS</text>
+  <text x="876" y="82" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">PUBLIC WORK</text>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <circle cx="86" cy="142" r="8" fill="#ffe66d" filter="url(#f-glow)"/>
-    <path d="M112 120H1092L1118 146V180H112Z" fill="#0b1424" fill-opacity="0.9" stroke="#ffe66d" stroke-opacity="0.62"/>
-    <text x="136" y="151" fill="#f7fbff" font-size="21" font-weight="900">PyGuard</text>
-    <text x="740" y="151" fill="#7df9ff" font-size="17" font-weight="850">Python / 1 star / May 9, 2026</text>
-    <text x="136" y="175" fill="#ff4fb3" font-size="16" font-weight="800">Python static-analysis gate for security and code quality.</text>
+    <circle cx="96" cy="158" r="7" fill="#ffe66d" filter="url(#f-glow)"/>
+    <text x="136" y="165" fill="#f4fbff" font-size="22" font-weight="900">PyGuard</text>
+    <path d="M96 178H680" stroke="#ffe66d" stroke-opacity="0.3"/>
   </g>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <circle cx="86" cy="206" r="8" fill="#00e5ff" filter="url(#f-glow)"/>
-    <path d="M112 184H1092L1118 210V244H112Z" fill="#0b1424" fill-opacity="0.9" stroke="#00e5ff" stroke-opacity="0.62"/>
-    <text x="136" y="215" fill="#f7fbff" font-size="21" font-weight="900">WormsWMD-macOS-Fix</text>
-    <text x="740" y="215" fill="#7df9ff" font-size="17" font-weight="850">Shell / 42 stars / Apr 29, 2026</text>
-    <text x="136" y="239" fill="#ff4fb3" font-size="16" font-weight="800">Tahoe repair kit for black screens and crash-prone sessions.</text>
+    <circle cx="96" cy="210" r="7" fill="#00e5ff" filter="url(#f-glow)"/>
+    <text x="136" y="217" fill="#f4fbff" font-size="22" font-weight="900">WormsWMD-macOS-Fix</text>
+    <path d="M96 230H680" stroke="#00e5ff" stroke-opacity="0.3"/>
   </g>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <circle cx="86" cy="270" r="8" fill="#ff2f92" filter="url(#f-glow)"/>
-    <path d="M112 248H1092L1118 274V308H112Z" fill="#0b1424" fill-opacity="0.9" stroke="#ff2f92" stroke-opacity="0.62"/>
-    <text x="136" y="279" fill="#f7fbff" font-size="21" font-weight="900">JobSentinel</text>
-    <text x="740" y="279" fill="#7df9ff" font-size="17" font-weight="850">Rust / 9 stars / Apr 20, 2026</text>
-    <text x="136" y="303" fill="#ff4fb3" font-size="16" font-weight="800">Private-by-default job radar: scrape, score, alert.</text>
+    <circle cx="96" cy="262" r="7" fill="#ff2f92" filter="url(#f-glow)"/>
+    <text x="136" y="269" fill="#f4fbff" font-size="22" font-weight="900">JobSentinel</text>
+    <path d="M96 282H680" stroke="#ff2f92" stroke-opacity="0.3"/>
   </g>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <circle cx="86" cy="334" r="8" fill="#ff2f92" filter="url(#f-glow)"/>
-    <path d="M112 312H1092L1118 338V372H112Z" fill="#0b1424" fill-opacity="0.9" stroke="#ff2f92" stroke-opacity="0.62"/>
-    <text x="136" y="343" fill="#f7fbff" font-size="21" font-weight="900">PoshGuard</text>
-    <text x="740" y="343" fill="#7df9ff" font-size="17" font-weight="850">PowerShell / 2 stars / Nov 21, 2025</text>
-    <text x="136" y="367" fill="#ff4fb3" font-size="16" font-weight="800">PowerShell analyzer and autofix rig with diffs and rollback.</text>
+    <circle cx="96" cy="314" r="7" fill="#ff4fb3" filter="url(#f-glow)"/>
+    <text x="136" y="321" fill="#f4fbff" font-size="22" font-weight="900">PoshGuard</text>
+    <path d="M96 334H680" stroke="#ff4fb3" stroke-opacity="0.3"/>
   </g>
 </svg>

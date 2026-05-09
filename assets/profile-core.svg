@@ -1,27 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
-  <title id="title">Chad Boyd synthwave operator manifest</title>
-  <desc id="desc">A synthwave cyberpunk operator manifest for Chad Boyd using VHS texture, neon routing, analog deck graphics, and local-first development signals.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">Tokyo neon profile sign wall</title>
+  <desc id="desc">A quiet Tokyo neon sign wall for Chad Boyd with minimal copy and large dark space.</desc>
   <defs>
     <linearGradient id="c-bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#050713"/>
-      <stop offset="0.46" stop-color="#14122e"/>
-      <stop offset="1" stop-color="#071013"/>
+      <stop offset="0.58" stop-color="#0b0d22"/>
+      <stop offset="1" stop-color="#041216"/>
     </linearGradient>
-    <linearGradient id="c-panel" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#0b1525" stop-opacity="0.92"/>
-      <stop offset="1" stop-color="#140820" stop-opacity="0.9"/>
-    </linearGradient>
+    <radialGradient id="c-cyan" cx="28%" cy="64%" r="38%">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#050713" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c-pink" cx="78%" cy="28%" r="36%">
+      <stop offset="0" stop-color="#ff2f92" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#050713" stop-opacity="0"/>
+    </radialGradient>
     <linearGradient id="c-hot" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0" stop-color="#00e5ff"/>
-      <stop offset="0.5" stop-color="#ff2f92"/>
+      <stop offset="0.52" stop-color="#ff2f92"/>
       <stop offset="1" stop-color="#ffe66d"/>
     </linearGradient>
-    <pattern id="c-grid" width="36" height="36" patternUnits="userSpaceOnUse">
-      <path d="M36 0H0V36" fill="none" stroke="#7df9ff" stroke-opacity="0.075"/>
-    </pattern>
-    <pattern id="c-scan" width="8" height="8" patternUnits="userSpaceOnUse">
-      <path d="M0 1H8" stroke="#ffffff" stroke-opacity="0.045"/>
-    </pattern>
     <filter id="c-glow" x="-35%" y="-35%" width="170%" height="170%">
       <feGaussianBlur stdDeviation="3" result="blur"/>
       <feMerge>
@@ -31,54 +29,38 @@
     </filter>
   </defs>
 
-  <rect width="1200" height="600" fill="url(#c-bg)"/>
-  <rect width="1200" height="600" fill="url(#c-grid)"/>
-  <rect width="1200" height="600" fill="url(#c-scan)" opacity="0.7"/>
-  <path d="M54 76H1146M54 526H1146" stroke="url(#c-hot)" stroke-width="2.4"/>
-  <path d="M54 76 92 44H1146M54 526 92 558H1146" fill="none" stroke="#00e5ff" stroke-opacity="0.45"/>
+  <rect width="1200" height="500" fill="url(#c-bg)"/>
+  <rect width="1200" height="500" fill="url(#c-cyan)"/>
+  <rect width="1200" height="500" fill="url(#c-pink)"/>
+  <path d="M72 72H1128V420H72Z" fill="#050916" fill-opacity="0.44" stroke="#7df9ff" stroke-opacity="0.2"/>
+  <path d="M72 72H364" stroke="url(#c-hot)" stroke-width="2.2"/>
+  <path d="M844 420H1128" stroke="url(#c-hot)" stroke-width="2.2"/>
 
-  <text x="64" y="52" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="900" letter-spacing="3">OPERATOR MANIFEST</text>
-  <text x="836" y="52" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">ANALOG HEART / DIGITAL HANDS</text>
-
-  <g>
-    <path d="M72 104H510L542 136V486H72Z" fill="url(#c-panel)" stroke="#00e5ff" stroke-opacity="0.68" stroke-width="1.8"/>
-    <path d="M106 148H274" stroke="#ff2f92" stroke-width="5" filter="url(#c-glow)"/>
-    <text x="106" y="138" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">IDENTITY TAPE</text>
-    <rect x="108" y="174" width="360" height="142" rx="8" fill="#060a13" stroke="#7df9ff" stroke-opacity="0.36"/>
-    <circle cx="174" cy="245" r="42" fill="none" stroke="#ff2f92" stroke-width="4" filter="url(#c-glow)"/>
-    <circle cx="402" cy="245" r="42" fill="none" stroke="#00e5ff" stroke-width="4" filter="url(#c-glow)"/>
-    <path d="M174 245H402" stroke="#ffe66d" stroke-opacity="0.52" stroke-width="4"/>
-    <path d="M130 286H446" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="288" y="238" text-anchor="middle" fill="#f7fbff" font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-size="38" font-weight="900">CB</text>
-    <text x="288" y="270" text-anchor="middle" fill="#ff4fb3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="900">0319</text>
-    <text x="106" y="358" fill="#f7fbff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="900">Chad Boyd</text>
-    <text x="106" y="392" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="850">handle: cboyd0319</text>
-    <text x="106" y="424" fill="#ff4fb3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="850">mode: local_first</text>
-    <text x="106" y="456" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="850">rule: verify before trust</text>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="850">
+    <text x="96" y="120" fill="#ffe66d" font-size="15" letter-spacing="4">NIGHT OPERATOR</text>
   </g>
 
-  <g>
-    <path d="M586 104H1128V486H618L586 454Z" fill="url(#c-panel)" stroke="#ff2f92" stroke-opacity="0.66" stroke-width="1.8"/>
-    <text x="626" y="138" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">SIGNAL CHAIN</text>
-    <g stroke-linecap="square" filter="url(#c-glow)">
-      <path d="M628 184H662V160H696V214H730V176H764V236H798V188H832V220H866" fill="none" stroke="#00e5ff" stroke-width="4"/>
-      <path d="M628 260H662V226H696V282H730V244H764V304H798V252H832V286H866" fill="none" stroke="#ff2f92" stroke-width="4"/>
-      <path d="M628 336H662V312H696V366H730V328H764V388H798V340H832V372H866" fill="none" stroke="#ffe66d" stroke-width="4"/>
-    </g>
-    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="850">
-      <text x="902" y="188" fill="#f7fbff">repeatable automation</text>
-      <text x="902" y="264" fill="#f7fbff">security gates</text>
-      <text x="902" y="340" fill="#f7fbff">macOS repair</text>
-      <text x="902" y="416" fill="#f7fbff">AI dev workflows</text>
-      <path d="M628 412H868" stroke="#7df9ff" stroke-width="4" filter="url(#c-glow)"/>
-    </g>
-    <path d="M626 446H1088" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="626" y="466" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="850">Python / Rust / Shell / PowerShell / TypeScript</text>
+  <g font-family="Arial Black, Impact, ui-sans-serif, system-ui, sans-serif" font-weight="900">
+    <text x="96" y="212" fill="#ff2f92" fill-opacity="0.58" font-size="62">CHAD BOYD</text>
+    <text x="100" y="208" fill="#f4fbff" font-size="62" filter="url(#c-glow)">CHAD BOYD</text>
   </g>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-    <path d="M72 542H1128" stroke="#00e5ff" stroke-opacity="0.28"/>
-    <text x="86" y="568" fill="#ffe66d" font-size="16" font-weight="900" letter-spacing="2">GRID RULES</text>
-    <text x="246" y="568" fill="#f7fbff" font-size="18" font-weight="850">LOCAL FIRST / PRIVATE BY DEFAULT / LOGS BEAT VIBES / ROLLBACK BEATS REGRET</text>
+  <g filter="url(#c-glow)">
+    <path d="M720 126H1016L1048 158V246H720Z" fill="#07101a" fill-opacity="0.82" stroke="#ff2f92" stroke-width="2.4"/>
+    <text x="760" y="176" fill="#ffe66d" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21" font-weight="900" letter-spacing="3">LOCAL TOOLS</text>
+    <text x="760" y="216" fill="#9df8ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="850">REPAIR / SECURITY / AGENTS</text>
+  </g>
+
+  <g opacity="0.7" filter="url(#c-glow)">
+    <path d="M290 318H506L534 346V390H290Z" fill="#07101a" fill-opacity="0.82" stroke="#00e5ff" stroke-width="2"/>
+    <circle cx="360" cy="354" r="24" fill="none" stroke="#ff2f92" stroke-width="3"/>
+    <circle cx="444" cy="354" r="24" fill="none" stroke="#ffe66d" stroke-width="3"/>
+    <path d="M360 354H444" stroke="#00e5ff" stroke-width="2.4"/>
+  </g>
+
+  <g opacity="0.58" stroke-linecap="round">
+    <path d="M760 310H1080" stroke="#00e5ff" stroke-width="2.4" filter="url(#c-glow)"/>
+    <path d="M720 354H1030" stroke="#ff2f92" stroke-width="2.4" filter="url(#c-glow)"/>
+    <path d="M812 386H1100" stroke="#ffe66d" stroke-width="2.4" filter="url(#c-glow)"/>
   </g>
 </svg>

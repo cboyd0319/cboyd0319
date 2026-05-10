@@ -9,10 +9,10 @@
   },
   "scripts": {
     "generate": "node scripts/generate-signals.mjs",
-    "generate-banner": "node scripts/generate-banner.mjs",
+    "optimize-signals": "pngquant --force --quality=80-95 --strip assets/signals.png --output assets/signals.png",
     "smoke": "node scripts/generate-signals.mjs --smoke",
     "test": "node scripts/test-utils.mjs",
-    "check": "node --check scripts/generate-signals.mjs scripts/generate-banner.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs",
+    "check": "node --check scripts/generate-signals.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs",
     "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {

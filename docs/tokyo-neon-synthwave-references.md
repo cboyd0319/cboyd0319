@@ -2,7 +2,7 @@
 
 These real-world image references informed the profile header composition. They are for design direction only; the header is an AI-generated PNG asset and does not embed or trace any photo.
 
-| Reference | Source | Design cues pulled into the SVG |
+| Reference | Source | Design cues pulled into the header |
 | --- | --- | --- |
 | Rainy Shinjuku street scene | https://www.pexels.com/photo/rainy-night-street-scene-in-tokyo-s-shinjuku-36835756/ | Rain, umbrellas, wet pavement, stacked storefront light, and mirror-like road reflections. |
 | Wet neon Shinjuku street | https://unsplash.com/photos/people-walk-down-a-wet-neon-lit-city-street-at-night-6GRL8viFTwo | Dense pedestrian silhouettes, filmic night contrast, cyan/magenta spill on asphalt. |

@@ -1,102 +1,20 @@
-// ── Config ────────────────────────────────────────────────────────────────────
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { writeFile } from "node:fs/promises";
 
-export const USERNAME = "cboyd0319";
+import {
+  USERNAME,
+  CURATED_REPOS,
+  FALLBACK_DESCRIPTIONS,
+  ACCENTS,
+  OUTPUT_WIDTH,
+  DEVICE_SCALE,
+} from "./lib/config.mjs";
+import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
+import { github } from "./lib/github.mjs";
+import { loadFontAsDataUrl } from "./lib/font.mjs";
 
-export const CURATED_REPOS = new Set([
-  "WormsWMD-macOS-Fix",
-  "JobSentinel",
-  "PyGuard",
-  "PoshGuard",
-]);
-
-export const FALLBACK_DESCRIPTIONS = new Map([
-  ["PyGuard", "Python security tooling and checks"],
-  ["WormsWMD-macOS-Fix", "macOS compatibility repair workflow"],
-  ["JobSentinel", "Job search signals and automation"],
-  ["PoshGuard", "PowerShell security guardrails"],
-]);
-
-export const ACCENTS = ["#ff2f92", "#00e5ff", "#ffe66d", "#a855ff"];
-
-// ── Utilities (exported for tests) ───────────────────────────────────────────
-
-export function relativeTime(dateStr) {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return "1d ago";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 5) return `${diffWeeks}w ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  return `${diffMonths}mo ago`;
-}
-
-export function escapeHtml(str) {
-  return String(str ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-export function shortText(value, maxLength) {
-  const text = String(value ?? "").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
-export function selectRepos(allRepos, curatedSet, limit = 5) {
-  if (!Array.isArray(allRepos) || allRepos.length === 0) return [];
-  return allRepos
-    .filter((r) => !r.fork && !r.archived && curatedSet.has(r.name))
-    .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
-    .slice(0, limit)
-    .map((r) => ({
-      name: r.name,
-      description: r.description ?? null,
-      language: r.language ?? null,
-      pushed_at: r.pushed_at,
-      stargazers_count: r.stargazers_count ?? 0,
-    }));
-}
-
-// ── GitHub API ────────────────────────────────────────────────────────────────
-
-async function github(path) {
-  const headers = {
-    accept: "application/vnd.github+json",
-    "x-github-api-version": "2022-11-28",
-    "user-agent": "cboyd0319-profile-readme",
-  };
-  if (process.env.GITHUB_TOKEN) {
-    headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  }
-  const response = await fetch(`https://api.github.com${path}`, { headers });
-  if (!response.ok) {
-    throw new Error(`GitHub API ${response.status}: ${await response.text()}`);
-  }
-  return response.json();
-}
-
-// ── Font loading (pre-fetch so Puppeteer renders offline) ─────────────────────
-
-async function loadFontAsDataUrl() {
-  const cssRes = await fetch(
-    "https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap",
-    { headers: { "user-agent": "Mozilla/5.0" } },
-  );
-  const css = await cssRes.text();
-  const match = css.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
-  if (!match) throw new Error("Could not extract font URL from Google Fonts CSS");
-  const fontBuf = await fetch(match[1]).then((r) => r.arrayBuffer());
-  return `data:font/woff2;base64,${Buffer.from(fontBuf).toString("base64")}`;
-}
-
-// ── HTML row renderer ─────────────────────────────────────────────────────────
+// ── Row renderer ──────────────────────────────────────────────────────────────
 
 function renderRow(repo, index) {
   const accent = ACCENTS[index % ACCENTS.length];
@@ -130,24 +48,26 @@ function renderRow(repo, index) {
   </div>`;
 }
 
-// ── HTML template ─────────────────────────────────────────────────────────────
+// ── HTML builder ──────────────────────────────────────────────────────────────
 
 function buildHtml(repos, fontDataUrl) {
   const latestActivity = relativeTime(repos[0].pushed_at).toUpperCase();
   const rows = repos.map(renderRow).join("");
+  const fontFace = fontDataUrl
+    ? `@font-face { font-family:'Share Tech Mono'; src:url('${fontDataUrl}') format('woff2'); font-display:block; }`
+    : "";
+  const fontStack = fontDataUrl
+    ? "'Share Tech Mono','Courier New',monospace"
+    : "'Courier New',Courier,monospace";
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-@font-face {
-  font-family: 'Share Tech Mono';
-  src: url('${fontDataUrl}') format('woff2');
-  font-display: block;
-}
+${fontFace}
 * { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:1200px; background:#050713; font-family:'Share Tech Mono','Courier New',monospace; color:#f4fbff; -webkit-font-smoothing:antialiased; }
+html, body { width:${OUTPUT_WIDTH}px; background:#050713; font-family:${fontStack}; color:#f4fbff; -webkit-font-smoothing:antialiased; }
 </style>
 </head>
 <body>
@@ -170,9 +90,7 @@ html, body { width:1200px; background:#050713; font-family:'Share Tech Mono','Co
   </div>
 
   <div style="height:2px;background:linear-gradient(90deg,#00e5ff 0%,#ff2f92 50%,#ffe66d 100%);opacity:0.65;margin-bottom:4px;"></div>
-
   <div style="position:relative;">${rows}</div>
-
   <div style="text-align:center;padding:18px 0 22px;font-size:13px;letter-spacing:3px;color:#ff4fb3;text-shadow:0 0 12px rgba(255,47,146,0.55);">MORE ACTIVITY ON GITHUB &rsaquo;</div>
 </div>
 <div style="background:#030510;text-align:center;padding:14px;font-size:13px;letter-spacing:9px;color:#00e5ff;text-shadow:0 0 12px rgba(0,229,255,0.5);border-top:1px solid rgba(0,229,255,0.12);">TURNING IDEAS INTO SYSTEMS</div>
@@ -180,43 +98,45 @@ html, body { width:1200px; background:#050713; font-family:'Share Tech Mono','Co
 </html>`;
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main (gated: only runs when this file is the entry point) ─────────────────
 
-const allRepos = await github(
-  `/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
-);
+async function main() {
+  const allRepos = await github(
+    `/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
+  );
 
-const repos = selectRepos(allRepos, CURATED_REPOS);
-if (!repos.length) throw new Error("No public repos matched the curated list.");
+  const repos = selectRepos(allRepos, CURATED_REPOS);
+  if (!repos.length) throw new Error("No public repos matched the curated list.");
 
-const fontDataUrl = await loadFontAsDataUrl();
-const html = buildHtml(repos, fontDataUrl);
+  const { dataUrl } = await loadFontAsDataUrl();
+  const html = buildHtml(repos, dataUrl);
 
-const puppeteer = await import("puppeteer");
-const browser = await puppeteer.default.launch({
-  args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-});
-
-let screenshot;
-try {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1200, height: 800, deviceScaleFactor: 2 });
-  await page.setContent(html, { waitUntil: "domcontentloaded" });
-  const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
-  await page.setViewport({ width: 1200, height: bodyHeight, deviceScaleFactor: 2 });
-  screenshot = await page.screenshot({
-    type: "png",
-    clip: { x: 0, y: 0, width: 1200, height: bodyHeight },
+  const puppeteer = await import("puppeteer");
+  const browser = await puppeteer.default.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
   });
-} finally {
-  await browser.close();
+
+  let screenshot;
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: OUTPUT_WIDTH, height: 800, deviceScaleFactor: DEVICE_SCALE });
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => document.fonts.ready);
+    const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
+    await page.setViewport({ width: OUTPUT_WIDTH, height: bodyHeight, deviceScaleFactor: DEVICE_SCALE });
+    screenshot = await page.screenshot({
+      type: "png",
+      clip: { x: 0, y: 0, width: OUTPUT_WIDTH, height: bodyHeight },
+    });
+  } finally {
+    await browser.close();
+  }
+
+  const dir = dirname(fileURLToPath(import.meta.url));
+  await writeFile(join(dir, "../assets/signals.png"), screenshot);
+  console.log(`signals.png written — ${repos.length} repos, latest: ${relativeTime(repos[0].pushed_at)}`);
 }
 
-import { writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const dir = dirname(fileURLToPath(import.meta.url));
-await writeFile(join(dir, "../assets/signals.png"), screenshot);
-
-console.log(`signals.png written — ${repos.length} repos, latest: ${relativeTime(repos[0].pushed_at)}`);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await main();
+}

@@ -3,16 +3,17 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
+  "packageManager": "npm@11.12.1",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "generate": "node scripts/generate-signals.mjs",
     "test": "node scripts/test-utils.mjs",
-    "check": "node --check scripts/generate-signals.mjs scripts/test-utils.mjs",
+    "check": "node --check scripts/generate-signals.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs",
     "audit": "npm audit --audit-level=high"
   },
-  "dependencies": {
+  "devDependencies": {
     "puppeteer": "^24.0.0"
   }
 }

@@ -1,10 +1,7 @@
-import {
-  relativeTime,
-  escapeHtml,
-  shortText,
-  selectRepos,
-  CURATED_REPOS,
-} from "./generate-signals.mjs";
+// Pure unit tests — no network calls, no Puppeteer, no file I/O.
+// Imports only side-effect-free lib modules.
+import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
+import { CURATED_REPOS } from "./lib/config.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -35,26 +32,30 @@ function assertDeepEqual(label, actual, expected) {
   }
 }
 
+// Fixed reference point so tests are deterministic and not wall-clock sensitive.
+const BASE = new Date("2026-05-10T12:00:00Z").getTime();
+const at = (ms) => new Date(BASE - ms).toISOString();
+const mins = (n) => n * 60_000;
+const hours = (n) => n * 3_600_000;
+const days = (n) => n * 86_400_000;
+
 // ── relativeTime ──────────────────────────────────────────────────────────────
 
 console.log("\nrelativeTime");
 
-const now = new Date();
-const minsAgo = (n) => new Date(now - n * 60_000).toISOString();
-const hoursAgo = (n) => new Date(now - n * 3_600_000).toISOString();
-const daysAgo = (n) => new Date(now - n * 86_400_000).toISOString();
-
-assert("30 minutes ago", relativeTime(minsAgo(30)), "30m ago");
-assert("59 minutes ago", relativeTime(minsAgo(59)), "59m ago");
-assert("1 hour ago", relativeTime(hoursAgo(1)), "1h ago");
-assert("23 hours ago", relativeTime(hoursAgo(23)), "23h ago");
-assert("exactly 1 day", relativeTime(daysAgo(1)), "1d ago");
-assert("3 days ago", relativeTime(daysAgo(3)), "3d ago");
-assert("6 days ago", relativeTime(daysAgo(6)), "6d ago");
-assert("1 week ago", relativeTime(daysAgo(7)), "1w ago");
-assert("4 weeks ago", relativeTime(daysAgo(28)), "4w ago");
-assert("5 weeks becomes 1mo", relativeTime(daysAgo(35)), "1mo ago");
-assert("2 months ago", relativeTime(daysAgo(62)), "2mo ago");
+assert("30 minutes ago", relativeTime(at(mins(30)), BASE), "30m ago");
+assert("59 minutes ago", relativeTime(at(mins(59)), BASE), "59m ago");
+assert("1 hour ago", relativeTime(at(hours(1)), BASE), "1h ago");
+assert("23 hours ago", relativeTime(at(hours(23)), BASE), "23h ago");
+assert("exactly 1 day", relativeTime(at(days(1)), BASE), "1d ago");
+assert("3 days ago", relativeTime(at(days(3)), BASE), "3d ago");
+assert("6 days ago", relativeTime(at(days(6)), BASE), "6d ago");
+assert("1 week ago", relativeTime(at(days(7)), BASE), "1w ago");
+assert("4 weeks ago", relativeTime(at(days(28)), BASE), "4w ago");
+assert("5 weeks → 1mo", relativeTime(at(days(35)), BASE), "1mo ago");
+assert("2 months ago", relativeTime(at(days(62)), BASE), "2mo ago");
+assert("invalid date → —", relativeTime("not-a-date", BASE), "—");
+assert("future date → just now", relativeTime(at(-mins(5)), BASE), "just now");
 
 // ── escapeHtml ────────────────────────────────────────────────────────────────
 
@@ -84,42 +85,61 @@ assert("undefined → empty string", shortText(undefined, 10), "");
 
 console.log("\nselectRepos");
 
-const makeRepo = (name, pushed_at, extra = {}) => ({
+const makeRepo = (name, daysOld, overrides = {}) => ({
   name,
   fork: false,
   archived: false,
   description: null,
   language: null,
-  pushed_at,
+  pushed_at: at(days(daysOld)),
   stargazers_count: 0,
-  ...extra,
+  ...overrides,
 });
 
-const sampleRepos = [
-  makeRepo("PyGuard", daysAgo(1)),
-  makeRepo("JobSentinel", daysAgo(3)),
-  makeRepo("PoshGuard", daysAgo(10)),
-  makeRepo("WormsWMD-macOS-Fix", daysAgo(7)),
-  makeRepo("some-other-repo", daysAgo(0)),          // not in curated set
-  makeRepo("PyGuard-fork", daysAgo(0), { fork: true }), // fork — excluded
-  makeRepo("archived-thing", daysAgo(0), { archived: true, name: "PyGuard" }), // archived — excluded
+// Baseline: four curated repos, one non-curated
+const allRepos = [
+  makeRepo("PyGuard", 1),
+  makeRepo("JobSentinel", 3),
+  makeRepo("PoshGuard", 10),
+  makeRepo("WormsWMD-macOS-Fix", 7),
+  makeRepo("unrelated-repo", 0),
 ];
 
-const selected = selectRepos(sampleRepos, CURATED_REPOS, 5);
-assert("excludes non-curated repos", selected.every((r) => CURATED_REPOS.has(r.name)), true);
-assert("excludes forks", selected.every((r) => !r.fork), true);
-assert("excludes archived", selected.every((r) => !r.archived), true);
-assert("sorted by pushed_at desc", selected[0].name, "PyGuard");
-assert("returns at most limit", selected.length <= 5, true);
+const selected = selectRepos(allRepos, CURATED_REPOS, 5);
 
-const empty = selectRepos([], CURATED_REPOS);
-assertDeepEqual("empty API response returns []", empty, []);
+assert("returns only curated repos", selected.every((r) => CURATED_REPOS.has(r.name)), true);
+assert("sorts by pushed_at desc — most recent first", selected[0].name, "PyGuard");
+assert("unrelated repo excluded", selected.find((r) => r.name === "unrelated-repo"), undefined);
 
-const noMatches = selectRepos([makeRepo("unrelated", daysAgo(0))], CURATED_REPOS);
-assertDeepEqual("no curated matches returns []", noMatches, []);
+// Fork exclusion: fork IS in curated set but must be filtered out
+const forkInCurated = makeRepo("PyGuard", 0, { fork: true });
+const withForkOnly = selectRepos([forkInCurated], CURATED_REPOS);
+assert("fork in curated set is excluded", withForkOnly.length, 0);
 
-const withLimit = selectRepos(sampleRepos, CURATED_REPOS, 2);
-assert("respects limit param", withLimit.length, 2);
+// Archived exclusion: archived IS in curated set but must be filtered out
+const archivedInCurated = makeRepo("PoshGuard", 0, { archived: true });
+const withArchivedOnly = selectRepos([archivedInCurated], CURATED_REPOS);
+assert("archived in curated set is excluded", withArchivedOnly.length, 0);
+
+// Non-curated repo that is not a fork still excluded
+const nonCuratedActive = makeRepo("not-in-set", 0);
+assert("non-curated active repo excluded", selectRepos([nonCuratedActive], CURATED_REPOS).length, 0);
+
+// Limit
+const limited = selectRepos(allRepos, CURATED_REPOS, 2);
+assert("respects limit", limited.length, 2);
+
+// Edge cases
+assertDeepEqual("empty API response → []", selectRepos([], CURATED_REPOS), []);
+assertDeepEqual("no curated matches → []", selectRepos([makeRepo("other", 0)], CURATED_REPOS), []);
+
+// Output shape
+const [first] = selected;
+assert("output includes name", "name" in first, true);
+assert("output includes description", "description" in first, true);
+assert("output includes language", "language" in first, true);
+assert("output includes pushed_at", "pushed_at" in first, true);
+assert("output includes stargazers_count", "stargazers_count" in first, true);
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 

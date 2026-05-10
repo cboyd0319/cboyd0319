@@ -1,1 +1,4 @@
 node_modules/
+
+# Local output from npm run generate-banner; remove this line to track the file
+assets/banner.gif

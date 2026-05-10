@@ -19,11 +19,14 @@ const SMOKE = process.argv.includes("--smoke");
 // ── Sparkline renderer ────────────────────────────────────────────────────────
 
 function renderSparkline(sparkline, accent) {
-  const max = Math.max(...sparkline, 1);
-  return Array.from({ length: 10 }, (_, i) => {
-    const pct = Math.round(10 + (sparkline[i] / max) * 90);
-    return `<div style="width:7px;background:${accent};opacity:${0.35 + i * 0.065};border-radius:2px 2px 0 0;height:${pct}%;align-self:flex-end;"></div>`;
-  }).join("");
+  const padded = Array.from({ length: 10 }, (_, i) => sparkline[i] ?? 0);
+  const max = Math.max(...padded, 1);
+  return padded
+    .map(
+      (val, i) =>
+        `<div style="width:7px;background:${accent};opacity:${0.35 + i * 0.065};border-radius:2px 2px 0 0;height:${Math.round(10 + (val / max) * 90)}%;align-self:flex-end;"></div>`,
+    )
+    .join("");
 }
 
 // ── Row renderer ──────────────────────────────────────────────────────────────
@@ -217,7 +220,9 @@ async function main() {
     `/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
   );
 
-  const repos = selectRepos(allRepos);
+  // The profile repo itself (name === USERNAME) is excluded: the daily bot commit
+  // would otherwise make it perpetually the freshest entry in the signals panel.
+  const repos = selectRepos(allRepos.filter((r) => r.name !== USERNAME));
   if (!repos.length) throw new Error("No public repos found.");
 
   const sparklines = await Promise.all(

@@ -1,0 +1,12 @@
+{
+  "name": "cboyd0319-profile",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "puppeteer": "^22.0.0"
+  }
+}

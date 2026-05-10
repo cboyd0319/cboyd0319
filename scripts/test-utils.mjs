@@ -1,7 +1,6 @@
 // Pure unit tests — no network calls, no Puppeteer, no file I/O.
 // Imports only side-effect-free lib modules.
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
-import { CURATED_REPOS } from "./lib/config.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -96,42 +95,54 @@ const makeRepo = (name, daysOld, overrides = {}) => ({
   ...overrides,
 });
 
-// Baseline: four curated repos, one non-curated
+// Baseline: five repos, no forks or archives
 const allRepos = [
-  makeRepo("PyGuard", 1),
-  makeRepo("JobSentinel", 3),
-  makeRepo("PoshGuard", 10),
-  makeRepo("WormsWMD-macOS-Fix", 7),
-  makeRepo("unrelated-repo", 0),
+  makeRepo("repo-a", 1),
+  makeRepo("repo-b", 3),
+  makeRepo("repo-c", 10),
+  makeRepo("repo-d", 7),
+  makeRepo("repo-e", 2),
 ];
 
-const selected = selectRepos(allRepos, CURATED_REPOS, 5);
+const selected = selectRepos(allRepos, 5);
 
-assert("returns only curated repos", selected.every((r) => CURATED_REPOS.has(r.name)), true);
-assert("sorts by pushed_at desc — most recent first", selected[0].name, "PyGuard");
-assert("unrelated repo excluded", selected.find((r) => r.name === "unrelated-repo"), undefined);
+assert("returns all non-fork non-archived repos up to limit", selected.length, 5);
+assert("sorts by pushed_at desc — most recent first", selected[0].name, "repo-a");
+assert("second most recent", selected[1].name, "repo-e");
+assert("third most recent", selected[2].name, "repo-b");
 
-// Fork exclusion: fork IS in curated set but must be filtered out
-const forkInCurated = makeRepo("PyGuard", 0, { fork: true });
-const withForkOnly = selectRepos([forkInCurated], CURATED_REPOS);
-assert("fork in curated set is excluded", withForkOnly.length, 0);
+// Fork exclusion
+const withFork = [makeRepo("fork-repo", 0, { fork: true }), makeRepo("normal", 1)];
+assert("fork is excluded", selectRepos(withFork).length, 1);
+assert("non-fork repo is included", selectRepos(withFork)[0].name, "normal");
 
-// Archived exclusion: archived IS in curated set but must be filtered out
-const archivedInCurated = makeRepo("PoshGuard", 0, { archived: true });
-const withArchivedOnly = selectRepos([archivedInCurated], CURATED_REPOS);
-assert("archived in curated set is excluded", withArchivedOnly.length, 0);
+// Archived exclusion
+const withArchived = [makeRepo("archived", 0, { archived: true }), makeRepo("active", 1)];
+assert("archived is excluded", selectRepos(withArchived).length, 1);
+assert("active repo is included", selectRepos(withArchived)[0].name, "active");
 
-// Non-curated repo that is not a fork still excluded
-const nonCuratedActive = makeRepo("not-in-set", 0);
-assert("non-curated active repo excluded", selectRepos([nonCuratedActive], CURATED_REPOS).length, 0);
+// Both fork and archived in same list
+const mixed = [
+  makeRepo("fork-one", 0, { fork: true }),
+  makeRepo("archived-one", 1, { archived: true }),
+  makeRepo("good", 2),
+];
+assert("only non-fork non-archived included", selectRepos(mixed).length, 1);
+assert("good repo is the one included", selectRepos(mixed)[0].name, "good");
 
 // Limit
-const limited = selectRepos(allRepos, CURATED_REPOS, 2);
-assert("respects limit", limited.length, 2);
+const limited = selectRepos(allRepos, 3);
+assert("respects limit of 3", limited.length, 3);
+assert("limit selects most recent first", limited[0].name, "repo-a");
+
+// Default limit of 5
+const eightRepos = Array.from({ length: 8 }, (_, i) => makeRepo(`r${i}`, i));
+assert("default limit is 5", selectRepos(eightRepos).length, 5);
 
 // Edge cases
-assertDeepEqual("empty API response → []", selectRepos([], CURATED_REPOS), []);
-assertDeepEqual("no curated matches → []", selectRepos([makeRepo("other", 0)], CURATED_REPOS), []);
+assertDeepEqual("empty API response → []", selectRepos([]), []);
+assertDeepEqual("all forked → []", selectRepos([makeRepo("a", 0, { fork: true })]), []);
+assertDeepEqual("all archived → []", selectRepos([makeRepo("b", 0, { archived: true })]), []);
 
 // Output shape
 const [first] = selected;

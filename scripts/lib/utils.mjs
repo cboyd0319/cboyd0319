@@ -35,10 +35,10 @@ export function shortText(value, maxLength) {
   return `${text.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
-export function selectRepos(allRepos, curatedSet, limit = 5) {
+export function selectRepos(allRepos, limit = 5) {
   if (!Array.isArray(allRepos) || allRepos.length === 0) return [];
   return allRepos
-    .filter((r) => !r.fork && !r.archived && curatedSet.has(r.name))
+    .filter((r) => !r.fork && !r.archived)
     .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
     .slice(0, limit)
     .map((r) => ({

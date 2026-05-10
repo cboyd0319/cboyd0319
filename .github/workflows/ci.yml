@@ -29,5 +29,10 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Smoke test generator
+        run: npm run smoke
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Security audit
         run: npm run audit

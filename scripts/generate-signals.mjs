@@ -104,60 +104,6 @@ function buildLanguageSection(allRepos) {
 </div>`;
 }
 
-// ── System map SVG ────────────────────────────────────────────────────────────
-
-function buildSystemMap() {
-  const HUB_X = 564, HUB_Y = 190, HUB_R = 44;
-  const NODE_R = 36;
-  const nodes = [
-    { label: "TOOLS",      x:  90, y: 105, color: "#ff2f92" },
-    { label: "AUTOMATION", x: 305, y:  72, color: "#a855ff" },
-    { label: "SECURITY",   x: 564, y:  60, color: "#ffe66d" },
-    { label: "SERVICES",   x: 823, y:  72, color: "#00e5ff" },
-    { label: "AGENTS",     x:1038, y: 105, color: "#31ffb6" },
-  ];
-
-  const spokes = nodes
-    .map(
-      (n) =>
-        `<line x1="${HUB_X}" y1="${HUB_Y}" x2="${n.x}" y2="${n.y}" stroke="${n.color}" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>`,
-    )
-    .join("\n      ");
-
-  const nodeElements = nodes
-    .map((n) => {
-      const labelY = n.y + 4;
-      return `<circle cx="${n.x}" cy="${n.y}" r="${NODE_R}" fill="#050713" stroke="${n.color}" stroke-width="2"/>
-      <circle cx="${n.x}" cy="${n.y}" r="${NODE_R}" fill="none" stroke="${n.color}" stroke-width="8" opacity="0.12"/>
-      <text x="${n.x}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="${n.color}" letter-spacing="1" font-family="'Space Mono','Courier New',monospace">${n.label}</text>`;
-    })
-    .join("\n      ");
-
-  return `
-<div style="background:linear-gradient(135deg,#060915 0%,#0b0d22 55%,#041216 100%);border:1px solid rgba(125,249,255,0.15);border-top:none;padding:20px 36px 28px;">
-  <div style="font-size:13px;letter-spacing:5px;color:#7df9ff;margin-bottom:4px;opacity:0.8;">SYSTEM MAP</div>
-  <svg width="1128" height="245" viewBox="0 0 1128 245" style="display:block;overflow:visible;">
-    <defs>
-      <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.25"/>
-        <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/>
-      </radialGradient>
-    </defs>
-    <!-- Spokes -->
-    ${spokes}
-    <!-- Hub glow -->
-    <ellipse cx="${HUB_X}" cy="${HUB_Y}" rx="80" ry="80" fill="url(#hubGlow)"/>
-    <!-- Hub -->
-    <circle cx="${HUB_X}" cy="${HUB_Y}" r="${HUB_R}" fill="#050713" stroke="#00e5ff" stroke-width="2"/>
-    <circle cx="${HUB_X}" cy="${HUB_Y}" r="${HUB_R}" fill="none" stroke="#00e5ff" stroke-width="8" opacity="0.12"/>
-    <text x="${HUB_X}" y="${HUB_Y - 7}" text-anchor="middle" font-size="10" fill="#00e5ff" letter-spacing="2" font-family="'Space Mono','Courier New',monospace">CBOYD</text>
-    <text x="${HUB_X}" y="${HUB_Y + 9}" text-anchor="middle" font-size="10" fill="#00e5ff" letter-spacing="2" font-family="'Space Mono','Courier New',monospace">0319</text>
-    <!-- Nodes -->
-    ${nodeElements}
-  </svg>
-</div>`;
-}
-
 // ── HTML builder ──────────────────────────────────────────────────────────────
 
 function buildHtml(repos, sparklines, allRepos, fontDataUrl) {
@@ -170,8 +116,22 @@ function buildHtml(repos, sparklines, allRepos, fontDataUrl) {
     ? "'Space Mono','Courier New',monospace"
     : "'Courier New',Courier,monospace";
 
+  // Aggregate stats across all owned public repos
+  const ownRepos = allRepos.filter((r) => !r.fork && !r.archived && r.name !== USERNAME);
+  const totalStars = ownRepos.reduce((sum, r) => sum + (r.stargazers_count ?? 0), 0);
+  const repoCount = ownRepos.length;
+
+  // Commit streak: consecutive weeks with ≥1 commit across all displayed repos
+  const byWeek = Array.from({ length: 10 }, (_, i) =>
+    sparklines.reduce((sum, sp) => sum + (sp[i] ?? 0), 0),
+  );
+  let streak = 0;
+  for (let i = byWeek.length - 1; i >= 0; i--) {
+    if (byWeek[i] > 0) streak++;
+    else break;
+  }
+
   const languageSection = buildLanguageSection(allRepos);
-  const systemMapSection = buildSystemMap();
 
   return `<!DOCTYPE html>
 <html>
@@ -204,10 +164,15 @@ html, body { width:${OUTPUT_WIDTH}px; background:#050713; font-family:${fontStac
 
   <div style="height:2px;background:linear-gradient(90deg,#00e5ff 0%,#ff2f92 50%,#ffe66d 100%);opacity:0.65;margin-bottom:4px;"></div>
   <div style="position:relative;">${rows}</div>
-  <div style="text-align:center;padding:18px 0 22px;font-size:13px;letter-spacing:3px;color:#ff4fb3;text-shadow:0 0 12px rgba(255,47,146,0.55);">MORE ACTIVITY ON GITHUB &rsaquo;</div>
+  <div style="display:flex;justify-content:center;align-items:center;gap:28px;padding:18px 0 22px;">
+    <span style="font-size:13px;letter-spacing:2px;color:#ffe66d;opacity:0.85;">&#9733; ${totalStars} STARS</span>
+    <span style="color:#2a3a5a;font-size:16px;">·</span>
+    <span style="font-size:13px;letter-spacing:2px;color:#7df9ff;opacity:0.8;">${repoCount} REPOS</span>
+    <span style="color:#2a3a5a;font-size:16px;">·</span>
+    <span style="font-size:13px;letter-spacing:2px;color:#31ffb6;opacity:0.8;">${streak}W STREAK</span>
+  </div>
 </div>
 ${languageSection}
-${systemMapSection}
 <div style="background:#030510;text-align:center;padding:14px;font-size:13px;letter-spacing:9px;color:#00e5ff;text-shadow:0 0 12px rgba(0,229,255,0.5);border-top:1px solid rgba(0,229,255,0.12);">TURNING IDEAS INTO SYSTEMS</div>
 </body>
 </html>`;

@@ -21,16 +21,28 @@ function escapeXml(value) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;");
+    .replaceAll('"', "&quot;");
 }
 
 function shortText(value, maxLength) {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLength) {
-    return text;
-  }
-
+  if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function relativeTime(dateStr) {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "1d ago";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 5) return `${diffWeeks}w ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return `${diffMonths}mo ago`;
 }
 
 async function github(path) {
@@ -59,9 +71,11 @@ function renderRow(repo, index) {
   const signal = String(index + 1).padStart(2, "0");
   const description = shortText(
     repo.description || fallbackDescriptions.get(repo.name) || "Public build signal",
-    58,
+    52,
   );
   const language = shortText(repo.language || "Public", 14).toUpperCase();
+  const timestamp = repo.pushed_at ? relativeTime(repo.pushed_at) : "";
+  const stars = repo.stargazers_count > 0 ? `★ ${repo.stargazers_count}` : "";
   const barX = 920;
   const bars = Array.from({ length: 8 }, (_, barIndex) => {
     const x = barX + barIndex * 18;
@@ -80,7 +94,9 @@ function renderRow(repo, index) {
     </circle>
     <text x="204" y="${y - 4}" fill="#f4fbff" font-size="22" font-weight="900">${escapeXml(repo.name)}</text>
     <text x="204" y="${y + 22}" fill="#aebbe4" font-size="15" font-weight="700">${escapeXml(description)}</text>
-    <text x="760" y="${y + 5}" fill="${accent}" font-size="13" font-weight="900" letter-spacing="2">${escapeXml(language)}</text>
+    <text x="760" y="${y - 4}" fill="${accent}" font-size="13" font-weight="900" letter-spacing="2">${escapeXml(language)}</text>
+    <text x="760" y="${y + 18}" fill="#aebbe4" font-size="13" font-weight="700">${escapeXml(timestamp)}</text>
+    <text x="760" y="${y + 36}" fill="#536083" font-size="12" font-weight="700">${escapeXml(stars)}</text>
     ${bars}
   </g>`;
 }
@@ -97,11 +113,17 @@ const lines = repos
     name: repo.name,
     description: repo.description,
     language: repo.language,
+    pushed_at: repo.pushed_at,
+    stargazers_count: repo.stargazers_count,
   }));
 
 if (!lines.length) {
   throw new Error("No public profile repositories matched the curated list.");
 }
+
+const mostRecentPush = lines[0].pushed_at;
+const latestActivity = relativeTime(mostRecentPush);
+const syncedAt = new Date().toUTCString().replace(/:\d\d GMT$/, " UTC");
 
 const rows = lines.map(renderRow).join("\n");
 
@@ -141,8 +163,9 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role
   <path d="M44 92H372" stroke="url(#f-hot)" stroke-width="2.2"/>
   <path d="M842 388H1156" stroke="url(#f-hot)" stroke-width="2.2"/>
   <text x="76" y="80" fill="#ff4fb3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="900" letter-spacing="4" filter="url(#f-glow)">RECENT SIGNALS</text>
-  <circle cx="894" cy="72" r="6" fill="#31ffb6" filter="url(#f-glow)"/>
-  <text x="916" y="78" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">LIVE FEED</text>
+  <circle cx="810" cy="72" r="6" fill="#31ffb6" filter="url(#f-glow)"/>
+  <text x="832" y="69" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="900" letter-spacing="2">LATEST ACTIVITY: ${escapeXml(latestActivity.toUpperCase())}</text>
+  <text x="832" y="85" fill="#536083" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700">SYNCED ${escapeXml(syncedAt)}</text>
 ${rows}
   <text x="600" y="408" text-anchor="middle" fill="#00e5ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="8">TURNING IDEAS INTO SYSTEMS</text>
 </svg>
@@ -151,3 +174,5 @@ ${rows}
 const fs = await import("node:fs/promises");
 const outputPath = new URL("../assets/live-feed.svg", import.meta.url);
 await fs.writeFile(outputPath, svg);
+
+console.log(`live-feed.svg written — ${lines.length} repos, latest push ${latestActivity}`);

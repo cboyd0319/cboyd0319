@@ -34,8 +34,9 @@
   <path d="M44 92H372" stroke="url(#f-hot)" stroke-width="2.2"/>
   <path d="M842 388H1156" stroke="url(#f-hot)" stroke-width="2.2"/>
   <text x="76" y="80" fill="#ff4fb3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="900" letter-spacing="4" filter="url(#f-glow)">RECENT SIGNALS</text>
-  <circle cx="894" cy="72" r="6" fill="#31ffb6" filter="url(#f-glow)"/>
-  <text x="916" y="78" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="2">LIVE FEED</text>
+  <circle cx="810" cy="72" r="6" fill="#31ffb6" filter="url(#f-glow)"/>
+  <text x="832" y="69" fill="#7df9ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="900" letter-spacing="2">LATEST ACTIVITY: 1D AGO</text>
+  <text x="832" y="85" fill="#536083" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700">SYNCED Sun, 10 May 2026 02:34 UTC</text>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" filter="url(#f-glow)">
     <path d="M76 100H1124L1142 118V172H76Z" fill="#07101a" fill-opacity="0.66" stroke="#ff2f92" stroke-opacity="0.45"/>
@@ -46,8 +47,10 @@
       <animate attributeName="opacity" values="1;0.45;1" dur="2.2s" repeatCount="indefinite"/>
     </circle>
     <text x="204" y="130" fill="#f4fbff" font-size="22" font-weight="900">PyGuard</text>
-    <text x="204" y="156" fill="#aebbe4" font-size="15" font-weight="700">Replace 7+ Python static analysis tools with one fast C...</text>
-    <text x="760" y="139" fill="#ff2f92" font-size="13" font-weight="900" letter-spacing="2">PYTHON</text>
+    <text x="204" y="156" fill="#aebbe4" font-size="15" font-weight="700">Replace 7+ Python static analysis tools with one...</text>
+    <text x="760" y="130" fill="#ff2f92" font-size="13" font-weight="900" letter-spacing="2">PYTHON</text>
+    <text x="760" y="152" fill="#aebbe4" font-size="13" font-weight="700">1d ago</text>
+    <text x="760" y="170" fill="#536083" font-size="12" font-weight="700">★ 1</text>
     <rect x="920" y="160" width="10" height="8" rx="1.5" fill="#ff2f92" opacity="0.45"/><rect x="938" y="155" width="10" height="13" rx="1.5" fill="#ff2f92" opacity="0.51"/><rect x="956" y="150" width="10" height="18" rx="1.5" fill="#ff2f92" opacity="0.5700000000000001"/><rect x="974" y="145" width="10" height="23" rx="1.5" fill="#ff2f92" opacity="0.63"/><rect x="992" y="140" width="10" height="28" rx="1.5" fill="#ff2f92" opacity="0.69"/><rect x="1010" y="160" width="10" height="8" rx="1.5" fill="#ff2f92" opacity="0.75"/><rect x="1028" y="155" width="10" height="13" rx="1.5" fill="#ff2f92" opacity="0.81"/><rect x="1046" y="150" width="10" height="18" rx="1.5" fill="#ff2f92" opacity="0.87"/>
   </g>
 
@@ -60,8 +63,10 @@
       <animate attributeName="opacity" values="1;0.45;1" dur="2.5500000000000003s" repeatCount="indefinite"/>
     </circle>
     <text x="204" y="196" fill="#f4fbff" font-size="22" font-weight="900">WormsWMD-macOS-Fix</text>
-    <text x="204" y="222" fill="#aebbe4" font-size="15" font-weight="700">A comprehensive community fix for Worms W.M.D on macOS...</text>
-    <text x="760" y="205" fill="#00e5ff" font-size="13" font-weight="900" letter-spacing="2">SHELL</text>
+    <text x="204" y="222" fill="#aebbe4" font-size="15" font-weight="700">A comprehensive community fix for Worms W.M.D on...</text>
+    <text x="760" y="196" fill="#00e5ff" font-size="13" font-weight="900" letter-spacing="2">SHELL</text>
+    <text x="760" y="218" fill="#aebbe4" font-size="13" font-weight="700">1w ago</text>
+    <text x="760" y="236" fill="#536083" font-size="12" font-weight="700">★ 43</text>
     <rect x="920" y="221" width="10" height="13" rx="1.5" fill="#00e5ff" opacity="0.45"/><rect x="938" y="216" width="10" height="18" rx="1.5" fill="#00e5ff" opacity="0.51"/><rect x="956" y="211" width="10" height="23" rx="1.5" fill="#00e5ff" opacity="0.5700000000000001"/><rect x="974" y="206" width="10" height="28" rx="1.5" fill="#00e5ff" opacity="0.63"/><rect x="992" y="226" width="10" height="8" rx="1.5" fill="#00e5ff" opacity="0.69"/><rect x="1010" y="221" width="10" height="13" rx="1.5" fill="#00e5ff" opacity="0.75"/><rect x="1028" y="216" width="10" height="18" rx="1.5" fill="#00e5ff" opacity="0.81"/><rect x="1046" y="211" width="10" height="23" rx="1.5" fill="#00e5ff" opacity="0.87"/>
   </g>
 
@@ -74,8 +79,10 @@
       <animate attributeName="opacity" values="1;0.45;1" dur="2.9000000000000004s" repeatCount="indefinite"/>
     </circle>
     <text x="204" y="262" fill="#f4fbff" font-size="22" font-weight="900">JobSentinel</text>
-    <text x="204" y="288" fill="#aebbe4" font-size="15" font-weight="700">Self-hosted job search automation: scrape multiple boar...</text>
-    <text x="760" y="271" fill="#ffe66d" font-size="13" font-weight="900" letter-spacing="2">RUST</text>
+    <text x="204" y="288" fill="#aebbe4" font-size="15" font-weight="700">Self-hosted job search automation: scrape multipl...</text>
+    <text x="760" y="262" fill="#ffe66d" font-size="13" font-weight="900" letter-spacing="2">RUST</text>
+    <text x="760" y="284" fill="#aebbe4" font-size="13" font-weight="700">2w ago</text>
+    <text x="760" y="302" fill="#536083" font-size="12" font-weight="700">★ 9</text>
     <rect x="920" y="282" width="10" height="18" rx="1.5" fill="#ffe66d" opacity="0.45"/><rect x="938" y="277" width="10" height="23" rx="1.5" fill="#ffe66d" opacity="0.51"/><rect x="956" y="272" width="10" height="28" rx="1.5" fill="#ffe66d" opacity="0.5700000000000001"/><rect x="974" y="292" width="10" height="8" rx="1.5" fill="#ffe66d" opacity="0.63"/><rect x="992" y="287" width="10" height="13" rx="1.5" fill="#ffe66d" opacity="0.69"/><rect x="1010" y="282" width="10" height="18" rx="1.5" fill="#ffe66d" opacity="0.75"/><rect x="1028" y="277" width="10" height="23" rx="1.5" fill="#ffe66d" opacity="0.81"/><rect x="1046" y="272" width="10" height="28" rx="1.5" fill="#ffe66d" opacity="0.87"/>
   </g>
 
@@ -88,8 +95,10 @@
       <animate attributeName="opacity" values="1;0.45;1" dur="3.25s" repeatCount="indefinite"/>
     </circle>
     <text x="204" y="328" fill="#f4fbff" font-size="22" font-weight="900">PoshGuard</text>
-    <text x="204" y="354" fill="#aebbe4" font-size="15" font-weight="700">AST-aware PowerShell QA + auto-fixer. Strict PSScriptAn...</text>
-    <text x="760" y="337" fill="#a855ff" font-size="13" font-weight="900" letter-spacing="2">POWERSHELL</text>
+    <text x="204" y="354" fill="#aebbe4" font-size="15" font-weight="700">AST-aware PowerShell QA + auto-fixer. Strict PSSc...</text>
+    <text x="760" y="328" fill="#a855ff" font-size="13" font-weight="900" letter-spacing="2">POWERSHELL</text>
+    <text x="760" y="350" fill="#aebbe4" font-size="13" font-weight="700">5mo ago</text>
+    <text x="760" y="368" fill="#536083" font-size="12" font-weight="700">★ 2</text>
     <rect x="920" y="343" width="10" height="23" rx="1.5" fill="#a855ff" opacity="0.45"/><rect x="938" y="338" width="10" height="28" rx="1.5" fill="#a855ff" opacity="0.51"/><rect x="956" y="358" width="10" height="8" rx="1.5" fill="#a855ff" opacity="0.5700000000000001"/><rect x="974" y="353" width="10" height="13" rx="1.5" fill="#a855ff" opacity="0.63"/><rect x="992" y="348" width="10" height="18" rx="1.5" fill="#a855ff" opacity="0.69"/><rect x="1010" y="343" width="10" height="23" rx="1.5" fill="#a855ff" opacity="0.75"/><rect x="1028" y="338" width="10" height="28" rx="1.5" fill="#a855ff" opacity="0.81"/><rect x="1046" y="358" width="10" height="8" rx="1.5" fill="#a855ff" opacity="0.87"/>
   </g>
   <text x="600" y="408" text-anchor="middle" fill="#00e5ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="900" letter-spacing="8">TURNING IDEAS INTO SYSTEMS</text>

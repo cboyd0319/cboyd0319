@@ -6,7 +6,13 @@
   "engines": {
     "node": ">=22"
   },
+  "scripts": {
+    "generate": "node scripts/generate-signals.mjs",
+    "test": "node scripts/test-utils.mjs",
+    "check": "node --check scripts/generate-signals.mjs scripts/test-utils.mjs",
+    "audit": "npm audit --audit-level=high"
+  },
   "dependencies": {
-    "puppeteer": "^22.0.0"
+    "puppeteer": "^24.0.0"
   }
 }

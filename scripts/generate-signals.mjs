@@ -4,32 +4,40 @@ import { writeFile } from "node:fs/promises";
 
 import {
   USERNAME,
-  CURATED_REPOS,
-  FALLBACK_DESCRIPTIONS,
+  REPO_SUMMARIES,
+  LANGUAGE_COLORS,
   ACCENTS,
   OUTPUT_WIDTH,
   DEVICE_SCALE,
 } from "./lib/config.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
-import { github } from "./lib/github.mjs";
+import { github, githubParticipation } from "./lib/github.mjs";
 import { loadFontAsDataUrl } from "./lib/font.mjs";
+
+const SMOKE = process.argv.includes("--smoke");
+
+// ── Sparkline renderer ────────────────────────────────────────────────────────
+
+function renderSparkline(sparkline, accent) {
+  const max = Math.max(...sparkline, 1);
+  return Array.from({ length: 10 }, (_, i) => {
+    const pct = Math.round(10 + (sparkline[i] / max) * 90);
+    return `<div style="width:7px;background:${accent};opacity:${0.35 + i * 0.065};border-radius:2px 2px 0 0;height:${pct}%;align-self:flex-end;"></div>`;
+  }).join("");
+}
 
 // ── Row renderer ──────────────────────────────────────────────────────────────
 
-function renderRow(repo, index) {
+function renderRow(repo, index, sparkline) {
   const accent = ACCENTS[index % ACCENTS.length];
   const description = shortText(
-    repo.description || FALLBACK_DESCRIPTIONS.get(repo.name) || "Public build signal",
+    repo.description || REPO_SUMMARIES.get(repo.name) || "Public build signal",
     72,
   );
   const language = (repo.language || "").toUpperCase();
   const timestamp = relativeTime(repo.pushed_at);
   const stars = repo.stargazers_count > 0 ? `★ ${repo.stargazers_count}` : "";
-
-  const bars = Array.from({ length: 10 }, (_, i) => {
-    const pct = 25 + ((i * 7 + index * 13) % 76);
-    return `<div style="width:7px;background:${accent};opacity:${0.35 + i * 0.065};border-radius:2px 2px 0 0;height:${pct}%;align-self:flex-end;"></div>`;
-  }).join("");
+  const bars = renderSparkline(sparkline, accent);
 
   return `
   <div style="display:flex;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid rgba(32,55,95,0.55);position:relative;">
@@ -48,17 +56,119 @@ function renderRow(repo, index) {
   </div>`;
 }
 
+// ── Language breakdown section ─────────────────────────────────────────────────
+
+function buildLanguageSection(allRepos) {
+  const counts = new Map();
+  for (const r of allRepos) {
+    if (r.fork || r.archived || !r.language) continue;
+    counts.set(r.language, (counts.get(r.language) ?? 0) + 1);
+  }
+
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const total = sorted.reduce((s, [, n]) => s + n, 0);
+  if (total === 0) return "";
+
+  const barSegments = sorted
+    .map(([lang, count]) => {
+      const pct = ((count / total) * 100).toFixed(1);
+      const color = LANGUAGE_COLORS.get(lang) ?? "#8888aa";
+      return `<div style="flex:${pct};background:${color};min-width:4px;height:100%;" title="${escapeHtml(lang)} ${pct}%"></div>`;
+    })
+    .join("");
+
+  const legend = sorted
+    .map(([lang, count]) => {
+      const pct = ((count / total) * 100).toFixed(1);
+      const color = LANGUAGE_COLORS.get(lang) ?? "#8888aa";
+      return `<div style="display:flex;align-items:center;gap:6px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+        <span style="font-size:12px;color:#7a8db3;letter-spacing:0.5px;">${escapeHtml(lang)}</span>
+        <span style="font-size:11px;color:#3a4a6a;letter-spacing:0.3px;">${pct}%</span>
+      </div>`;
+    })
+    .join("");
+
+  return `
+<div style="background:linear-gradient(135deg,#060915 0%,#0b0d22 55%,#041216 100%);border:1px solid rgba(125,249,255,0.15);border-top:none;padding:20px 36px 24px;">
+  <div style="font-size:13px;letter-spacing:5px;color:#7df9ff;margin-bottom:14px;opacity:0.8;">LANGUAGE BREAKDOWN</div>
+  <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:14px;gap:2px;">
+    ${barSegments}
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:16px 24px;">
+    ${legend}
+  </div>
+</div>`;
+}
+
+// ── System map SVG ────────────────────────────────────────────────────────────
+
+function buildSystemMap() {
+  const HUB_X = 564, HUB_Y = 190, HUB_R = 44;
+  const NODE_R = 36;
+  const nodes = [
+    { label: "TOOLS",      x:  90, y: 105, color: "#ff2f92" },
+    { label: "AUTOMATION", x: 305, y:  72, color: "#a855ff" },
+    { label: "SECURITY",   x: 564, y:  60, color: "#ffe66d" },
+    { label: "SERVICES",   x: 823, y:  72, color: "#00e5ff" },
+    { label: "AGENTS",     x:1038, y: 105, color: "#31ffb6" },
+  ];
+
+  const spokes = nodes
+    .map(
+      (n) =>
+        `<line x1="${HUB_X}" y1="${HUB_Y}" x2="${n.x}" y2="${n.y}" stroke="${n.color}" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>`,
+    )
+    .join("\n      ");
+
+  const nodeElements = nodes
+    .map((n) => {
+      const labelY = n.y + 4;
+      return `<circle cx="${n.x}" cy="${n.y}" r="${NODE_R}" fill="#050713" stroke="${n.color}" stroke-width="2"/>
+      <circle cx="${n.x}" cy="${n.y}" r="${NODE_R}" fill="none" stroke="${n.color}" stroke-width="8" opacity="0.12"/>
+      <text x="${n.x}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="${n.color}" letter-spacing="1" font-family="'Space Mono','Courier New',monospace">${n.label}</text>`;
+    })
+    .join("\n      ");
+
+  return `
+<div style="background:linear-gradient(135deg,#060915 0%,#0b0d22 55%,#041216 100%);border:1px solid rgba(125,249,255,0.15);border-top:none;padding:20px 36px 28px;">
+  <div style="font-size:13px;letter-spacing:5px;color:#7df9ff;margin-bottom:4px;opacity:0.8;">SYSTEM MAP</div>
+  <svg width="1128" height="245" viewBox="0 0 1128 245" style="display:block;overflow:visible;">
+    <defs>
+      <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <!-- Spokes -->
+    ${spokes}
+    <!-- Hub glow -->
+    <ellipse cx="${HUB_X}" cy="${HUB_Y}" rx="80" ry="80" fill="url(#hubGlow)"/>
+    <!-- Hub -->
+    <circle cx="${HUB_X}" cy="${HUB_Y}" r="${HUB_R}" fill="#050713" stroke="#00e5ff" stroke-width="2"/>
+    <circle cx="${HUB_X}" cy="${HUB_Y}" r="${HUB_R}" fill="none" stroke="#00e5ff" stroke-width="8" opacity="0.12"/>
+    <text x="${HUB_X}" y="${HUB_Y - 7}" text-anchor="middle" font-size="10" fill="#00e5ff" letter-spacing="2" font-family="'Space Mono','Courier New',monospace">CBOYD</text>
+    <text x="${HUB_X}" y="${HUB_Y + 9}" text-anchor="middle" font-size="10" fill="#00e5ff" letter-spacing="2" font-family="'Space Mono','Courier New',monospace">0319</text>
+    <!-- Nodes -->
+    ${nodeElements}
+  </svg>
+</div>`;
+}
+
 // ── HTML builder ──────────────────────────────────────────────────────────────
 
-function buildHtml(repos, fontDataUrl) {
+function buildHtml(repos, sparklines, allRepos, fontDataUrl) {
   const latestActivity = relativeTime(repos[0].pushed_at).toUpperCase();
-  const rows = repos.map(renderRow).join("");
+  const rows = repos.map((repo, i) => renderRow(repo, i, sparklines[i])).join("");
   const fontFace = fontDataUrl
-    ? `@font-face { font-family:'Share Tech Mono'; src:url('${fontDataUrl}') format('woff2'); font-display:block; }`
+    ? `@font-face { font-family:'Space Mono'; src:url('${fontDataUrl}') format('woff2'); font-weight:400 700; font-display:block; }`
     : "";
   const fontStack = fontDataUrl
-    ? "'Share Tech Mono','Courier New',monospace"
+    ? "'Space Mono','Courier New',monospace"
     : "'Courier New',Courier,monospace";
+
+  const languageSection = buildLanguageSection(allRepos);
+  const systemMapSection = buildSystemMap();
 
   return `<!DOCTYPE html>
 <html>
@@ -93,6 +203,8 @@ html, body { width:${OUTPUT_WIDTH}px; background:#050713; font-family:${fontStac
   <div style="position:relative;">${rows}</div>
   <div style="text-align:center;padding:18px 0 22px;font-size:13px;letter-spacing:3px;color:#ff4fb3;text-shadow:0 0 12px rgba(255,47,146,0.55);">MORE ACTIVITY ON GITHUB &rsaquo;</div>
 </div>
+${languageSection}
+${systemMapSection}
 <div style="background:#030510;text-align:center;padding:14px;font-size:13px;letter-spacing:9px;color:#00e5ff;text-shadow:0 0 12px rgba(0,229,255,0.5);border-top:1px solid rgba(0,229,255,0.12);">TURNING IDEAS INTO SYSTEMS</div>
 </body>
 </html>`;
@@ -105,11 +217,20 @@ async function main() {
     `/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
   );
 
-  const repos = selectRepos(allRepos, CURATED_REPOS);
-  if (!repos.length) throw new Error("No public repos matched the curated list.");
+  const repos = selectRepos(allRepos);
+  if (!repos.length) throw new Error("No public repos found.");
+
+  const sparklines = await Promise.all(
+    repos.map((r) => githubParticipation(USERNAME, r.name)),
+  );
+
+  if (SMOKE) {
+    console.log(`Smoke OK — ${repos.length} repos, ${allRepos.length} total fetched`);
+    return;
+  }
 
   const { dataUrl } = await loadFontAsDataUrl();
-  const html = buildHtml(repos, dataUrl);
+  const html = buildHtml(repos, sparklines, allRepos, dataUrl);
 
   const puppeteer = await import("puppeteer");
   const browser = await puppeteer.default.launch({

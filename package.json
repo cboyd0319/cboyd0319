@@ -17,6 +17,6 @@
     "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {
-    "puppeteer": "^24.0.0"
+    "puppeteer": "^25.0.2"
   }
 }

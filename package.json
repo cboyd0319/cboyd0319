@@ -5,7 +5,7 @@
   "private": true,
   "packageManager": "npm@11.12.1",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "generate": "node scripts/generate-signals.mjs",
@@ -13,10 +13,10 @@
     "optimize-signals": "pngquant --force --quality=80-95 --strip assets/signals.png --output assets/signals.png",
     "smoke": "node scripts/generate-signals.mjs --smoke",
     "test": "node scripts/test-utils.mjs",
-    "check": "node --check scripts/generate-signals.mjs scripts/generate-banner-static.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs",
-    "audit": "npm audit --audit-level=high"
+    "check": "node --check scripts/generate-signals.mjs scripts/generate-banner-static.mjs scripts/generate-banner.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs",
+    "audit": "npm audit --audit-level=moderate"
   },
   "devDependencies": {
-    "puppeteer": "^24.0.0"
+    "puppeteer": "^25.0.4"
   }
 }

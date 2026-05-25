@@ -1,6 +1,6 @@
 # Tokyo Neon Synthwave Reference Pull
 
-These real-world image references informed the profile header composition. They are for design direction only; the header is an AI-generated PNG asset and does not embed or trace any photo.
+These real-world image references informed the profile header composition. They are for design direction only; the header is a programmatically generated PNG asset and does not embed or trace any photo.
 
 | Reference | Source | Design cues pulled into the header |
 | --- | --- | --- |

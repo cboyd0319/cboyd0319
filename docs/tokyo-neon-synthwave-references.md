@@ -1,6 +1,6 @@
 # Tokyo Neon Synthwave Reference Pull
 
-These real-world image references informed the profile header composition. They are for design direction only; the header is a programmatically generated PNG asset and does not embed or trace any photo.
+These real-world image references informed the profile header composition. They are for design direction only; the profile header uses a repo-local optimized neon city image rather than copied reference photos.
 
 | Reference | Source | Design cues pulled into the header |
 | --- | --- | --- |
@@ -12,7 +12,6 @@ These real-world image references informed the profile header composition. They 
 
 ## Applied direction
 
-- Keep the synthwave vocabulary with a large magenta sunset disk and horizon glow, but anchor it in real Tokyo night-street details.
-- Replace literal place-name signage with abstract sign geometry and stroke marks, avoiding lazy text labels.
-- Use a clearer street-canyon layout: side building planes, vertical signs, rainy sky, wet road, zebra-crossing bars, small pedestrian/umbrella silhouettes, and reflection streaks.
-- Let the name lockup sit on top of the scene without fighting the street perspective.
+- Favor rainy Tokyo night-street detail over flat outrun skyline art.
+- Use a street-canyon layout: side building planes, vertical signs, rainy sky, wet road, small pedestrian/umbrella silhouettes, mist, and reflection streaks.
+- Keep dense neon cyan/magenta contrast while leaving the live signals panel as the data surface.

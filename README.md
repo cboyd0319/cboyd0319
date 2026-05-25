@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/banner.png" width="100%" alt="CBOYD0319 Tokyo neon security automation banner">
+  <img src="./assets/tokyo-neon-city.png" width="100%" alt="CBOYD0319 Tokyo neon cyberpunk city scene">
 </p>
 
 <p align="center">

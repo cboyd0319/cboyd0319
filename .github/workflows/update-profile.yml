@@ -44,7 +44,7 @@ jobs:
       - name: Commit and push if changed
         run: |
           if git diff --quiet assets/signals.png; then
-            echo "No changes — skipping commit."
+            echo "No changes - skipping commit."
             exit 0
           fi
 

@@ -19,7 +19,7 @@ export async function loadFontAsDataUrl() {
 
     const css = await cssRes.text();
     const match = css.match(FONT_URL_RE);
-    if (!match) throw new Error("Font URL not found in CSS — Google Fonts format may have changed");
+    if (!match) throw new Error("Font URL not found in CSS - Google Fonts format may have changed");
 
     const fontRes = await fetch(match[1], { signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (!fontRes.ok) throw new Error(`Font file ${fontRes.status}`);

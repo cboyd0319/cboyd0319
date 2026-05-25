@@ -10,6 +10,8 @@ const exec = promisify(execFile);
 const FRAME_COUNT = 20;
 const FPS = 10;
 const ANIMATION_DURATION_MS = 4000;
+const W = 1200;
+const H = 420;
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 const BANNER_PATH = join(DIR, "../assets/banner.png");
@@ -22,7 +24,7 @@ function buildHtml(bannerBase64) {
 <meta charset="utf-8">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:1200px; height:385px; overflow:hidden; background:#000; }
+html, body { width:${W}px; height:${H}px; overflow:hidden; background:#000; }
 #banner { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 #scanlines {
   position:absolute; inset:0; pointer-events:none;
@@ -54,7 +56,7 @@ html, body { width:1200px; height:385px; overflow:hidden; background:#000; }
   0%   { left:-10px; opacity:0; }
   8%   { opacity:0.9; }
   92%  { opacity:0.9; }
-  100% { left:1210px; opacity:0; }
+  100% { left:${W + 10}px; opacity:0; }
 }
 </style>
 </head>
@@ -77,7 +79,7 @@ async function captureFrames(page, tmpDir) {
     }, t);
     const framePath = join(tmpDir, `frame-${String(i).padStart(4, "0")}.png`);
     await page.screenshot({ path: framePath, type: "png",
-      clip: { x: 0, y: 0, width: 1200, height: 385 } });
+      clip: { x: 0, y: 0, width: W, height: H } });
     paths.push(framePath);
     process.stdout.write(`\r  capturing frame ${i + 1}/${FRAME_COUNT}`);
   }
@@ -108,7 +110,7 @@ async function main() {
   try {
     await exec("ffmpeg", ["-version"]);
   } catch {
-    console.error("ffmpeg not found — install it first: brew install ffmpeg");
+    console.error("ffmpeg not found - install it first: brew install ffmpeg");
     process.exit(1);
   }
 
@@ -127,7 +129,7 @@ async function main() {
 
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1200, height: 385, deviceScaleFactor: 1 });
+    await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
     await page.setContent(html, { waitUntil: "domcontentloaded" });
     await page.evaluate(() => document.fonts.ready);
     // Let the first paint settle
@@ -143,7 +145,7 @@ async function main() {
   await rm(tmpDir, { recursive: true, force: true });
 
   const gifBuf = await readFile(GIF_PATH);
-  console.log(`banner.gif written — ${(gifBuf.length / 1024).toFixed(0)} KB, ${FRAME_COUNT} frames @ ${FPS}fps`);
+  console.log(`banner.gif written - ${(gifBuf.length / 1024).toFixed(0)} KB, ${FRAME_COUNT} frames @ ${FPS}fps`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

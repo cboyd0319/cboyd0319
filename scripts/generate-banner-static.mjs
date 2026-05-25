@@ -4,189 +4,243 @@ import { writeFile } from "node:fs/promises";
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 const OUT = join(DIR, "../assets/banner.png");
-const W = 1200, H = 385;
-const HORIZON = 248;
-const VP_X = 600;
-const SUN_CX = 600, SUN_CY = 198, SUN_R = 78;
 
-function makeStars(count = 96) {
-  let s = 8675309;
-  const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+const W = 1200;
+const H = 420;
+const HORIZON = 274;
+const VP_X = 600;
+const SUN = { cx: 600, cy: 210, r: 86 };
+
+function makeRng(seed = 0xC0B0319) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function makeStars(count = 120) {
+  const rng = makeRng(8675309);
   return Array.from({ length: count }, () => ({
     x: Math.floor(rng() * W),
-    y: Math.floor(rng() * (HORIZON - 30)),
-    r: rng() < 0.15 ? 1.5 : rng() < 0.45 ? 1 : 0.5,
-    o: (0.35 + rng() * 0.6).toFixed(2),
-    c: rng() < 0.12 ? "#b0f8ff" : rng() < 0.08 ? "#ffbbcc" : "#ffffff",
+    y: Math.floor(rng() * 180),
+    r: rng() < 0.12 ? 1.5 : rng() < 0.45 ? 1 : 0.45,
+    o: (0.28 + rng() * 0.58).toFixed(2),
+    c: rng() < 0.14 ? "#7df9ff" : rng() < 0.08 ? "#ff9bd7" : "#ffffff",
   }));
 }
 
-function makeVLines() {
-  const lines = [];
-  for (let k = -10; k <= 10; k++) {
-    const xb = VP_X + k * 70;
-    if (xb < -180 || xb > W + 180) continue;
-    const distRatio = Math.abs(k) / 10;
-    lines.push({ xb, opacity: (0.35 + distRatio * 0.45).toFixed(2) });
-  }
-  return lines;
+function makeRain(count = 150) {
+  const rng = makeRng(0xBAD5EED);
+  return Array.from({ length: count }, () => ({
+    x: Math.floor(rng() * W),
+    y: Math.floor(rng() * H),
+    len: Math.floor(9 + rng() * 24),
+    o: (0.08 + rng() * 0.18).toFixed(2),
+  }));
 }
 
-function makeHLines() {
-  const ys = [];
-  for (let k = 1; k <= 14; k++) {
-    const y = HORIZON + Math.round(k * k * 2.2);
+function makeWindows(x, top, width, height, color, seed) {
+  const rng = makeRng(seed);
+  const windows = [];
+  for (let yy = top + 12; yy < top + height - 10; yy += 18) {
+    for (let xx = x + 9; xx < x + width - 10; xx += 18) {
+      if (rng() < 0.34) {
+        windows.push(
+          `<rect x="${xx}" y="${yy}" width="6" height="2.2" rx="1" fill="${color}" opacity="${(0.24 + rng() * 0.46).toFixed(2)}"/>`,
+        );
+      }
+    }
+  }
+  return windows.join("");
+}
+
+function makeRoadLines() {
+  const lines = [];
+  for (let k = -12; k <= 12; k++) {
+    const xb = VP_X + k * 68;
+    if (xb < -260 || xb > W + 260) continue;
+    const far = Math.abs(k) / 12;
+    lines.push(
+      `<line x1="${xb}" y1="${H}" x2="${VP_X}" y2="${HORIZON}" stroke="#00e5ff" stroke-width="${(1.1 + far * 0.8).toFixed(1)}" opacity="${(0.28 + far * 0.4).toFixed(2)}"/>`,
+    );
+  }
+  for (let k = 1; k <= 12; k++) {
+    const y = HORIZON + Math.round(k * k * 2.8);
     if (y >= H) break;
-    ys.push(y);
+    const progress = (y - HORIZON) / (H - HORIZON);
+    lines.push(
+      `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="url(#roadFade)" stroke-width="${Math.max(0.5, 2.2 - progress * 1.3).toFixed(1)}" opacity="${(0.85 - progress * 0.5).toFixed(2)}"/>`,
+    );
   }
-  return ys;
+  return lines.join("");
 }
 
-function makeScanLines() {
+function makeSunScanlines() {
   const lines = [];
-  let y = SUN_CY - SUN_R * 0.22;
-  let gap = 5.2;
-  while (y <= SUN_CY + SUN_R + 2) {
-    const progress = (y - (SUN_CY - SUN_R * 0.22)) / (SUN_R * 1.22);
-    const thick = (2.5 + progress * 6.5).toFixed(1);
-    lines.push({ y: Math.round(y), thick });
+  let y = SUN.cy - SUN.r * 0.2;
+  let gap = 5.5;
+  while (y <= SUN.cy + SUN.r + 4) {
+    const progress = (y - (SUN.cy - SUN.r * 0.2)) / (SUN.r * 1.25);
+    lines.push(
+      `<line x1="0" y1="${Math.round(y)}" x2="${W}" y2="${Math.round(y)}" stroke="#15000f" stroke-width="${(2.6 + progress * 7).toFixed(1)}"/>`,
+    );
     y += gap;
-    gap += 0.38;
+    gap += 0.42;
   }
-  return lines;
+  return lines.join("");
 }
-
-// Silhouette buildings: {x, top, w} — bottom = HORIZON
-const BUILDINGS = [
-  // Left cluster
-  { x: 0,    top: 222, w: 44 }, { x: 37,   top: 206, w: 24 }, { x: 55,   top: 220, w: 40 },
-  { x: 88,   top: 193, w: 17 }, { x: 98,   top: 208, w: 30 }, { x: 122,  top: 216, w: 21 },
-  { x: 136,  top: 202, w: 38 }, { x: 166,  top: 212, w: 24 }, { x: 183,  top: 221, w: 18 },
-  { x: 194,  top: 206, w: 32 }, { x: 219,  top: 217, w: 18 }, { x: 230,  top: 224, w: 14 },
-  { x: 237,  top: 212, w: 28 }, { x: 258,  top: 218, w: 22 }, { x: 272,  top: 223, w: 18 },
-  { x: 283,  top: 209, w: 26 }, { x: 302,  top: 216, w: 20 }, { x: 315,  top: 222, w: 16 },
-  { x: 324,  top: 211, w: 30 }, { x: 346,  top: 219, w: 18 }, { x: 357,  top: 225, w: 14 },
-  { x: 364,  top: 213, w: 24 }, { x: 381,  top: 220, w: 16 }, { x: 390,  top: 215, w: 20 },
-  { x: 403,  top: 221, w: 16 }, { x: 412,  top: 216, w: 22 }, { x: 427,  top: 222, w: 14 },
-  { x: 434,  top: 218, w: 20 }, { x: 447,  top: 213, w: 18 }, { x: 458,  top: 220, w: 16 },
-  // Right cluster (mirror)
-  { x: 726,  top: 220, w: 16 }, { x: 735,  top: 213, w: 18 }, { x: 746,  top: 218, w: 20 },
-  { x: 759,  top: 222, w: 14 }, { x: 768,  top: 216, w: 22 }, { x: 783,  top: 221, w: 16 },
-  { x: 792,  top: 215, w: 20 }, { x: 807,  top: 220, w: 16 }, { x: 819,  top: 213, w: 24 },
-  { x: 836,  top: 225, w: 14 }, { x: 845,  top: 219, w: 18 }, { x: 861,  top: 211, w: 30 },
-  { x: 884,  top: 222, w: 16 }, { x: 895,  top: 216, w: 20 }, { x: 911,  top: 209, w: 26 },
-  { x: 930,  top: 223, w: 18 }, { x: 944,  top: 218, w: 22 }, { x: 963,  top: 212, w: 28 },
-  { x: 956,  top: 224, w: 14 }, { x: 980,  top: 221, w: 18 }, { x: 994,  top: 206, w: 32 },
-  { x: 1019, top: 212, w: 24 }, { x: 1042, top: 202, w: 38 }, { x: 1078, top: 216, w: 21 },
-  { x: 1095, top: 208, w: 30 }, { x: 1095, top: 193, w: 17 }, { x: 1105, top: 220, w: 40 },
-  { x: 1139, top: 206, w: 24 }, { x: 1156, top: 222, w: 44 },
-];
 
 function buildSvg() {
-  const stars = makeStars();
-  const vLines = makeVLines();
-  const hLines = makeHLines();
-  const scanLines = makeScanLines();
-
-  const starsEl = stars
+  const stars = makeStars()
     .map((s) => `<circle cx="${s.x}" cy="${s.y}" r="${s.r}" fill="${s.c}" opacity="${s.o}"/>`)
     .join("");
-
-  const vLinesEl = vLines
-    .map((l) =>
-      `<line x1="${l.xb}" y1="${H}" x2="${VP_X}" y2="${HORIZON}" stroke="#00e5ff" stroke-width="1" opacity="${l.opacity}"/>`,
-    )
+  const rain = makeRain()
+    .map((r) => `<line x1="${r.x}" y1="${r.y}" x2="${r.x - 10}" y2="${r.y + r.len}" stroke="#a8f7ff" stroke-width="1" opacity="${r.o}"/>`)
     .join("");
 
-  const hLinesEl = hLines
-    .map((y) => {
-      const progress = (y - HORIZON) / (H - HORIZON);
-      const op = (0.92 - progress * 0.65).toFixed(2);
-      const sw = Math.max(0.4, 1.8 - progress * 1.3).toFixed(1);
-      return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="url(#hFade)" stroke-width="${sw}" opacity="${op}"/>`;
-    })
-    .join("");
-
-  const scanEl = scanLines
-    .map((l) => `<line x1="0" y1="${l.y}" x2="${W}" y2="${l.y}" stroke="#1a000f" stroke-width="${l.thick}"/>`)
-    .join("");
-
-  const buildEl = BUILDINGS.map(
-    (b) => `<rect x="${b.x}" y="${b.top}" width="${b.w}" height="${HORIZON - b.top + 2}"/>`,
-  ).join("");
+  const leftWindows = makeWindows(0, 92, 230, 188, "#00e5ff", 101);
+  const rightWindows = makeWindows(970, 84, 230, 196, "#ff4fb3", 202);
+  const centerWindows = makeWindows(438, 156, 112, 118, "#ffe66d", 303);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
-  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="#010110"/>
-    <stop offset="28%"  stop-color="#070924"/>
-    <stop offset="58%"  stop-color="#13092e"/>
-    <stop offset="78%"  stop-color="#260042"/>
-    <stop offset="100%" stop-color="#1e0032"/>
+  <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#030512"/>
+    <stop offset="35%" stop-color="#061932"/>
+    <stop offset="67%" stop-color="#260035"/>
+    <stop offset="100%" stop-color="#080712"/>
   </linearGradient>
-  <radialGradient id="sunG" cx="50%" cy="50%" r="50%">
-    <stop offset="0%"   stop-color="#fffce0"/>
-    <stop offset="11%"  stop-color="#ffe564"/>
-    <stop offset="27%"  stop-color="#ff8800"/>
-    <stop offset="51%"  stop-color="#ff2f92"/>
-    <stop offset="79%"  stop-color="#7a0055"/>
-    <stop offset="100%" stop-color="#380040"/>
+  <radialGradient id="sunG" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="#fffbe7"/>
+    <stop offset="12%" stop-color="#ffe66d"/>
+    <stop offset="31%" stop-color="#ff8a00"/>
+    <stop offset="56%" stop-color="#ff2f92"/>
+    <stop offset="86%" stop-color="#721358"/>
+    <stop offset="100%" stop-color="#25072d"/>
   </radialGradient>
-  <clipPath id="sunC"><circle cx="${SUN_CX}" cy="${SUN_CY}" r="${SUN_R}"/></clipPath>
-  <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="#0f0026"/>
-    <stop offset="38%"  stop-color="#060014"/>
-    <stop offset="100%" stop-color="#02000a"/>
+  <clipPath id="sunClip"><circle cx="${SUN.cx}" cy="${SUN.cy}" r="${SUN.r}"/></clipPath>
+  <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#100018"/>
+    <stop offset="42%" stop-color="#06030f"/>
+    <stop offset="100%" stop-color="#020208"/>
   </linearGradient>
-  <linearGradient id="hFade" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%"   stop-color="#ff2f92" stop-opacity="0"/>
-    <stop offset="10%"  stop-color="#ff2f92" stop-opacity="0.85"/>
-    <stop offset="50%"  stop-color="#ff2f92" stop-opacity="1"/>
-    <stop offset="90%"  stop-color="#ff2f92" stop-opacity="0.85"/>
+  <linearGradient id="roadFade" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#ff2f92" stop-opacity="0"/>
+    <stop offset="14%" stop-color="#ff2f92" stop-opacity="0.65"/>
+    <stop offset="50%" stop-color="#7df9ff" stop-opacity="0.85"/>
+    <stop offset="86%" stop-color="#ff2f92" stop-opacity="0.65"/>
     <stop offset="100%" stop-color="#ff2f92" stop-opacity="0"/>
   </linearGradient>
-  <radialGradient id="hGlow" cx="50%" cy="50%" r="50%">
-    <stop offset="0%"   stop-color="#ff2f92" stop-opacity="0.7"/>
-    <stop offset="55%"  stop-color="#b00060" stop-opacity="0.22"/>
-    <stop offset="100%" stop-color="#500030" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="lCyan" cx="0%" cy="55%" r="55%">
-    <stop offset="0%"   stop-color="#00e5ff" stop-opacity="0.13"/>
-    <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="rMag" cx="100%" cy="55%" r="55%">
-    <stop offset="0%"   stop-color="#ff2f92" stop-opacity="0.17"/>
-    <stop offset="100%" stop-color="#ff2f92" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="vig" cx="50%" cy="50%" r="70%">
-    <stop offset="0%"   stop-color="black" stop-opacity="0"/>
-    <stop offset="66%"  stop-color="black" stop-opacity="0"/>
-    <stop offset="100%" stop-color="black" stop-opacity="0.65"/>
+  <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#7df9ff"/>
+    <stop offset="38%" stop-color="#f4fbff"/>
+    <stop offset="62%" stop-color="#ffe66d"/>
+    <stop offset="100%" stop-color="#ff4fb3"/>
+  </linearGradient>
+  <linearGradient id="under" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#00e5ff" stop-opacity="0"/>
+    <stop offset="20%" stop-color="#00e5ff" stop-opacity="0.9"/>
+    <stop offset="50%" stop-color="#ff4fb3" stop-opacity="1"/>
+    <stop offset="80%" stop-color="#ffe66d" stop-opacity="0.9"/>
+    <stop offset="100%" stop-color="#ffe66d" stop-opacity="0"/>
+  </linearGradient>
+  <filter id="titleGlow" x="-30%" y="-70%" width="160%" height="240%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
+    <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.85 0 0 0 0 1 0 0 0 0.95 0" result="cyan"/>
+    <feMerge>
+      <feMergeNode in="cyan"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+  <filter id="pinkGlow" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="6" result="blur"/>
+    <feColorMatrix in="blur" type="matrix" values="1 0 0 0 1 0 0 0 0 0.12 0 0 0 0 0.55 0 0 0 0.82 0"/>
+    <feBlend in="SourceGraphic" mode="screen"/>
+  </filter>
+  <radialGradient id="vignette" cx="50%" cy="50%" r="72%">
+    <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+    <stop offset="66%" stop-color="#000000" stop-opacity="0.08"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.68"/>
   </radialGradient>
 </defs>
 
 <rect width="${W}" height="${H}" fill="url(#sky)"/>
-${starsEl}
-<rect width="${W}" height="${HORIZON}" fill="url(#lCyan)"/>
-<rect width="${W}" height="${HORIZON}" fill="url(#rMag)"/>
-<ellipse cx="${SUN_CX}" cy="${HORIZON + 18}" rx="490" ry="135" fill="url(#hGlow)"/>
-<circle cx="${SUN_CX}" cy="${SUN_CY}" r="${SUN_R + 55}" fill="#ff2f92" opacity="0.085"/>
-<circle cx="${SUN_CX}" cy="${SUN_CY}" r="${SUN_R + 28}" fill="#ff6600" opacity="0.075"/>
-<circle cx="${SUN_CX}" cy="${SUN_CY}" r="${SUN_R}" fill="url(#sunG)"/>
-<g clip-path="url(#sunC)">${scanEl}</g>
-<g fill="#040012">${buildEl}</g>
-<line x1="0" y1="${HORIZON}" x2="${W}" y2="${HORIZON}" stroke="url(#hFade)" stroke-width="2.2" opacity="0.95"/>
-<rect x="0" y="${HORIZON + 1}" width="${W}" height="${H - HORIZON - 1}" fill="url(#floor)"/>
-${vLinesEl}
-${hLinesEl}
-<rect width="${W}" height="${H}" fill="url(#vig)"/>
+<rect width="${W}" height="${H}" fill="url(#vignette)"/>
+${stars}
+<ellipse cx="600" cy="285" rx="510" ry="96" fill="#ff2f92" opacity="0.16"/>
+<circle cx="${SUN.cx}" cy="${SUN.cy}" r="${SUN.r + 66}" fill="#ff2f92" opacity="0.08"/>
+<circle cx="${SUN.cx}" cy="${SUN.cy}" r="${SUN.r + 32}" fill="#ff8a00" opacity="0.08"/>
+<circle cx="${SUN.cx}" cy="${SUN.cy}" r="${SUN.r}" fill="url(#sunG)"/>
+<g clip-path="url(#sunClip)">${makeSunScanlines()}</g>
+
+<g opacity="0.98">
+  <path d="M0 118 L230 72 L230 ${HORIZON} L0 ${HORIZON} Z" fill="#040612"/>
+  <path d="M1200 108 L970 70 L970 ${HORIZON} L1200 ${HORIZON} Z" fill="#040612"/>
+  <path d="M438 146 L550 126 L550 ${HORIZON} L438 ${HORIZON} Z" fill="#050714"/>
+  <path d="M650 126 L768 146 L768 ${HORIZON} L650 ${HORIZON} Z" fill="#050714"/>
+  ${leftWindows}
+  ${rightWindows}
+  ${centerWindows}
+  ${makeWindows(650, 148, 118, 126, "#a855ff", 404)}
+</g>
+
+<g filter="url(#pinkGlow)">
+  <rect x="38" y="132" width="34" height="116" rx="5" fill="#12051a" stroke="#ff4fb3" stroke-width="1.2"/>
+  <rect x="50" y="146" width="10" height="88" rx="5" fill="#ff2f92"/>
+  <text x="55" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="2" fill="#ffe66d" transform="rotate(-90 55 210)">APPSEC</text>
+  <rect x="1128" y="122" width="36" height="126" rx="5" fill="#07141d" stroke="#00e5ff" stroke-width="1.2"/>
+  <rect x="1142" y="138" width="9" height="92" rx="5" fill="#00e5ff"/>
+  <text x="1147" y="196" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="2" fill="#f4fbff" transform="rotate(90 1147 196)">AUTOMATION</text>
+</g>
+
+<g fill="#02030b">
+  <rect x="236" y="214" width="44" height="60"/>
+  <rect x="282" y="198" width="34" height="76"/>
+  <rect x="324" y="221" width="62" height="53"/>
+  <rect x="805" y="216" width="70" height="58"/>
+  <rect x="883" y="193" width="42" height="81"/>
+  <rect x="930" y="226" width="44" height="48"/>
+</g>
+<line x1="0" y1="${HORIZON}" x2="${W}" y2="${HORIZON}" stroke="url(#under)" stroke-width="2.5" opacity="0.95"/>
+<rect x="0" y="${HORIZON + 1}" width="${W}" height="${H - HORIZON - 1}" fill="url(#road)"/>
+${makeRoadLines()}
+<g opacity="0.22">
+  <path d="M0 310 C210 292 392 286 600 286 C808 286 990 292 1200 310" fill="none" stroke="#7df9ff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M0 348 C225 326 404 315 600 315 C796 315 975 326 1200 348" fill="none" stroke="#ff2f92" stroke-width="10" stroke-linecap="round"/>
+</g>
+
+<g opacity="0.32">
+  <rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#7df9ff" stroke-width="1"/>
+  <path d="M28 34 H170 M1030 34 H1172 M28 386 H170 M1030 386 H1172" stroke="#7df9ff" stroke-width="1"/>
+  <circle cx="198" cy="34" r="3" fill="#31ffb6"/>
+  <circle cx="1002" cy="386" r="3" fill="#ff4fb3"/>
+</g>
+
+<g filter="url(#titleGlow)">
+  <text x="600" y="150" text-anchor="middle" font-family="Arial Black, Impact, Arial, sans-serif" font-size="92" font-weight="900" letter-spacing="7" fill="url(#title)" stroke="#03040d" stroke-width="5" paint-order="stroke fill">CBOYD0319</text>
+  <rect x="248" y="170" width="704" height="3" rx="1.5" fill="url(#under)"/>
+  <text x="600" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="5" fill="#d9fbff">SECURITY AUTOMATION // APPSEC // CLOUD SYSTEMS</text>
+</g>
+
+<g font-family="Arial, sans-serif" font-weight="700" letter-spacing="2" opacity="0.78">
+  <text x="96" y="312" fill="#7df9ff" font-size="11">PUBLIC TOOLS</text>
+  <text x="988" y="312" fill="#ff9bd7" font-size="11">BUILD SIGNAL</text>
+  <text x="600" y="382" text-anchor="middle" fill="#31ffb6" font-size="12">TURNING IDEAS INTO SYSTEMS</text>
+</g>
+
+${rain}
+<rect width="${W}" height="${H}" fill="url(#vignette)"/>
 </svg>`;
 }
 
 async function main() {
   const svgContent = buildSvg();
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>*{margin:0;padding:0;}html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;}</style>
+<style>
+* { margin:0; padding:0; }
+html, body { width:${W}px; height:${H}px; overflow:hidden; background:#000; }
+</style>
 </head><body>${svgContent}</body></html>`;
 
   const puppeteer = await import("puppeteer");
@@ -202,7 +256,7 @@ async function main() {
       clip: { x: 0, y: 0, width: W, height: H },
     });
     await writeFile(OUT, screenshot);
-    console.log(`banner.png written — ${W}x${H} logical (2x physical)`);
+    console.log(`banner.png written - ${W}x${H} logical (2x physical)`);
   } finally {
     await browser.close();
   }

@@ -3,7 +3,7 @@ export const USERNAME = "cboyd0319";
 export const REPO_SUMMARIES = new Map([
   ["PyGuard", "Python static analysis and security checks"],
   ["PoshGuard", "PowerShell AST-aware QA and security guardrails"],
-  ["JobSentinel", "Self-hosted job search automation — scrape, de-dupe, signal"],
+  ["JobSentinel", "Self-hosted job search automation - scrape, de-dupe, signal"],
   ["WormsWMD-macOS-Fix", "macOS compatibility repair workflow"],
 ]);
 

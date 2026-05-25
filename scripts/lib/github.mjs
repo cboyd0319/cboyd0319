@@ -1,6 +1,7 @@
 const TIMEOUT_MS = 12_000;
 const RETRY_DELAY_MS = 2_000;
 const MAX_RETRIES = 3;
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 function buildHeaders() {
   const headers = {
@@ -14,21 +15,58 @@ function buildHeaders() {
   return headers;
 }
 
-export async function github(path) {
-  const response = await fetch(`https://api.github.com${path}`, {
-    headers: buildHeaders(),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+function zeroSparkline() {
+  return Array(10).fill(0);
+}
 
-  if (!response.ok) {
+function shouldRetryStatus(status) {
+  return RETRYABLE_STATUSES.has(status);
+}
+
+async function waitForRetry(retryDelayMs) {
+  if (retryDelayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
+}
+
+export async function github(path, { maxRetries = MAX_RETRIES, retryDelayMs = RETRY_DELAY_MS } = {}) {
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let response;
+    try {
+      response = await fetch(`https://api.github.com${path}`, {
+        headers: buildHeaders(),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        await waitForRetry(retryDelayMs);
+        continue;
+      }
+      throw err;
+    }
+
+    if (response.ok) return response.json();
+
+    if (shouldRetryStatus(response.status) && attempt < maxRetries) {
+      await waitForRetry(retryDelayMs);
+      continue;
+    }
+
     throw new Error(`GitHub API ${response.status}: ${await response.text()}`);
   }
 
-  return response.json();
+  throw lastError;
 }
 
-export async function githubParticipation(username, repoName) {
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+export async function githubParticipation(
+  username,
+  repoName,
+  { maxRetries = MAX_RETRIES, retryDelayMs = RETRY_DELAY_MS } = {},
+) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let response;
     try {
       response = await fetch(
@@ -36,25 +74,34 @@ export async function githubParticipation(username, repoName) {
         { headers: buildHeaders(), signal: AbortSignal.timeout(TIMEOUT_MS) },
       );
     } catch {
-      return Array(10).fill(0);
-    }
-
-    // 202 means GitHub is computing stats — ok:true but body is not ready
-    if (response.status === 202) {
-      if (attempt < MAX_RETRIES) {
-        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      if (attempt < maxRetries) {
+        await waitForRetry(retryDelayMs);
         continue;
       }
-      return Array(10).fill(0);
+      return zeroSparkline();
     }
 
-    if (!response.ok) return Array(10).fill(0);
+    // 202 means GitHub is computing stats; ok:true but body is not ready.
+    if (response.status === 202 || shouldRetryStatus(response.status)) {
+      if (attempt < maxRetries) {
+        await waitForRetry(retryDelayMs);
+        continue;
+      }
+      return zeroSparkline();
+    }
 
-    const data = await response.json();
+    if (!response.ok) return zeroSparkline();
+
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      return zeroSparkline();
+    }
     const all = data?.all;
-    if (!Array.isArray(all) || all.length === 0) return Array(10).fill(0);
+    if (!Array.isArray(all) || all.length === 0) return zeroSparkline();
     return all.slice(-10);
   }
 
-  return Array(10).fill(0);
+  return zeroSparkline();
 }

@@ -16,95 +16,94 @@ import { loadFontAsDataUrl } from "./lib/font.mjs";
 
 const SMOKE = process.argv.includes("--smoke");
 
-// ── Sparkline renderer ────────────────────────────────────────────────────────
-
 function renderSparkline(sparkline, accent) {
   const padded = Array.from({ length: 10 }, (_, i) => sparkline[i] ?? 0);
   const max = Math.max(...padded, 1);
-  return padded
-    .map(
-      (val, i) =>
-        `<div style="width:7px;background:${accent};opacity:${0.35 + i * 0.065};border-radius:2px 2px 0 0;height:${Math.round(10 + (val / max) * 90)}%;align-self:flex-end;"></div>`,
-    )
+  const bars = padded
+    .map((val, i) => {
+      const height = Math.round(6 + (val / max) * 30);
+      const x = 6 + i * 11;
+      const y = 38 - height;
+      const opacity = (0.3 + i * 0.065).toFixed(2);
+      return `<rect x="${x}" y="${y}" width="7" height="${height}" rx="2" fill="${accent}" opacity="${opacity}"/>`;
+    })
     .join("");
-}
 
-// ── Row renderer ──────────────────────────────────────────────────────────────
+  return `<svg viewBox="0 0 120 42" width="120" height="42" role="img" aria-label="ten week activity sparkline">
+    <line x1="4" y1="38" x2="116" y2="38" stroke="${accent}" stroke-opacity="0.18"/>
+    ${bars}
+  </svg>`;
+}
 
 function renderRow(repo, index, sparkline) {
   const accent = ACCENTS[index % ACCENTS.length];
   const description = shortText(
-    repo.description || REPO_SUMMARIES.get(repo.name) || "Public build signal",
-    72,
+    REPO_SUMMARIES.get(repo.name) || repo.description || "Public build signal",
+    86,
   );
-  const language = (repo.language || "").toUpperCase();
+  const language = (repo.language || "Code").toUpperCase();
   const timestamp = relativeTime(repo.pushed_at);
-  const stars = repo.stargazers_count > 0 ? `★ ${repo.stargazers_count}` : "";
-  const bars = renderSparkline(sparkline, accent);
+  const stars = repo.stargazers_count > 0 ? repo.stargazers_count : 0;
 
   return `
-  <div style="display:flex;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid rgba(32,55,95,0.55);position:relative;">
-    <div style="position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px;background:${accent};box-shadow:0 0 10px ${accent};opacity:0.9;"></div>
-    <div style="width:11px;height:11px;border-radius:50%;flex-shrink:0;background:${accent};box-shadow:0 0 10px ${accent},0 0 20px ${accent}66;margin-left:16px;"></div>
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:18px;font-weight:700;color:#c8d8ff;letter-spacing:0.5px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-        <span style="color:#536083">${escapeHtml(USERNAME)}/</span><span style="color:#f4fbff;text-shadow:0 0 12px rgba(244,251,255,0.3)">${escapeHtml(repo.name)}</span>
-      </div>
-      <div style="font-size:13px;color:#7a8db3;letter-spacing:0.3px;">${escapeHtml(description)}</div>
+  <div class="signal-row" style="--accent:${accent};">
+    <div class="signal-index">
+      <span>${String(index + 1).padStart(2, "0")}</span>
     </div>
-    <div style="font-size:12px;letter-spacing:2px;color:#7df9ff;opacity:0.8;flex-shrink:0;width:90px;text-align:right;">${escapeHtml(language)}</div>
-    <div style="font-size:12px;letter-spacing:1px;color:#536083;flex-shrink:0;width:48px;text-align:right;">${escapeHtml(stars)}</div>
-    <div style="font-size:14px;font-weight:700;color:${accent};text-shadow:0 0 10px ${accent}99;flex-shrink:0;width:64px;text-align:right;">${escapeHtml(timestamp)}</div>
-    <div style="display:flex;gap:3px;align-items:flex-end;height:36px;flex-shrink:0;width:100px;">${bars}</div>
+    <div class="repo-copy">
+      <div class="repo-name">
+        <span class="repo-owner">${escapeHtml(USERNAME)}/</span>${escapeHtml(repo.name)}
+      </div>
+      <div class="repo-description">${escapeHtml(description)}</div>
+    </div>
+    <div class="repo-meta">
+      <span class="language-chip">${escapeHtml(language)}</span>
+      <span class="star-chip">&#9733; ${stars}</span>
+      <span class="time-chip">${escapeHtml(timestamp)}</span>
+    </div>
+    <div class="sparkline">${renderSparkline(sparkline, accent)}</div>
   </div>`;
 }
 
-// ── Language breakdown section ─────────────────────────────────────────────────
-
-function buildLanguageSection(allRepos) {
+export function buildLanguageSection(allRepos) {
   const counts = new Map();
-  for (const r of allRepos) {
-    if (r.fork || r.archived || !r.language) continue;
-    counts.set(r.language, (counts.get(r.language) ?? 0) + 1);
+  for (const repo of allRepos) {
+    if (!repo || typeof repo !== "object") continue;
+    if (repo.name === USERNAME) continue;
+    if (repo.fork || repo.archived || !repo.language) continue;
+    counts.set(repo.language, (counts.get(repo.language) ?? 0) + 1);
   }
 
   const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const total = sorted.reduce((s, [, n]) => s + n, 0);
+  const total = sorted.reduce((sum, [, count]) => sum + count, 0);
   if (total === 0) return "";
 
   const barSegments = sorted
     .map(([lang, count]) => {
-      const pct = ((count / total) * 100).toFixed(1);
-      const color = LANGUAGE_COLORS.get(lang) ?? "#8888aa";
-      return `<div style="flex:${pct};background:${color};min-width:4px;height:100%;" title="${escapeHtml(lang)} ${pct}%"></div>`;
+      const color = LANGUAGE_COLORS.get(lang) ?? "#8b8baa";
+      return `<div style="flex:${count};background:${color};"></div>`;
     })
     .join("");
 
   const legend = sorted
     .map(([lang, count]) => {
-      const pct = ((count / total) * 100).toFixed(1);
-      const color = LANGUAGE_COLORS.get(lang) ?? "#8888aa";
-      return `<div style="display:flex;align-items:center;gap:6px;">
-        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-        <span style="font-size:12px;color:#7a8db3;letter-spacing:0.5px;">${escapeHtml(lang)}</span>
-        <span style="font-size:11px;color:#3a4a6a;letter-spacing:0.3px;">${pct}%</span>
+      const pct = ((count / total) * 100).toFixed(0);
+      const color = LANGUAGE_COLORS.get(lang) ?? "#8b8baa";
+      return `<div class="language-item">
+        <span style="background:${color};"></span>
+        <strong>${escapeHtml(lang)}</strong>
+        <em>${pct}%</em>
       </div>`;
     })
     .join("");
 
   return `
-<div style="background:linear-gradient(135deg,#060915 0%,#0b0d22 55%,#041216 100%);border:1px solid rgba(125,249,255,0.15);border-top:none;padding:20px 36px 24px;">
-  <div style="font-size:13px;letter-spacing:5px;color:#7df9ff;margin-bottom:14px;opacity:0.8;">LANGUAGE BREAKDOWN</div>
-  <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:14px;gap:2px;">
-    ${barSegments}
-  </div>
-  <div style="display:flex;flex-wrap:wrap;gap:16px 24px;">
-    ${legend}
-  </div>
-</div>`;
+<section class="language-panel">
+  <div class="section-kicker">TOOLCHAIN SPECTRUM</div>
+  <div class="language-bar">${barSegments}</div>
+  <div class="language-legend">${legend}</div>
+</section>`;
 }
-
-// ── HTML builder ──────────────────────────────────────────────────────────────
 
 function buildHtml(repos, sparklines, allRepos, fontDataUrl) {
   const latestActivity = relativeTime(repos[0].pushed_at).toUpperCase();
@@ -116,14 +115,12 @@ function buildHtml(repos, sparklines, allRepos, fontDataUrl) {
     ? "'Space Mono','Courier New',monospace"
     : "'Courier New',Courier,monospace";
 
-  // Aggregate stats across all owned public repos
-  const ownRepos = allRepos.filter((r) => !r.fork && !r.archived && r.name !== USERNAME);
-  const totalStars = ownRepos.reduce((sum, r) => sum + (r.stargazers_count ?? 0), 0);
+  const ownRepos = allRepos.filter((repo) => !repo.fork && !repo.archived && repo.name !== USERNAME);
+  const totalStars = ownRepos.reduce((sum, repo) => sum + (repo.stargazers_count ?? 0), 0);
   const repoCount = ownRepos.length;
 
-  // Commit streak: consecutive weeks with ≥1 commit across all displayed repos
   const byWeek = Array.from({ length: 10 }, (_, i) =>
-    sparklines.reduce((sum, sp) => sum + (sp[i] ?? 0), 0),
+    sparklines.reduce((sum, sparkline) => sum + (sparkline[i] ?? 0), 0),
   );
   let streak = 0;
   for (let i = byWeek.length - 1; i >= 0; i--) {
@@ -140,62 +137,336 @@ function buildHtml(repos, sparklines, allRepos, fontDataUrl) {
 <style>
 ${fontFace}
 * { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:${OUTPUT_WIDTH}px; background:#050713; font-family:${fontStack}; color:#f4fbff; -webkit-font-smoothing:antialiased; }
+html, body {
+  width:${OUTPUT_WIDTH}px;
+  background:#03050f;
+  color:#f4fbff;
+  font-family:${fontStack};
+  -webkit-font-smoothing:antialiased;
+}
+.panel {
+  position:relative;
+  overflow:hidden;
+  padding:34px 36px 0;
+  border:1px solid rgba(125,249,255,0.2);
+  background:
+    radial-gradient(circle at 14% 2%, rgba(255,47,146,0.22), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(0,229,255,0.18), transparent 30%),
+    linear-gradient(135deg, #060915 0%, #0b0d22 54%, #041216 100%);
+}
+.panel::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(125,249,255,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,249,255,0.04) 1px, transparent 1px),
+    radial-gradient(rgba(0,229,255,0.15) 1px, transparent 1px);
+  background-size:48px 48px, 48px 48px, 28px 28px;
+  mask-image:linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
+}
+.panel::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.36) 100%);
+}
+.content { position:relative; z-index:1; }
+.header {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  align-items:start;
+  gap:28px;
+  margin-bottom:26px;
+}
+.kicker {
+  color:#7df9ff;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:4px;
+  margin-bottom:8px;
+  opacity:0.86;
+}
+.title {
+  color:#ff4fb3;
+  font-size:34px;
+  font-weight:700;
+  letter-spacing:8px;
+  line-height:1;
+  text-shadow:0 0 18px rgba(255,47,146,0.72), 0 0 42px rgba(255,47,146,0.25);
+}
+.subhead {
+  max-width:680px;
+  margin-top:11px;
+  color:#8796bd;
+  font-size:13px;
+  letter-spacing:1.4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.metrics {
+  display:grid;
+  grid-template-columns:repeat(3, auto);
+  gap:10px;
+  justify-content:end;
+}
+.metric {
+  min-width:116px;
+  padding:12px 14px 11px;
+  border:1px solid rgba(125,249,255,0.18);
+  background:rgba(3,5,16,0.72);
+  box-shadow:inset 0 0 18px rgba(0,229,255,0.04);
+}
+.metric strong {
+  display:block;
+  color:#f4fbff;
+  font-size:18px;
+  line-height:1.1;
+  letter-spacing:1.5px;
+}
+.metric span {
+  display:block;
+  margin-top:5px;
+  color:#7df9ff;
+  font-size:10px;
+  letter-spacing:2px;
+}
+.divider {
+  height:2px;
+  margin-bottom:10px;
+  background:linear-gradient(90deg, #00e5ff 0%, #ff2f92 48%, #ffe66d 100%);
+  opacity:0.7;
+}
+.signal-stack { position:relative; }
+.signal-stack::before {
+  content:"";
+  position:absolute;
+  left:26px;
+  top:20px;
+  bottom:22px;
+  width:2px;
+  background:linear-gradient(to bottom, #ff2f92, #00e5ff, #ffe66d, #a855ff);
+  box-shadow:0 0 18px rgba(0,229,255,0.45);
+  opacity:0.85;
+}
+.signal-row {
+  display:grid;
+  grid-template-columns:58px minmax(0, 1fr) 292px 132px;
+  align-items:center;
+  gap:20px;
+  min-height:104px;
+  padding:17px 0;
+  border-bottom:1px solid rgba(45,75,120,0.55);
+}
+.signal-index {
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.signal-index::before {
+  content:"";
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 14px var(--accent), 0 0 34px color-mix(in srgb, var(--accent), transparent 45%);
+}
+.signal-index span {
+  position:absolute;
+  left:25px;
+  bottom:-21px;
+  color:#4e5e83;
+  font-size:9px;
+  letter-spacing:1px;
+}
+.repo-copy { min-width:0; }
+.repo-name {
+  color:#f4fbff;
+  font-size:21px;
+  font-weight:700;
+  letter-spacing:0.3px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  text-shadow:0 0 12px rgba(244,251,255,0.24);
+}
+.repo-owner { color:#5b6686; font-weight:400; }
+.repo-description {
+  margin-top:8px;
+  color:#8796bd;
+  font-size:13px;
+  letter-spacing:0.35px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.repo-meta {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  min-width:0;
+}
+.language-chip,
+.star-chip,
+.time-chip {
+  display:inline-flex;
+  align-items:center;
+  min-width:0;
+  height:30px;
+  padding:0 10px;
+  border:1px solid rgba(125,249,255,0.16);
+  background:rgba(3,5,16,0.58);
+  font-size:11px;
+  letter-spacing:1.8px;
+  white-space:nowrap;
+}
+.language-chip { color:#7df9ff; max-width:132px; overflow:hidden; text-overflow:ellipsis; }
+.star-chip { color:#7080a7; }
+.time-chip {
+  color:var(--accent);
+  border-color:color-mix(in srgb, var(--accent), transparent 70%);
+  text-shadow:0 0 10px color-mix(in srgb, var(--accent), transparent 35%);
+}
+.sparkline {
+  display:flex;
+  justify-content:flex-end;
+  opacity:0.95;
+}
+.summary-strip {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:28px;
+  padding:20px 0 24px;
+}
+.summary-strip span {
+  color:#2b3d60;
+  font-size:16px;
+}
+.summary-strip strong {
+  color:#ffe66d;
+  font-size:13px;
+  letter-spacing:2.5px;
+  font-weight:700;
+}
+.summary-strip strong:nth-of-type(2) { color:#7df9ff; }
+.summary-strip strong:nth-of-type(3) { color:#31ffb6; }
+.language-panel {
+  padding:23px 36px 28px;
+  border:1px solid rgba(125,249,255,0.2);
+  border-top:none;
+  background:
+    linear-gradient(135deg, #050812 0%, #09101e 58%, #031316 100%);
+}
+.section-kicker {
+  color:#7df9ff;
+  font-size:13px;
+  letter-spacing:5px;
+  margin-bottom:16px;
+  opacity:0.88;
+}
+.language-bar {
+  display:flex;
+  height:10px;
+  gap:3px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#071022;
+  box-shadow:0 0 18px rgba(0,229,255,0.1);
+}
+.language-legend {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px 23px;
+  margin-top:16px;
+}
+.language-item {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+.language-item span {
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+.language-item strong {
+  color:#9aaace;
+  font-size:12px;
+  letter-spacing:0.7px;
+  font-weight:400;
+}
+.language-item em {
+  color:#465575;
+  font-size:11px;
+  letter-spacing:0.4px;
+  font-style:normal;
+}
+.footer {
+  padding:15px 18px 17px;
+  color:#00e5ff;
+  background:#030510;
+  border-top:1px solid rgba(0,229,255,0.16);
+  text-align:center;
+  font-size:13px;
+  letter-spacing:8px;
+  text-shadow:0 0 12px rgba(0,229,255,0.48);
+}
 </style>
 </head>
 <body>
-<div style="background:linear-gradient(135deg,#060915 0%,#0b0d22 55%,#041216 100%);border:1px solid rgba(125,249,255,0.15);padding:28px 36px 0;position:relative;overflow:hidden;">
-  <div style="position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(rgba(0,229,255,0.12) 1px,transparent 1px);background-size:28px 28px;"></div>
-  <div style="position:absolute;top:-100px;right:-100px;width:400px;height:400px;pointer-events:none;background:radial-gradient(circle,rgba(255,47,146,0.18) 0%,transparent 65%);"></div>
-  <div style="position:absolute;bottom:-60px;left:-60px;width:300px;height:300px;pointer-events:none;background:radial-gradient(circle,rgba(0,229,255,0.12) 0%,transparent 65%);"></div>
-
-  <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;position:relative;">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-      <circle cx="13" cy="13" r="2.8" fill="#ff4fb3"/>
-      <path d="M8 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#ff4fb3" stroke-width="2" stroke-linecap="round"/>
-      <path d="M3.5 13c0-5.2 4.3-9.5 9.5-9.5s9.5 4.3 9.5 9.5" stroke="#ff4fb3" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-    </svg>
-    <div style="font-size:22px;font-weight:700;letter-spacing:5px;color:#ff4fb3;text-shadow:0 0 20px rgba(255,47,146,0.75),0 0 40px rgba(255,47,146,0.35);margin-right:auto;">RECENT SIGNALS</div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div style="width:8px;height:8px;border-radius:50%;background:#31ffb6;box-shadow:0 0 8px #31ffb6,0 0 16px #31ffb666;"></div>
-      <span style="font-size:13px;color:#7df9ff;letter-spacing:2px;">LATEST: ${latestActivity}</span>
+<section class="panel">
+  <div class="content">
+    <header class="header">
+      <div>
+        <div class="kicker">CBOYD0319 / PUBLIC SYSTEMS</div>
+        <div class="title">RECENT SIGNALS</div>
+        <div class="subhead">Daily static render of live public repository activity.</div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><strong>${latestActivity}</strong><span>LATEST</span></div>
+        <div class="metric"><strong>${repoCount}</strong><span>REPOS</span></div>
+        <div class="metric"><strong>${totalStars}</strong><span>STARS</span></div>
+      </div>
+    </header>
+    <div class="divider"></div>
+    <div class="signal-stack">${rows}</div>
+    <div class="summary-strip">
+      <strong>${totalStars} STAR SIGNAL</strong>
+      <span>/</span>
+      <strong>${repoCount} ACTIVE REPOS</strong>
+      <span>/</span>
+      <strong>${streak}W STREAK</strong>
     </div>
   </div>
-
-  <div style="height:2px;background:linear-gradient(90deg,#00e5ff 0%,#ff2f92 50%,#ffe66d 100%);opacity:0.65;margin-bottom:4px;"></div>
-  <div style="position:relative;">${rows}</div>
-  <div style="display:flex;justify-content:center;align-items:center;gap:28px;padding:18px 0 22px;">
-    <span style="font-size:13px;letter-spacing:2px;color:#ffe66d;opacity:0.85;">&#9733; ${totalStars} STARS</span>
-    <span style="color:#2a3a5a;font-size:16px;">·</span>
-    <span style="font-size:13px;letter-spacing:2px;color:#7df9ff;opacity:0.8;">${repoCount} REPOS</span>
-    <span style="color:#2a3a5a;font-size:16px;">·</span>
-    <span style="font-size:13px;letter-spacing:2px;color:#31ffb6;opacity:0.8;">${streak}W STREAK</span>
-  </div>
-</div>
+</section>
 ${languageSection}
-<div style="background:#030510;text-align:center;padding:14px;font-size:13px;letter-spacing:9px;color:#00e5ff;text-shadow:0 0 12px rgba(0,229,255,0.5);border-top:1px solid rgba(0,229,255,0.12);">TURNING IDEAS INTO SYSTEMS</div>
+<div class="footer">TURNING IDEAS INTO SYSTEMS</div>
 </body>
 </html>`;
 }
-
-// ── Main (gated: only runs when this file is the entry point) ─────────────────
 
 async function main() {
   const allRepos = await github(
     `/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
   );
 
-  // The profile repo itself (name === USERNAME) is excluded: the daily bot commit
-  // would otherwise make it perpetually the freshest entry in the signals panel.
-  const repos = selectRepos(allRepos.filter((r) => r.name !== USERNAME));
+  const repos = selectRepos(allRepos.filter((repo) => repo.name !== USERNAME));
   if (!repos.length) throw new Error("No public repos found.");
 
   const sparklines = await Promise.all(
-    repos.map((r) => githubParticipation(USERNAME, r.name)),
+    repos.map((repo) => githubParticipation(USERNAME, repo.name)),
   );
 
   if (SMOKE) {
-    console.log(`Smoke OK — ${repos.length} repos, ${allRepos.length} total fetched`);
+    console.log(`Smoke OK - ${repos.length} repos, ${allRepos.length} total fetched`);
     return;
   }
 
@@ -225,7 +496,7 @@ async function main() {
 
   const dir = dirname(fileURLToPath(import.meta.url));
   await writeFile(join(dir, "../assets/signals.png"), screenshot);
-  console.log(`signals.png written — ${repos.length} repos, latest: ${relativeTime(repos[0].pushed_at)}`);
+  console.log(`signals.png written - ${repos.length} repos, latest: ${relativeTime(repos[0].pushed_at)}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

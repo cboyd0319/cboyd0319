@@ -1,4 +1,5 @@
 node_modules/
+.DS_Store
 
-# Local output from npm run generate-banner; remove this line to track the file
+# Local output from the optional animated banner helper.
 assets/banner.gif

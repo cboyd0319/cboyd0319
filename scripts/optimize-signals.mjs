@@ -9,7 +9,16 @@ const MIN_OPTIMIZED_BYTES = 10_000;
 const dir = dirname(fileURLToPath(import.meta.url));
 const outputPath = join(dir, "../assets/signals.png");
 
-const before = await stat(outputPath);
+let before;
+try {
+  before = await stat(outputPath);
+} catch (err) {
+  if (err?.code === "ENOENT") {
+    console.warn("signals.png does not exist yet; run the generator before optimizing.");
+    process.exit(0);
+  }
+  throw err;
+}
 const optimized = await sharp(outputPath, { limitInputPixels: 40_000_000 })
   .png({
     adaptiveFiltering: true,

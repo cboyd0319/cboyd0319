@@ -65,6 +65,7 @@ jobs:
       actions: write
       checks: read
       contents: write
+      statuses: write
     steps:
       - name: Check out repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -109,6 +110,16 @@ jobs:
 
             case "$conclusion" in
               success)
+                check_url="$(gh api \
+                  "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/check-runs?check_name=validate" \
+                  --jq '.check_runs[0].html_url // ""')"
+                gh api \
+                  --method POST \
+                  "repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}" \
+                  -f state=success \
+                  -f context=validate \
+                  -f description="CI validate passed for generated profile update" \
+                  -f target_url="$check_url"
                 git push origin "HEAD:main"
                 echo "Updated main with validated signals panel: $commit_sha"
                 exit 0

@@ -62,6 +62,7 @@ jobs:
     timeout-minutes: 10
     needs: render
     permissions:
+      actions: write
       checks: read
       contents: write
     steps:
@@ -99,6 +100,7 @@ jobs:
           git commit -m "Update signals panel"
           commit_sha="$(git rev-parse HEAD)"
           git push --force-with-lease origin "HEAD:$UPDATE_BRANCH"
+          gh workflow run ci.yml --ref "$UPDATE_BRANCH"
 
           for attempt in {1..60}; do
             conclusion="$(gh api \

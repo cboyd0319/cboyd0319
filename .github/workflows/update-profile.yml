@@ -107,11 +107,16 @@ jobs:
             --jq '.[0].url')"
 
           if [ -z "$pr_url" ]; then
-            pr_url="$(gh pr create \
+            if ! pr_url="$(gh pr create \
               --base main \
               --head "$UPDATE_BRANCH" \
               --title "Update signals panel" \
-              --body "Updates the generated profile signals panel.")"
+              --body "Updates the generated profile signals panel." \
+              2>pr-create.err)"; then
+              echo "::notice title=Update branch ready::Pushed $UPDATE_BRANCH. Pull request creation is blocked by repository workflow permissions or missing PROFILE_UPDATE_TOKEN."
+              sed 's/^/gh pr create: /' pr-create.err
+              exit 0
+            fi
           fi
 
           echo "Update PR: $pr_url"

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, automation/update-signals-panel]
   pull_request:
   workflow_dispatch:
 

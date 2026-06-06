@@ -62,8 +62,8 @@ jobs:
     timeout-minutes: 10
     needs: render
     permissions:
+      checks: read
       contents: write
-      pull-requests: write
     steps:
       - name: Check out repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -76,7 +76,7 @@ jobs:
           name: signals-panel
           path: assets
 
-      - name: Create or update pull request if changed
+      - name: Publish validated update if changed
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.PROFILE_UPDATE_TOKEN || github.token }}
@@ -97,26 +97,30 @@ jobs:
           git checkout -B "$UPDATE_BRANCH"
           git add assets/signals.png
           git commit -m "Update signals panel"
+          commit_sha="$(git rev-parse HEAD)"
           git push --force-with-lease origin "HEAD:$UPDATE_BRANCH"
 
-          pr_url="$(gh pr list \
-            --head "$UPDATE_BRANCH" \
-            --base main \
-            --state open \
-            --json url \
-            --jq '.[0].url')"
+          for attempt in {1..60}; do
+            conclusion="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/check-runs?check_name=validate" \
+              --jq '.check_runs[0].conclusion // ""')"
 
-          if [ -z "$pr_url" ]; then
-            if ! pr_url="$(gh pr create \
-              --base main \
-              --head "$UPDATE_BRANCH" \
-              --title "Update signals panel" \
-              --body "Updates the generated profile signals panel." \
-              2>pr-create.err)"; then
-              echo "::notice title=Update branch ready::Pushed $UPDATE_BRANCH. Pull request creation is blocked by repository workflow permissions or missing PROFILE_UPDATE_TOKEN."
-              sed 's/^/gh pr create: /' pr-create.err
-              exit 0
+            case "$conclusion" in
+              success)
+                git push origin "HEAD:main"
+                echo "Updated main with validated signals panel: $commit_sha"
+                exit 0
+                ;;
+              failure|cancelled|timed_out|action_required)
+                echo "validate concluded $conclusion for $commit_sha"
+                exit 1
+                ;;
+            esac
+
+            if [ "$attempt" -eq 60 ]; then
+              echo "Timed out waiting for validate on $commit_sha"
+              exit 1
             fi
-          fi
 
-          echo "Update PR: $pr_url"
+            sleep 5
+          done

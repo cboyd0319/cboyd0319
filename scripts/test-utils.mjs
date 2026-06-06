@@ -1,6 +1,7 @@
 // Pure unit tests - no network calls, no Puppeteer, no file I/O.
 // Imports only side-effect-free lib modules.
 import { buildLanguageSection } from "./generate-signals.mjs";
+import { ACCENTS, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
 
@@ -209,6 +210,28 @@ const manyLanguageHtml = buildLanguageSection([
 assert("language overflow is grouped as Other", manyLanguageHtml.includes("<strong>Other</strong>"), true);
 assert("language legend stays capped", (manyLanguageHtml.match(/class=\"language-item\"/g) ?? []).length, 8);
 assert("top language percentage uses full total", manyLanguageHtml.includes("<em>25%</em>"), true);
+
+// palette
+
+console.log("\npalette");
+
+const tokyoColors = new Set(Object.values(TOKYO_NEON_PALETTE));
+
+assertDeepEqual(
+  "signal accents use Tokyo neon palette",
+  ACCENTS,
+  [
+    TOKYO_NEON_PALETTE.ice,
+    TOKYO_NEON_PALETTE.cyan,
+    TOKYO_NEON_PALETTE.magenta,
+    TOKYO_NEON_PALETTE.lavender,
+  ],
+);
+assert(
+  "language colors stay inside Tokyo neon palette",
+  [...LANGUAGE_COLORS.values()].every((color) => tokyoColors.has(color)),
+  true,
+);
 
 // github helpers
 

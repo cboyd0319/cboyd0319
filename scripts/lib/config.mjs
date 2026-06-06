@@ -7,27 +7,43 @@ export const REPO_SUMMARIES = new Map([
   ["WormsWMD-macOS-Fix", "macOS compatibility repair workflow"],
 ]);
 
+export const TOKYO_NEON_PALETTE = {
+  indigo: "#252a57",
+  blue: "#2b4f8b",
+  midnight: "#180b26",
+  cyan: "#248dbf",
+  lavender: "#8a77b3",
+  haze: "#cdcae1",
+  ice: "#70bedd",
+  magenta: "#7a2e69",
+};
+
 export const LANGUAGE_COLORS = new Map([
-  ["Python",     "#3572A5"],
-  ["JavaScript", "#f1e05a"],
-  ["TypeScript", "#3178c6"],
-  ["PowerShell", "#012456"],
-  ["Shell",      "#89e051"],
-  ["Rust",       "#dea584"],
-  ["Go",         "#00ADD8"],
-  ["Ruby",       "#701516"],
-  ["C",          "#555555"],
-  ["C++",        "#f34b7d"],
-  ["Java",       "#b07219"],
-  ["Kotlin",     "#A97BFF"],
-  ["Swift",      "#F05138"],
-  ["HTML",       "#e34c26"],
-  ["CSS",        "#563d7c"],
-  ["Dockerfile", "#384d54"],
-  ["Makefile",   "#427819"],
+  ["Python",     TOKYO_NEON_PALETTE.cyan],
+  ["JavaScript", TOKYO_NEON_PALETTE.haze],
+  ["TypeScript", TOKYO_NEON_PALETTE.ice],
+  ["PowerShell", TOKYO_NEON_PALETTE.blue],
+  ["Shell",      TOKYO_NEON_PALETTE.lavender],
+  ["Rust",       TOKYO_NEON_PALETTE.magenta],
+  ["Go",         TOKYO_NEON_PALETTE.ice],
+  ["Ruby",       TOKYO_NEON_PALETTE.magenta],
+  ["C",          TOKYO_NEON_PALETTE.indigo],
+  ["C++",        TOKYO_NEON_PALETTE.lavender],
+  ["Java",       TOKYO_NEON_PALETTE.blue],
+  ["Kotlin",     TOKYO_NEON_PALETTE.lavender],
+  ["Swift",      TOKYO_NEON_PALETTE.magenta],
+  ["HTML",       TOKYO_NEON_PALETTE.cyan],
+  ["CSS",        TOKYO_NEON_PALETTE.indigo],
+  ["Dockerfile", TOKYO_NEON_PALETTE.blue],
+  ["Makefile",   TOKYO_NEON_PALETTE.cyan],
 ]);
 
-export const ACCENTS = ["#ff2f92", "#00e5ff", "#ffe66d", "#a855ff"];
+export const ACCENTS = [
+  TOKYO_NEON_PALETTE.ice,
+  TOKYO_NEON_PALETTE.cyan,
+  TOKYO_NEON_PALETTE.magenta,
+  TOKYO_NEON_PALETTE.lavender,
+];
 
-export const OUTPUT_WIDTH = 1200;
-export const DEVICE_SCALE = 2;
+export const OUTPUT_WIDTH = 1672;
+export const DEVICE_SCALE = 1;

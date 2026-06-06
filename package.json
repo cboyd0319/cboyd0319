@@ -8,11 +8,12 @@
     "node": ">=24.16.0"
   },
   "scripts": {
-    "generate": "node scripts/generate-signals.mjs",
+    "generate": "node scripts/generate-overlays.mjs",
+    "generate:legacy": "node scripts/generate-signals.mjs",
     "optimize-signals": "node scripts/optimize-signals.mjs",
-    "smoke": "node scripts/generate-signals.mjs --smoke",
+    "smoke": "node scripts/generate-overlays.mjs --smoke",
     "test": "node scripts/test-utils.mjs",
-    "check": "node --check scripts/generate-signals.mjs scripts/optimize-signals.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs",
+    "check": "node --check scripts/generate-overlays.mjs scripts/generate-signals.mjs scripts/optimize-signals.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs",
     "audit": "npm audit --audit-level=moderate"
   },
   "devDependencies": {

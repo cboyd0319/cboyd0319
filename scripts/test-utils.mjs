@@ -197,6 +197,19 @@ assert("active repo language is included", languageHtml.includes("Python"), true
 assert("fork language is excluded", languageHtml.includes("Go"), false);
 assert("archived language is excluded", languageHtml.includes("Rust"), false);
 
+const manyLanguageHtml = buildLanguageSection([
+  makeRepo("python-a", 1, { language: "Python" }),
+  makeRepo("python-b", 2, { language: "Python" }),
+  makeRepo("python-c", 3, { language: "Python" }),
+  ...["JavaScript", "TypeScript", "Rust", "Go", "Ruby", "Java", "Kotlin", "Swift", "HTML"].map(
+    (language, i) => makeRepo(`lang-${i}`, i + 4, { language }),
+  ),
+]);
+
+assert("language overflow is grouped as Other", manyLanguageHtml.includes("<strong>Other</strong>"), true);
+assert("language legend stays capped", (manyLanguageHtml.match(/class=\"language-item\"/g) ?? []).length, 8);
+assert("top language percentage uses full total", manyLanguageHtml.includes("<em>25%</em>"), true);
+
 // github helpers
 
 console.log("\ngithub helpers");

@@ -1,0 +1,33 @@
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { stat, writeFile } from "node:fs/promises";
+
+import sharp from "sharp";
+
+const MIN_OPTIMIZED_BYTES = 10_000;
+
+const dir = dirname(fileURLToPath(import.meta.url));
+const outputPath = join(dir, "../assets/signals.png");
+
+const before = await stat(outputPath);
+const optimized = await sharp(outputPath, { limitInputPixels: 40_000_000 })
+  .png({
+    adaptiveFiltering: true,
+    compressionLevel: 9,
+    effort: 10,
+    palette: true,
+    quality: 90,
+  })
+  .toBuffer();
+
+const metadata = await sharp(optimized).metadata();
+if (!metadata.width || !metadata.height || optimized.byteLength < MIN_OPTIMIZED_BYTES) {
+  throw new Error("Optimized signals.png failed validation.");
+}
+
+if (optimized.byteLength > before.size) {
+  console.log(`signals.png kept original - ${before.size} bytes already smaller`);
+} else {
+  await writeFile(outputPath, optimized);
+  console.log(`signals.png optimized - ${before.size} -> ${optimized.byteLength} bytes`);
+}

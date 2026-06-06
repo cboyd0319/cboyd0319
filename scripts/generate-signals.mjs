@@ -15,9 +15,18 @@ import { github, githubParticipation } from "./lib/github.mjs";
 import { loadFontAsDataUrl } from "./lib/font.mjs";
 
 const SMOKE = process.argv.includes("--smoke");
+const REPOS_PER_PAGE = 100;
+const MAX_REPO_PAGES = 10;
+const MAX_LANGUAGE_ITEMS = 8;
+const DEFAULT_LANGUAGE_COLOR = "#8b8baa";
+const OTHER_LANGUAGE_LABEL = "Other";
+const MIN_SCREENSHOT_BYTES = 10_000;
 
 function renderSparkline(sparkline, accent) {
-  const padded = Array.from({ length: 10 }, (_, i) => sparkline[i] ?? 0);
+  const padded = Array.from({ length: 10 }, (_, i) => {
+    const value = Number(sparkline?.[i] ?? 0);
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
+  });
   const max = Math.max(...padded, 1);
   const bars = padded
     .map((val, i) => {
@@ -43,7 +52,8 @@ function renderRow(repo, index, sparkline) {
   );
   const language = (repo.language || "Code").toUpperCase();
   const timestamp = relativeTime(repo.pushed_at);
-  const stars = repo.stargazers_count > 0 ? repo.stargazers_count : 0;
+  const starCount = Number(repo.stargazers_count);
+  const stars = Number.isFinite(starCount) && starCount > 0 ? Math.floor(starCount) : 0;
 
   return `
   <div class="signal-row" style="--accent:${accent};">
@@ -65,30 +75,47 @@ function renderRow(repo, index, sparkline) {
   </div>`;
 }
 
+function activeOwnRepos(allRepos) {
+  return allRepos.filter((repo) => {
+    if (!repo || typeof repo !== "object") return false;
+    if (repo.name === USERNAME) return false;
+    return !repo.fork && !repo.archived;
+  });
+}
+
 export function buildLanguageSection(allRepos) {
   const counts = new Map();
-  for (const repo of allRepos) {
-    if (!repo || typeof repo !== "object") continue;
-    if (repo.name === USERNAME) continue;
-    if (repo.fork || repo.archived || !repo.language) continue;
+  for (const repo of activeOwnRepos(allRepos)) {
+    if (!repo.language) continue;
     counts.set(repo.language, (counts.get(repo.language) ?? 0) + 1);
   }
 
-  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   const total = sorted.reduce((sum, [, count]) => sum + count, 0);
   if (total === 0) return "";
 
-  const barSegments = sorted
+  const visible = sorted.slice(0, MAX_LANGUAGE_ITEMS);
+  const hiddenCount = sorted
+    .slice(MAX_LANGUAGE_ITEMS)
+    .reduce((sum, [, count]) => sum + count, 0);
+  const languageItems = hiddenCount
+    ? [
+        ...visible.slice(0, MAX_LANGUAGE_ITEMS - 1),
+        [OTHER_LANGUAGE_LABEL, hiddenCount],
+      ]
+    : visible;
+
+  const barSegments = languageItems
     .map(([lang, count]) => {
-      const color = LANGUAGE_COLORS.get(lang) ?? "#8b8baa";
+      const color = LANGUAGE_COLORS.get(lang) ?? DEFAULT_LANGUAGE_COLOR;
       return `<div style="flex:${count};background:${color};"></div>`;
     })
     .join("");
 
-  const legend = sorted
+  const legend = languageItems
     .map(([lang, count]) => {
       const pct = ((count / total) * 100).toFixed(0);
-      const color = LANGUAGE_COLORS.get(lang) ?? "#8b8baa";
+      const color = LANGUAGE_COLORS.get(lang) ?? DEFAULT_LANGUAGE_COLOR;
       return `<div class="language-item">
         <span style="background:${color};"></span>
         <strong>${escapeHtml(lang)}</strong>
@@ -115,12 +142,18 @@ function buildHtml(repos, sparklines, allRepos, fontDataUrl) {
     ? "'Space Mono','Courier New',monospace"
     : "'Courier New',Courier,monospace";
 
-  const ownRepos = allRepos.filter((repo) => !repo.fork && !repo.archived && repo.name !== USERNAME);
-  const totalStars = ownRepos.reduce((sum, repo) => sum + (repo.stargazers_count ?? 0), 0);
+  const ownRepos = activeOwnRepos(allRepos);
+  const totalStars = ownRepos.reduce((sum, repo) => {
+    const stars = Number(repo.stargazers_count);
+    return sum + (Number.isFinite(stars) && stars > 0 ? Math.floor(stars) : 0);
+  }, 0);
   const repoCount = ownRepos.length;
 
   const byWeek = Array.from({ length: 10 }, (_, i) =>
-    sparklines.reduce((sum, sparkline) => sum + (sparkline[i] ?? 0), 0),
+    sparklines.reduce((sum, sparkline) => {
+      const value = Number(sparkline?.[i] ?? 0);
+      return sum + (Number.isFinite(value) && value > 0 ? value : 0);
+    }, 0),
   );
   let streak = 0;
   for (let i = byWeek.length - 1; i >= 0; i--) {
@@ -426,7 +459,6 @@ html, body {
   <div class="content">
     <header class="header">
       <div>
-        <div class="kicker">CBOYD0319 / PUBLIC SYSTEMS</div>
         <div class="title">RECENT SIGNALS</div>
         <div class="subhead">Daily static render of live public repository activity.</div>
       </div>
@@ -448,17 +480,50 @@ html, body {
   </div>
 </section>
 ${languageSection}
-<div class="footer">TURNING IDEAS INTO SYSTEMS</div>
 </body>
 </html>`;
 }
 
-async function main() {
-  const allRepos = await github(
-    `/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
-  );
+async function fetchOwnerRepos() {
+  const repos = [];
+  for (let page = 1; page <= MAX_REPO_PAGES; page++) {
+    const chunk = await github(
+      `/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=${REPOS_PER_PAGE}&page=${page}`,
+    );
 
-  const repos = selectRepos(allRepos.filter((repo) => repo.name !== USERNAME));
+    if (!Array.isArray(chunk)) {
+      throw new Error("GitHub repos API returned an unexpected payload.");
+    }
+
+    repos.push(...chunk);
+    if (chunk.length < REPOS_PER_PAGE) return repos;
+  }
+
+  throw new Error(`GitHub repo pagination exceeded ${MAX_REPO_PAGES} pages.`);
+}
+
+function puppeteerLaunchArgs() {
+  const args = ["--disable-dev-shm-usage", "--disable-gpu"];
+  if (process.env.CI === "true") {
+    args.unshift("--no-sandbox", "--disable-setuid-sandbox");
+  }
+  return args;
+}
+
+function validateScreenshot(screenshot, bodyHeight) {
+  if (!Number.isFinite(bodyHeight) || bodyHeight <= 0) {
+    throw new Error(`Invalid rendered body height: ${bodyHeight}`);
+  }
+
+  if (!screenshot || screenshot.byteLength < MIN_SCREENSHOT_BYTES) {
+    throw new Error("Generated screenshot is unexpectedly small.");
+  }
+}
+
+async function main() {
+  const allRepos = await fetchOwnerRepos();
+
+  const repos = selectRepos(activeOwnRepos(allRepos));
   if (!repos.length) throw new Error("No public repos found.");
 
   const sparklines = await Promise.all(
@@ -475,7 +540,7 @@ async function main() {
 
   const puppeteer = await import("puppeteer");
   const browser = await puppeteer.default.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+    args: puppeteerLaunchArgs(),
   });
 
   let screenshot;
@@ -484,12 +549,13 @@ async function main() {
     await page.setViewport({ width: OUTPUT_WIDTH, height: 800, deviceScaleFactor: DEVICE_SCALE });
     await page.setContent(html, { waitUntil: "domcontentloaded" });
     await page.evaluate(() => document.fonts.ready);
-    const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
+    const bodyHeight = Math.ceil(await page.evaluate(() => document.body.scrollHeight));
     await page.setViewport({ width: OUTPUT_WIDTH, height: bodyHeight, deviceScaleFactor: DEVICE_SCALE });
     screenshot = await page.screenshot({
       type: "png",
       clip: { x: 0, y: 0, width: OUTPUT_WIDTH, height: bodyHeight },
     });
+    validateScreenshot(screenshot, bodyHeight);
   } finally {
     await browser.close();
   }

@@ -1,8 +1,8 @@
-// Pure unit tests - no network calls, no Puppeteer, no file I/O.
+// Pure unit tests - no network calls and no file I/O.
 // Imports only side-effect-free lib modules.
-import { buildLanguageSection } from "./generate-signals.mjs";
 import { ACCENTS, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
+import { languageSummary, renderRepositorySignSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
 
 let passed = 0;
@@ -181,24 +181,24 @@ assert("output includes language", "language" in first, true);
 assert("output includes pushed_at", "pushed_at" in first, true);
 assert("output includes stargazers_count", "stargazers_count" in first, true);
 
-// buildLanguageSection
+// languageSummary
 
-console.log("\nbuildLanguageSection");
+console.log("\nlanguageSummary");
 
-const languageHtml = buildLanguageSection([
+const languageNames = languageSummary([
   null,
   makeRepo("cboyd0319", 0, { language: "JavaScript" }),
   makeRepo("PyGuard", 1, { language: "Python" }),
   makeRepo("forked", 2, { fork: true, language: "Go" }),
   makeRepo("archived", 3, { archived: true, language: "Rust" }),
-]);
+]).map((item) => item.name);
 
-assert("profile repo language is excluded", languageHtml.includes("JavaScript"), false);
-assert("active repo language is included", languageHtml.includes("Python"), true);
-assert("fork language is excluded", languageHtml.includes("Go"), false);
-assert("archived language is excluded", languageHtml.includes("Rust"), false);
+assert("profile repo language is excluded", languageNames.includes("JavaScript"), false);
+assert("active repo language is included", languageNames.includes("Python"), true);
+assert("fork language is excluded", languageNames.includes("Go"), false);
+assert("archived language is excluded", languageNames.includes("Rust"), false);
 
-const manyLanguageHtml = buildLanguageSection([
+const manyLanguageSummary = languageSummary([
   makeRepo("python-a", 1, { language: "Python" }),
   makeRepo("python-b", 2, { language: "Python" }),
   makeRepo("python-c", 3, { language: "Python" }),
@@ -207,9 +207,50 @@ const manyLanguageHtml = buildLanguageSection([
   ),
 ]);
 
-assert("language overflow is grouped as Other", manyLanguageHtml.includes("<strong>Other</strong>"), true);
-assert("language legend stays capped", (manyLanguageHtml.match(/class=\"language-item\"/g) ?? []).length, 8);
-assert("top language percentage uses full total", manyLanguageHtml.includes("<em>25%</em>"), true);
+assert("language overflow is grouped as Other", manyLanguageSummary.some((item) => item.name === "Other"), true);
+assert("language summary stays capped", manyLanguageSummary.length, 4);
+assert("top language percentage uses full total", manyLanguageSummary[0].pct, 25);
+
+const weightedLanguageSummary = languageSummary([
+  makeRepo("ts", 1, { language: "TypeScript", language_pct: 25 }),
+  makeRepo("py", 2, { language: "Python", language_pct: 35 }),
+  makeRepo("sh", 3, { language: "Shell", language_pct: 25 }),
+  makeRepo("ps", 4, { language: "PowerShell", language_pct: 15 }),
+]).map(({ name, pct }) => ({ name, pct }));
+
+assertDeepEqual(
+  "weighted language percentages preserve static display order",
+  weightedLanguageSummary,
+  [
+    { name: "TypeScript", pct: 25 },
+    { name: "Python", pct: 35 },
+    { name: "Shell", pct: 25 },
+    { name: "PowerShell", pct: 15 },
+  ],
+);
+
+const escapedRepoSvg = renderRepositorySignSvg({
+  repos: [
+    makeRepo("<bad & repo>", 1, {
+      language: "TypeScript",
+      stargazers_count: 1,
+    }),
+  ],
+  allRepos: [
+    makeRepo("<bad & repo>", 1, {
+      language: "TypeScript",
+      stargazers_count: 1,
+    }),
+  ],
+  sparklines: [[0, 1, 0, 2, 0, 0, 0, 2, 3, 5]],
+  fontDataUrl: null,
+  width: 612,
+  height: 336,
+});
+
+assert("repository SVG uses requested dimensions", escapedRepoSvg.startsWith('<svg width="612" height="336" viewBox="0 0 612 336"'), true);
+assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
+assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
 
 // palette
 

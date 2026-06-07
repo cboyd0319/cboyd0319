@@ -463,8 +463,10 @@ The final workflow should separate **base image generation** from **data renderi
 ```text
 assets/subway_blank_original.png  # clean base image, no final overlays baked in
 assets/signals.png                # generated final output with overlays applied
+assets/generated/repository-sign.svg
+assets/generated/toolchain-spectrum.svg
 scripts/generate-overlays.mjs     # active overlay generator
-scripts/generate-signals.mjs      # legacy or alternate generator
+scripts/lib/svg.mjs               # SVG panel renderer
 scripts/optimize-signals.mjs      # optional optimization step
 ```
 
@@ -488,8 +490,10 @@ The overlay script should:
 
 - Read the real source image dimensions.
 - Scale coordinates from source-image pixels.
-- Render panels as sufficiently opaque to cover any baked-in sign remnants.
-- Validate screenshot output before writing.
+- Generate SVG panels for the main sign and toolchain sign.
+- Composite those SVG panels onto the blank base image with `sharp`.
+- Add subtle scanline, glow, and display texture in SVG.
+- Validate PNG output before writing.
 - Support static data mode for deterministic design output.
 - Support live GitHub data mode for automated profile updates.
 - Compute streak dynamically when live data is used.
@@ -506,9 +510,9 @@ BOARD_WIDTH=612
 BOARD_HEIGHT=336
 
 TOOLCHAIN_LEFT=1324
-TOOLCHAIN_TOP=644
-TOOLCHAIN_WIDTH=190
-TOOLCHAIN_HEIGHT=150
+TOOLCHAIN_TOP=628
+TOOLCHAIN_WIDTH=176
+TOOLCHAIN_HEIGHT=156
 ```
 
 These values may need minor adjustment if the base image is regenerated, cropped, resized, or recomposed.
@@ -518,13 +522,13 @@ These values may need minor adjustment if the base image is regenerated, cropped
 For a design-locked output:
 
 ```bash
-STATIC=1 OUTPUT_WIDTH=1672 DEVICE_SCALE=1 npm run generate
+STATIC=1 OUTPUT_WIDTH=1672 npm run generate
 ```
 
 For live GitHub output:
 
 ```bash
-GITHUB_TOKEN=your_token_here OUTPUT_WIDTH=1672 DEVICE_SCALE=1 npm run generate
+GITHUB_TOKEN=your_token_here OUTPUT_WIDTH=1672 npm run generate
 ```
 
 ### 11.6 Common overlay problems and fixes
@@ -794,7 +798,7 @@ Before accepting a final render:
 - [ ] `3W Streak` is visible in static mode, or dynamic streak is intentional.
 - [ ] `3W Streak` has not become `3% Streak`.
 - [ ] Toolchain Spectrum text is readable and not competing with the main sign.
-- [ ] Generated output passes screenshot validation.
+- [ ] Generated output passes PNG validation.
 - [ ] Final output is checked at GitHub display size.
 
 ---
@@ -806,7 +810,7 @@ Before accepting a final render:
 Use static mode when the visual design should remain locked:
 
 ```bash
-STATIC=1 OUTPUT_WIDTH=1672 DEVICE_SCALE=1 npm run generate
+STATIC=1 OUTPUT_WIDTH=1672 npm run generate
 ```
 
 Static mode is best for:
@@ -821,7 +825,7 @@ Static mode is best for:
 Use live mode when the image should reflect current GitHub data:
 
 ```bash
-GITHUB_TOKEN=your_token_here OUTPUT_WIDTH=1672 DEVICE_SCALE=1 npm run generate
+GITHUB_TOKEN=your_token_here OUTPUT_WIDTH=1672 npm run generate
 ```
 
 Live mode is best for:

@@ -46,4 +46,3 @@ export const ACCENTS = [
 ];
 
 export const OUTPUT_WIDTH = 1672;
-export const DEVICE_SCALE = 1;

@@ -97,6 +97,24 @@ jobs:
           commit_sha="$(git rev-parse HEAD)"
           git push --force-with-lease origin "HEAD:$UPDATE_BRANCH"
 
+          check_started=0
+          for attempt in {1..6}; do
+            status="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/check-runs?check_name=validate" \
+              --jq '.check_runs[0].status // ""')"
+
+            if [ -n "$status" ]; then
+              check_started=1
+              break
+            fi
+
+            sleep 5
+          done
+
+          if [ "$check_started" -eq 0 ]; then
+            gh workflow run ci.yml --ref "$UPDATE_BRANCH"
+          fi
+
           for attempt in {1..60}; do
             conclusion="$(gh api \
               "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/check-runs?check_name=validate" \

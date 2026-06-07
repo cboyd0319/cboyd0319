@@ -4,7 +4,7 @@ const FONT_URL_RE = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/;
 
 /**
  * Fetches Space Mono from Google Fonts and returns it as a base64 data URL
- * so Puppeteer can render the font without a second network call.
+ * so generated SVG panels can embed the font without a second network call.
  *
  * Returns { dataUrl: string } on success or { dataUrl: null } on any failure,
  * in which case the caller should fall back to a system monospace stack.

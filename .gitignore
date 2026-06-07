@@ -3,3 +3,6 @@ node_modules/
 
 # Local output from the optional animated banner helper.
 assets/banner.gif
+
+# Generated SVG panel previews from the signals compositor.
+assets/generated/

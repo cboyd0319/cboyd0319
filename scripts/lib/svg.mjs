@@ -162,7 +162,7 @@ export function renderRepositorySignSvg({ repos, allRepos, sparklines, fontDataU
 <rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.72"/>
 <rect width="${width}" height="${height}" fill="url(#display-vignette)" opacity="0.85"/>
 ${text("REPOSITORY SIGNALS", { x: 16, y: 30, size: 23, fill: "#f0dec5", weight: 700, extra: 'filter="url(#soft-glow)"' })}
-${text("リポジトリ・シグナル", { x: width - 14, y: 30, size: 12, fill: "#d7c2dc", anchor: "end", extra: 'filter="url(#soft-glow)"' })}
+${text("SHIBUYA SIGNAL", { x: width - 14, y: 30, size: 12, fill: "#d7c2dc", anchor: "end", extra: 'filter="url(#soft-glow)"' })}
 <line x1="14" y1="42" x2="${lineEnd}" y2="42" stroke="#b5d5dc" stroke-opacity="0.24"/>
 <line x1="14" y1="72" x2="${lineEnd}" y2="72" stroke="#b5d5dc" stroke-opacity="0.16"/>
 <line x1="${width / 3}" y1="45" x2="${width / 3}" y2="72" stroke="#b5d5dc" stroke-opacity="0.16"/>

@@ -251,6 +251,7 @@ const escapedRepoSvg = renderRepositorySignSvg({
 assert("repository SVG uses requested dimensions", escapedRepoSvg.startsWith('<svg width="612" height="336" viewBox="0 0 612 336"'), true);
 assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
+assert("repository SVG avoids unsupported CJK overlay label", escapedRepoSvg.includes("リポジトリ"), false);
 
 // palette
 

@@ -16,4 +16,12 @@ Run from the repo root with:
 npm run generate
 ```
 
+Smoke tests now use the committed static data by default so CI can verify generator wiring without depending on the live GitHub API. To force a live API smoke test, run:
+
+```bash
+npm run smoke -- --live
+# or
+LIVE_SMOKE=1 npm run smoke
+```
+
 For alignment tuning, keep using the environment variables already supported by the overlay script, such as `BOARD_LEFT`, `BOARD_TOP`, `BOARD_WIDTH`, `BOARD_HEIGHT`, `TOOLCHAIN_LEFT`, `TOOLCHAIN_TOP`, `TOOLCHAIN_WIDTH`, and `TOOLCHAIN_HEIGHT`.

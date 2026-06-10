@@ -11,7 +11,15 @@ const LOCAL_FONTS = [
 const FONT_SHEETS = [
   `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700&text=${encodeURIComponent("リポジトリ・シグナル渋谷新宿出口安全第一都市地下鉄未来を接続")}`,
 ];
-const FONT_URL_RE = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
+const FONT_URL_RE = /url\(\s*['"]?(https:\/\/fonts\.gstatic\.com\/[^'")\s]+)['"]?\s*\)/g;
+
+export function extractFontUrls(css) {
+  return [...new Set([...String(css).matchAll(FONT_URL_RE)].map((match) => match[1]))];
+}
+
+export function replaceFontUrlsWithDataUrls(css, fontDataUrls) {
+  return String(css).replace(FONT_URL_RE, (match, url) => fontDataUrls.get(url) ?? match);
+}
 
 /**
  * Fetches display fonts from Google Fonts and embeds font files into CSS
@@ -55,9 +63,10 @@ async function loadFontSheet(cssUrl) {
     if (!cssRes.ok) throw new Error(`Font CSS ${cssRes.status}`);
 
     let css = await cssRes.text();
-    const urls = [...new Set([...css.matchAll(FONT_URL_RE)].map((match) => match[1]))];
+    const urls = extractFontUrls(css);
     if (!urls.length) throw new Error("Font URL not found in CSS - Google Fonts format may have changed");
 
+    const fontDataUrls = new Map();
     for (const url of urls) {
       const fontRes = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!fontRes.ok) throw new Error(`Font file ${fontRes.status}`);
@@ -65,10 +74,10 @@ async function loadFontSheet(cssUrl) {
       const mediaType = fontRes.headers.get("content-type")?.split(";")[0] || "font/ttf";
       const buf = await fontRes.arrayBuffer();
       const dataUrl = `url("data:${mediaType};base64,${Buffer.from(buf).toString("base64")}")`;
-      css = css.replaceAll(`url(${url})`, dataUrl);
+      fontDataUrls.set(url, dataUrl);
     }
 
-    return css;
+    return replaceFontUrlsWithDataUrls(css, fontDataUrls);
   } catch (err) {
     console.warn(`Font load failed (${err.message}); using system fallback`);
     return "";

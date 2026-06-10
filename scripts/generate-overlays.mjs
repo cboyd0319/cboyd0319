@@ -6,7 +6,7 @@ import {
   OUTPUT_WIDTH as DEFAULT_OUTPUT_WIDTH,
   USERNAME,
 } from "./lib/config.mjs";
-import { github, githubParticipation } from "./lib/github.mjs";
+import { github } from "./lib/github.mjs";
 import { loadFontAsDataUrl } from "./lib/font.mjs";
 import {
   alphaMultiplyArgs,
@@ -90,10 +90,6 @@ function staticRepos(staticData) {
   }));
 }
 
-function staticParticipation(repoName, staticData) {
-  return staticData.repos.find((repo) => repo.name === repoName)?.sparkline ?? Array(10).fill(0);
-}
-
 function rectQuad(box) {
   return [
     { x: box.left, y: box.top },
@@ -143,9 +139,7 @@ async function fetchOwnerRepos() {
 async function collectData(staticData) {
   const allRepos = USE_STATIC_DATA ? staticRepos(staticData) : await fetchOwnerRepos();
   const repos = selectRepos(ownActiveRepos(allRepos), REPO_LIMIT);
-  const sparklines = USE_STATIC_DATA
-    ? repos.map((repo) => staticParticipation(repo.name, staticData))
-    : await Promise.all(repos.map((repo) => githubParticipation(USERNAME, repo.name)));
+  const sparklines = [];
   return { allRepos, repos, sparklines };
 }
 

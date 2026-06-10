@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises";
 
 import { LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { applyLayoutEnv } from "./generate-overlays.mjs";
+import { extractFontUrls, replaceFontUrlsWithDataUrls } from "./lib/font.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
 import { parseMagickVersion, perspectiveControlPoints, REQUIRED_MAGICK_VERSION } from "./lib/imagemagick.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
-import { validateSignals } from "./validate-signals.mjs";
+import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -298,6 +299,28 @@ assert(
   "0,0 445,55 500,0 945,64 500,160 945,207 0,160 445,220",
 );
 
+// font loader
+
+console.log("\nfont loader");
+
+const quotedFontA = "https://fonts.gstatic.com/s/notosansjp/v1/a.woff2";
+const quotedFontB = "https://fonts.gstatic.com/s/notosansjp/v1/b.woff2";
+const fontCss = [
+  `@font-face{src:url("${quotedFontA}") format("woff2")}`,
+  `@font-face{src:url('${quotedFontB}') format("woff2")}`,
+  `@font-face{src:url( ${quotedFontA} ) format("woff2")}`,
+  "@font-face{src:url(https://example.com/not-font.woff2) format(\"woff2\")}",
+].join("\n");
+const embeddedFontCss = replaceFontUrlsWithDataUrls(fontCss, new Map([
+  [quotedFontA, 'url("data:font/woff2;base64,AAA")'],
+  [quotedFontB, 'url("data:font/woff2;base64,BBB")'],
+]));
+
+assertDeepEqual("extracts quoted and unquoted Google font URLs", extractFontUrls(fontCss), [quotedFontA, quotedFontB]);
+assert("replaces quoted Google font URLs", embeddedFontCss.includes(quotedFontA) || embeddedFontCss.includes(quotedFontB), false);
+assert("keeps non-Google URLs untouched", embeddedFontCss.includes("https://example.com/not-font.woff2"), true);
+assert("embeds requested font data URLs", embeddedFontCss.includes("data:font/woff2;base64,AAA") && embeddedFontCss.includes("data:font/woff2;base64,BBB"), true);
+
 // config validation
 
 console.log("\nconfig validation");
@@ -335,6 +358,9 @@ assert("scene station code is M03", sceneConfig.station.code, "M03");
 assert("scene service title not duplicated as item", sceneConfig.servicePanel.items.includes(sceneConfig.servicePanel.title), false);
 assert("layout board inside source width", layoutConfig.board.left + layoutConfig.board.width <= layoutConfig.sourceWidth, true);
 assert("layout toolchain inside source height", layoutConfig.toolchain.top + layoutConfig.toolchain.height <= layoutConfig.sourceHeight, true);
+assertDeepEqual("validate default output size uses layout source", expectedOutputSize(layoutConfig, {}), { width: 1672, height: 941 });
+assertDeepEqual("validate output size honors OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "800" }), { width: 800, height: 450 });
+assertDeepEqual("validate output size ignores invalid OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "bad" }), { width: 1672, height: 941 });
 assert("static repository SVG uses plain station route label", staticRepoSvg.includes('data-station-code="M03"'), true);
 assert("static repository SVG omits top-right station label", staticRepoSvg.includes("新高円寺"), false);
 assert("static repository SVG uses time-first row", staticRepoSvg.includes(">32m<"), true);

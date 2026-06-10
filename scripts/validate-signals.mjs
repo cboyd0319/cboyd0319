@@ -220,6 +220,17 @@ export async function validateSignals({
   return true;
 }
 
+export function expectedOutputSize(layout, env = process.env) {
+  const outputWidthText = env.OUTPUT_WIDTH?.trim();
+  const outputWidth = outputWidthText ? Number(outputWidthText) : layout.sourceWidth;
+  const width = Number.isFinite(outputWidth) ? outputWidth : layout.sourceWidth;
+  const scale = width / layout.sourceWidth;
+  return {
+    width,
+    height: Math.round(layout.sourceHeight * scale),
+  };
+}
+
 async function main() {
   await ensureImageMagick();
   const output = join(ROOT_DIR, "assets/signals.png");
@@ -229,6 +240,7 @@ async function main() {
     readFile(join(ROOT_DIR, "config/layouts/subway-default.json"), "utf8").then(JSON.parse),
   ]);
   const { repositorySvg, toolchainSvg } = await readGeneratedSvgs(staticData, layout);
+  const { width, height } = expectedOutputSize(layout);
   await validateSignals({
     scene,
     staticData,
@@ -236,8 +248,8 @@ async function main() {
     repositorySvg,
     toolchainSvg,
     output,
-    width: layout.sourceWidth,
-    height: layout.sourceHeight,
+    width,
+    height,
   });
   console.log("Signals validation OK");
 }

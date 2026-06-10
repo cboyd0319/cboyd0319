@@ -30,8 +30,6 @@ async function waitForRetry(retryDelayMs) {
 }
 
 export async function github(path, { maxRetries = MAX_RETRIES, retryDelayMs = RETRY_DELAY_MS } = {}) {
-  let lastError;
-
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let response;
     try {
@@ -40,7 +38,6 @@ export async function github(path, { maxRetries = MAX_RETRIES, retryDelayMs = RE
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
     } catch (err) {
-      lastError = err;
       if (attempt < maxRetries) {
         await waitForRetry(retryDelayMs);
         continue;
@@ -57,8 +54,6 @@ export async function github(path, { maxRetries = MAX_RETRIES, retryDelayMs = RE
 
     throw new Error(`GitHub API ${response.status}: ${await response.text()}`);
   }
-
-  throw lastError;
 }
 
 export async function githubParticipation(

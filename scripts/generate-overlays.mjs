@@ -1,7 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { dirname, isAbsolute, join } from "node:path";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import sharp from "sharp";
+import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 
 import {
   OUTPUT_WIDTH as DEFAULT_OUTPUT_WIDTH,
@@ -9,6 +8,14 @@ import {
 } from "./lib/config.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
 import { loadFontAsDataUrl } from "./lib/font.mjs";
+import {
+  alphaMultiplyArgs,
+  ensureImageMagick,
+  identifyImage,
+  perspectiveControlPoints,
+  pngOutput,
+  runMagick,
+} from "./lib/imagemagick.mjs";
 import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { selectRepos } from "./lib/utils.mjs";
 import { validateSignals } from "./validate-signals.mjs";
@@ -22,17 +29,14 @@ const CONFIG_DIR = join(ROOT_DIR, "config");
 const BACKGROUND = process.env.BACKGROUND?.trim() || "subway_blank_original.png";
 const REPOS_PER_PAGE = 100;
 const MAX_REPO_PAGES = 10;
-const REPO_LIMIT = 4;
+const REPO_LIMIT = 2;
 const SMOKE = process.argv.includes("--smoke");
 const STATIC = ["1", "true", "yes"].includes(String(process.env.STATIC ?? "").toLowerCase());
 const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].includes(String(process.env.LIVE_SMOKE ?? "").toLowerCase());
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
-const RASTERIZER = process.env.RASTERIZER?.trim() || "sharp";
 const MIN_IMAGE_BYTES = 10_000;
-const PANEL_RASTER_SCALE = 4;
+const PANEL_RASTER_DENSITY = 288;
 const PANEL_SOFTEN_SIGMA = 0.025;
-const PANEL_SHADOW_OPACITY = 0.06;
-const PANEL_SHADOW_BLUR = 0.8;
 const FINAL_WARM_WASH_ALPHA = 0;
 const FINAL_FILM_GRAIN_OPACITY = 0;
 
@@ -173,12 +177,11 @@ function boxFromQuad(quad) {
   };
 }
 
-async function validateImage(buffer, expectedWidth) {
-  if (!buffer || buffer.byteLength < MIN_IMAGE_BYTES) {
+async function validateImage(path, expectedWidth) {
+  const [file, metadata] = await Promise.all([stat(path), identifyImage(path)]);
+  if (file.size < MIN_IMAGE_BYTES) {
     throw new Error("Generated signals.png is unexpectedly small.");
   }
-
-  const metadata = await sharp(buffer).metadata();
   if (metadata.width !== expectedWidth || !metadata.height || metadata.height <= 0) {
     throw new Error(`Generated signals.png has unexpected dimensions: ${metadata.width}x${metadata.height}`);
   }
@@ -234,241 +237,137 @@ function panelAbsorptionSvg(width, height) {
 </svg>`;
 }
 
-async function rasterizePanelBase(svg, { width, height }) {
-  if (RASTERIZER === "resvg") {
-    const { Resvg } = await import("@resvg/resvg-js");
-    const resvg = new Resvg(svg, {
-      fitTo: {
-        mode: "width",
-        value: width * PANEL_RASTER_SCALE,
-      },
-      font: {
-        loadSystemFonts: true,
-      },
-    });
-    return sharp(resvg.render().asPng())
-      .resize(width, height, { fit: "fill", kernel: "lanczos3" })
-      .ensureAlpha()
-      .png()
-      .toBuffer();
-  }
-
-  return sharp(Buffer.from(svg), { density: 72 * PANEL_RASTER_SCALE })
-    .resize(width, height, { fit: "fill", kernel: "lanczos3" })
-    .ensureAlpha()
-    .png()
-    .toBuffer();
-}
-
-async function renderPanelLayers(svg, { width, height, emissiveSvg = svg, shadowOpacity = PANEL_SHADOW_OPACITY, shadowBlur = PANEL_SHADOW_BLUR, panelSoftenSigma = PANEL_SOFTEN_SIGMA }) {
-  const base = await rasterizePanelBase(svg, { width, height });
-  const emissiveBase = await rasterizePanelBase(emissiveSvg, { width, height });
-
-  const panel = await softenReadablePanel(base, panelSoftenSigma);
-
-  const glow = await sharp(emissiveBase)
-    .blur(0.75)
-    .modulate({ brightness: 1.0, saturation: 0.9 })
-    .png()
-    .toBuffer();
-
-  const glass = await sharp(Buffer.from(panelGlassSvg(width, height)))
-    .png()
-    .toBuffer();
-  const absorption = await sharp(Buffer.from(panelAbsorptionSvg(width, height)))
-    .png()
-    .toBuffer();
-
-  const shadow = await sharp({
-    create: {
-      width,
-      height,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: shadowOpacity },
-    },
-  })
-    .blur(shadowBlur)
-    .png()
-    .toBuffer();
-
-  return { panel, glow, glass, absorption, shadow, emissive: emissiveBase };
-}
-
-async function renderOverlayCanvas(layers, { width, height, emissiveOpacity, panelOpacity, glassOpacity, throughGlassOpacity = 0 }) {
-  return sharp({
-    create: {
-      width,
-      height,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    },
-  })
-    .composite([
-      ...(emissiveOpacity > 0 ? [{
-        input: layers.glow,
-        blend: "screen",
-        opacity: emissiveOpacity,
-      }] : []),
-      {
-        input: layers.panel,
-        blend: "over",
-        opacity: panelOpacity,
-      },
-      ...(throughGlassOpacity > 0 ? [{
-        input: layers.absorption,
-        blend: "over",
-        opacity: throughGlassOpacity,
-      }] : []),
-      ...(glassOpacity > 0 ? [{
-        input: layers.glass,
-        blend: "screen",
-        opacity: glassOpacity,
-      }] : []),
-    ])
-    .png()
-    .toBuffer();
-}
-
-function solveLinearSystem(matrix, values) {
-  const n = values.length;
-  const a = matrix.map((row, i) => [...row, values[i]]);
-
-  for (let col = 0; col < n; col++) {
-    let pivot = col;
-    for (let row = col + 1; row < n; row++) {
-      if (Math.abs(a[row][col]) > Math.abs(a[pivot][col])) pivot = row;
-    }
-    if (Math.abs(a[pivot][col]) < 1e-12) throw new Error("Perspective transform is singular.");
-    [a[col], a[pivot]] = [a[pivot], a[col]];
-
-    const divisor = a[col][col];
-    for (let j = col; j <= n; j++) a[col][j] /= divisor;
-
-    for (let row = 0; row < n; row++) {
-      if (row === col) continue;
-      const factor = a[row][col];
-      for (let j = col; j <= n; j++) a[row][j] -= factor * a[col][j];
-    }
-  }
-
-  return a.map((row) => row[n]);
-}
-
-function homography(from, to) {
-  const matrix = [];
-  const values = [];
-  for (let i = 0; i < 4; i++) {
-    const { x, y } = from[i];
-    const u = to[i].x;
-    const v = to[i].y;
-    matrix.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
-    values.push(u);
-    matrix.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
-    values.push(v);
-  }
-  const [a, b, c, d, e, f, g, h] = solveLinearSystem(matrix, values);
-  return { a, b, c, d, e, f, g, h };
-}
-
-function projectPoint(transform, x, y) {
-  const denom = transform.g * x + transform.h * y + 1;
-  return {
-    x: (transform.a * x + transform.b * y + transform.c) / denom,
-    y: (transform.d * x + transform.e * y + transform.f) / denom,
-  };
-}
-
-function sampleBilinear(raw, width, height, x, y) {
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
-  const x1 = Math.min(width - 1, x0 + 1);
-  const y1 = Math.min(height - 1, y0 + 1);
-  const dx = x - x0;
-  const dy = y - y0;
-  const weights = [
-    [(1 - dx) * (1 - dy), x0, y0],
-    [dx * (1 - dy), x1, y0],
-    [(1 - dx) * dy, x0, y1],
-    [dx * dy, x1, y1],
-  ];
-  const out = [0, 0, 0, 0];
-  for (const [weight, sx, sy] of weights) {
-    const i = (sy * width + sx) * 4;
-    out[0] += raw[i] * weight;
-    out[1] += raw[i + 1] * weight;
-    out[2] += raw[i + 2] * weight;
-    out[3] += raw[i + 3] * weight;
-  }
-  return out.map((value) => Math.max(0, Math.min(255, Math.round(value))));
-}
-
-async function perspectiveWarpPng(input, { width, height, quad }) {
-  const src = await sharp(input).ensureAlpha().raw().toBuffer();
-  const bbox = boxFromQuad(quad);
-  const destinationToSource = homography(quad, [
-    { x: 0, y: 0 },
-    { x: width - 1, y: 0 },
-    { x: width - 1, y: height - 1 },
-    { x: 0, y: height - 1 },
+async function rasterizeSvg(svgPath, outputPath, { width, height }) {
+  await runMagick([
+    "-background",
+    "none",
+    "-density",
+    String(PANEL_RASTER_DENSITY),
+    svgPath,
+    "-resize",
+    `${width}x${height}!`,
+    "-alpha",
+    "on",
+    pngOutput(outputPath),
   ]);
-  const output = Buffer.alloc(bbox.width * bbox.height * 4);
+}
 
-  for (let y = 0; y < bbox.height; y++) {
-    for (let x = 0; x < bbox.width; x++) {
-      const globalX = bbox.left + x + 0.5;
-      const globalY = bbox.top + y + 0.5;
-      const source = projectPoint(destinationToSource, globalX, globalY);
-      if (source.x < 0 || source.y < 0 || source.x > width - 1 || source.y > height - 1) continue;
-      const [r, g, b, alpha] = sampleBilinear(src, width, height, source.x, source.y);
-      const i = (y * bbox.width + x) * 4;
-      output[i] = r;
-      output[i + 1] = g;
-      output[i + 2] = b;
-      output[i + 3] = alpha;
-    }
+async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_SIGMA) {
+  if (sigma <= 0) {
+    await copyFile(inputPath, outputPath);
+    return;
   }
+  if (sigma < 0.3) {
+    await runMagick([
+      inputPath,
+      "(",
+      inputPath,
+      "-blur",
+      "0x0.3",
+      "-alpha",
+      "on",
+      "-channel",
+      "A",
+      "-evaluate",
+      "multiply",
+      String(sigma / 0.3),
+      "+channel",
+      ")",
+      "-compose",
+      "Over",
+      "-composite",
+      pngOutput(outputPath),
+    ]);
+    return;
+  }
+  await runMagick([
+    inputPath,
+    "-blur",
+    `0x${sigma}`,
+    pngOutput(outputPath),
+  ]);
+}
+
+async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, { width, height, panelSoftenSigma = PANEL_SOFTEN_SIGMA }) {
+  const basePath = join(GENERATED_DIR, `${prefix}-base.png`);
+  const panelPath = join(GENERATED_DIR, `${prefix}.png`);
+  const emissivePath = join(GENERATED_DIR, `${prefix}-emissive.png`);
+  const glowPath = join(GENERATED_DIR, `${prefix}-glow.png`);
+  const glassSvgPath = join(GENERATED_DIR, `${prefix}-glass.svg`);
+  const glassPath = join(GENERATED_DIR, `${prefix}-glass.png`);
+  const absorptionSvgPath = join(GENERATED_DIR, `${prefix}-absorption.svg`);
+  const absorptionPath = join(GENERATED_DIR, `${prefix}-absorption.png`);
+
+  await Promise.all([
+    rasterizeSvg(svgPath, basePath, { width, height }),
+    rasterizeSvg(emissiveSvgPath, emissivePath, { width, height }),
+    writeFile(glassSvgPath, panelGlassSvg(width, height)),
+    writeFile(absorptionSvgPath, panelAbsorptionSvg(width, height)),
+  ]);
+  await Promise.all([
+    softenReadablePanel(basePath, panelPath, panelSoftenSigma),
+    rasterizeSvg(glassSvgPath, glassPath, { width, height }),
+    rasterizeSvg(absorptionSvgPath, absorptionPath, { width, height }),
+    runMagick([
+      emissivePath,
+      "-blur",
+      "0x0.75",
+      "-modulate",
+      "100,90,100",
+      pngOutput(glowPath),
+    ]),
+  ]);
 
   return {
-    input: await sharp(output, {
-      raw: {
-        width: bbox.width,
-        height: bbox.height,
-        channels: 4,
-      },
-    }).png().toBuffer(),
-    left: bbox.left,
-    top: bbox.top,
-    box: bbox,
+    panel: panelPath,
+    glow: glowPath,
+    glass: glassPath,
+    absorption: absorptionPath,
+    emissive: emissivePath,
   };
 }
 
-async function softenReadablePanel(base, sigma = PANEL_SOFTEN_SIGMA) {
-  if (sigma <= 0) return base;
-  if (sigma < 0.3) {
-    const blurred = await sharp(base).blur(0.3).png().toBuffer();
-    return sharp(base)
-      .composite([{ input: blurred, blend: "over", opacity: sigma / 0.3 }])
-      .png()
-      .toBuffer();
+async function renderOverlayCanvas(layers, outputPath, { width, height, emissiveOpacity, panelOpacity, glassOpacity, throughGlassOpacity = 0 }) {
+  const args = ["-size", `${width}x${height}`, "xc:none"];
+  if (emissiveOpacity > 0) {
+    args.push(...alphaMultiplyArgs(layers.glow, emissiveOpacity), "-compose", "Screen", "-composite");
   }
-
-  return sharp(base)
-    .blur(sigma)
-    .png()
-    .toBuffer();
+  args.push(...alphaMultiplyArgs(layers.panel, panelOpacity), "-compose", "Over", "-composite");
+  if (throughGlassOpacity > 0) {
+    args.push(...alphaMultiplyArgs(layers.absorption, throughGlassOpacity), "-compose", "Over", "-composite");
+  }
+  if (glassOpacity > 0) {
+    args.push(...alphaMultiplyArgs(layers.glass, glassOpacity), "-compose", "Screen", "-composite");
+  }
+  args.push(pngOutput(outputPath));
+  await runMagick(args);
 }
 
-async function colorWash(width, height, background) {
-  return sharp({
-    create: {
-      width,
-      height,
-      channels: 4,
-      background,
-    },
-  })
-    .png()
-    .toBuffer();
+async function perspectiveWarpPng(inputPath, outputPath, { width, height, quad, box }) {
+  await runMagick([
+    inputPath,
+    "-alpha",
+    "set",
+    "-virtual-pixel",
+    "transparent",
+    "-background",
+    "none",
+    "-define",
+    `distort:viewport=${box.width}x${box.height}+${box.left}+${box.top}`,
+    "+distort",
+    "Perspective",
+    perspectiveControlPoints(width, height, quad),
+    pngOutput(outputPath),
+  ]);
+}
+
+async function colorWash(path, { width, height, background }) {
+  await runMagick([
+    "-size",
+    `${width}x${height}`,
+    `xc:${background}`,
+    pngOutput(path),
+  ]);
 }
 
 function finalFilmGrainSvg(width, height) {
@@ -484,27 +383,35 @@ function finalFilmGrainSvg(width, height) {
 </svg>`;
 }
 
-async function applyFinalGrade(buffer, { width, height }) {
+async function applyFinalGrade(inputPath, outputPath, { width, height }) {
   if (FINAL_WARM_WASH_ALPHA <= 0 && FINAL_FILM_GRAIN_OPACITY <= 0) {
-    return buffer;
+    await copyFile(inputPath, outputPath);
+    return;
   }
 
-  const warmWash = await colorWash(width, height, {
-    r: 255,
-    g: 170,
-    b: 95,
-    alpha: FINAL_WARM_WASH_ALPHA,
-  });
-  const grain = Buffer.from(finalFilmGrainSvg(width, height));
+  const warmWashPath = join(GENERATED_DIR, "final-warm-wash.png");
+  const grainSvgPath = join(GENERATED_DIR, "final-film-grain.svg");
+  const grainPath = join(GENERATED_DIR, "final-film-grain.png");
+  await Promise.all([
+    colorWash(warmWashPath, { width, height, background: `rgba(255,170,95,${FINAL_WARM_WASH_ALPHA})` }),
+    writeFile(grainSvgPath, finalFilmGrainSvg(width, height)),
+  ]);
+  await rasterizeSvg(grainSvgPath, grainPath, { width, height });
 
-  return sharp(buffer)
-    .modulate({ brightness: 1.018, saturation: 0.985 })
-    .composite([
-      { input: warmWash, blend: "soft-light" },
-      { input: grain, blend: "overlay", opacity: FINAL_FILM_GRAIN_OPACITY },
-    ])
-    .png()
-    .toBuffer();
+  await runMagick([
+    inputPath,
+    "-modulate",
+    "101.8,98.5,100",
+    warmWashPath,
+    "-compose",
+    "SoftLight",
+    "-composite",
+    ...alphaMultiplyArgs(grainPath, FINAL_FILM_GRAIN_OPACITY),
+    "-compose",
+    "Overlay",
+    "-composite",
+    pngOutput(outputPath),
+  ]);
 }
 
 function expandedCrop(box, { width, height, pad = 16 }) {
@@ -520,29 +427,46 @@ function expandedCrop(box, { width, height, pad = 16 }) {
   };
 }
 
-async function writeDebugCrops(output, { board, toolchain, width, height }) {
+async function cropImage(inputPath, outputPath, box) {
+  await runMagick([
+    inputPath,
+    "-crop",
+    `${box.width}x${box.height}+${box.left}+${box.top}`,
+    "+repage",
+    pngOutput(outputPath),
+  ]);
+}
+
+async function writeDebugCrops(outputPath, { board, toolchain, width, height }) {
   const mainSign = expandedCrop(board, { width, height, pad: 18 });
   const toolSign = expandedCrop(toolchain, { width, height, pad: 12 });
-  const mainCrop = await sharp(output).extract(mainSign).png().toBuffer();
-  const toolCrop = await sharp(output).extract(toolSign).png().toBuffer();
+  const mainCropPath = join(GENERATED_DIR, "debug-main-sign.png");
+  const toolCropPath = join(GENERATED_DIR, "debug-toolchain.png");
   await Promise.all([
-    writeFile(join(GENERATED_DIR, "debug-full.png"), output),
-    writeFile(join(GENERATED_DIR, "debug-main-sign.png"), mainCrop),
-    writeFile(join(GENERATED_DIR, "debug-toolchain.png"), toolCrop),
-    writeFile(join(GENERATED_DIR, "debug-main-sign-2x.png"), await sharp(mainCrop).resize({ width: mainSign.width * 2 }).png().toBuffer()),
-    writeFile(join(GENERATED_DIR, "debug-toolchain-2x.png"), await sharp(toolCrop).resize({ width: toolSign.width * 2 }).png().toBuffer()),
-    writeFile(join(GENERATED_DIR, "debug-full-small.png"), await sharp(output).resize({ width: 640 }).png().toBuffer()),
-    writeFile(join(GENERATED_DIR, "debug-full-gray.png"), await sharp(output).grayscale().png().toBuffer()),
-    writeFile(join(GENERATED_DIR, "debug-full-blur2.png"), await sharp(output).blur(2).png().toBuffer()),
+    copyFile(outputPath, join(GENERATED_DIR, "debug-full.png")),
+    cropImage(outputPath, mainCropPath, mainSign),
+    cropImage(outputPath, toolCropPath, toolSign),
+    runMagick([outputPath, "-resize", "640x", pngOutput(join(GENERATED_DIR, "debug-full-small.png"))]),
+    runMagick([outputPath, "-colorspace", "Gray", pngOutput(join(GENERATED_DIR, "debug-full-gray.png"))]),
+    runMagick([outputPath, "-blur", "0x2", pngOutput(join(GENERATED_DIR, "debug-full-blur2.png"))]),
+  ]);
+  await Promise.all([
+    runMagick([mainCropPath, "-resize", `${mainSign.width * 2}x`, pngOutput(join(GENERATED_DIR, "debug-main-sign-2x.png"))]),
+    runMagick([toolCropPath, "-resize", `${toolSign.width * 2}x`, pngOutput(join(GENERATED_DIR, "debug-toolchain-2x.png"))]),
   ]);
 }
 
 async function main() {
+  const [{ version }] = await Promise.all([
+    ensureImageMagick(),
+    mkdir(OUT_DIR, { recursive: true }),
+    mkdir(GENERATED_DIR, { recursive: true }),
+  ]);
   const scene = await readJson(join(CONFIG_DIR, "scene.json"));
   const staticData = await readJson(join(CONFIG_DIR, "static-data.json"));
   const layout = applyLayoutEnv(await readJson(join(CONFIG_DIR, "layouts/subway-default.json")));
   const backgroundPath = isAbsolute(BACKGROUND) ? BACKGROUND : join(ASSET_DIR, BACKGROUND);
-  const metadata = await sharp(backgroundPath).metadata();
+  const metadata = await identifyImage(backgroundPath);
   const sourceWidth = metadata.width || layout.sourceWidth;
   const sourceHeight = metadata.height || layout.sourceHeight;
   const scale = OUTPUT_WIDTH / sourceWidth;
@@ -554,7 +478,7 @@ async function main() {
 
   const { allRepos, repos, sparklines } = await collectData(staticData);
   if (SMOKE) {
-    console.log(`Smoke OK - ${repos.length} repos, ${allRepos.length} total ${USE_STATIC_DATA ? "static" : "fetched"}, ${sourceWidth}x${sourceHeight} background`);
+    console.log(`Smoke OK - ImageMagick ${version}, ${repos.length} repos, ${allRepos.length} total ${USE_STATIC_DATA ? "static" : "fetched"}, ${sourceWidth}x${sourceHeight} background`);
     return;
   }
 
@@ -605,111 +529,115 @@ async function main() {
     outputHeight: toolchainDesign.height,
     emissiveOnly: true,
   });
-  const repositoryLayers = await renderPanelLayers(repositorySvg, {
+
+  const repositorySvgPath = join(GENERATED_DIR, "repository-sign.svg");
+  const repositoryEmissiveSvgPath = join(GENERATED_DIR, "repository-sign-emissive.svg");
+  const toolchainSvgPath = join(GENERATED_DIR, "toolchain-spectrum.svg");
+  const toolchainEmissiveSvgPath = join(GENERATED_DIR, "toolchain-spectrum-emissive.svg");
+  await Promise.all([
+    writeFile(repositorySvgPath, repositorySvg),
+    writeFile(repositoryEmissiveSvgPath, repositoryEmissiveSvg),
+    writeFile(toolchainSvgPath, toolchainSvg),
+    writeFile(toolchainEmissiveSvgPath, toolchainEmissiveSvg),
+  ]);
+
+  const repositoryLayers = await renderPanelLayers("repository-sign", repositorySvgPath, repositoryEmissiveSvgPath, {
     width: boardDesign.width,
     height: boardDesign.height,
-    emissiveSvg: repositoryEmissiveSvg,
-    shadowOpacity: 0,
-    panelSoftenSigma: 0.18,
+    panelSoftenSigma: 0.1,
   });
-  const toolchainLayers = await renderPanelLayers(toolchainSvg, {
+  const toolchainLayers = await renderPanelLayers("toolchain-spectrum", toolchainSvgPath, toolchainEmissiveSvgPath, {
     width: toolchainDesign.width,
     height: toolchainDesign.height,
-    emissiveSvg: toolchainEmissiveSvg,
-    shadowOpacity: 0,
-    panelSoftenSigma: 0.18,
-  });
-  const repositoryOverlay = await renderOverlayCanvas(repositoryLayers, {
-    width: boardDesign.width,
-    height: boardDesign.height,
-    emissiveOpacity: 0.01,
-    panelOpacity: 0.86,
-    glassOpacity: 0.005,
-    throughGlassOpacity: 0.045,
-  });
-  const toolchainOverlay = await renderOverlayCanvas(toolchainLayers, {
-    width: toolchainDesign.width,
-    height: toolchainDesign.height,
-    emissiveOpacity: 0.006,
-    panelOpacity: 0.78,
-    glassOpacity: 0.005,
-    throughGlassOpacity: 0.06,
-  });
-  const repositoryWarped = await perspectiveWarpPng(repositoryOverlay, {
-    width: boardDesign.width,
-    height: boardDesign.height,
-    quad: boardQuad,
-  });
-  const toolchainWarped = await perspectiveWarpPng(toolchainOverlay, {
-    width: toolchainDesign.width,
-    height: toolchainDesign.height,
-    quad: toolchainQuad,
+    panelSoftenSigma: 0.1,
   });
 
-  const composited = await sharp(backgroundPath)
-    .resize({ width: OUTPUT_WIDTH })
-    .composite([
-      {
-        input: repositoryWarped.input,
-        left: repositoryWarped.left,
-        top: repositoryWarped.top,
-        blend: "over",
-      },
-      {
-        input: toolchainWarped.input,
-        left: toolchainWarped.left,
-        top: toolchainWarped.top,
-        blend: "over",
-      },
-    ])
-    .png()
-    .toBuffer();
-  const output = await applyFinalGrade(composited, {
+  const repositoryOverlayPath = join(GENERATED_DIR, "repository-overlay.png");
+  const toolchainOverlayPath = join(GENERATED_DIR, "toolchain-overlay.png");
+  await Promise.all([
+    renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
+      width: boardDesign.width,
+      height: boardDesign.height,
+      emissiveOpacity: 0.01,
+      panelOpacity: 0.9,
+      glassOpacity: 0.005,
+      throughGlassOpacity: 0.035,
+    }),
+    renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
+      width: toolchainDesign.width,
+      height: toolchainDesign.height,
+      emissiveOpacity: 0.006,
+      panelOpacity: 0.82,
+      glassOpacity: 0.005,
+      throughGlassOpacity: 0.045,
+    }),
+  ]);
+
+  const repositoryWarpedPath = join(GENERATED_DIR, "repository-overlay-warped.png");
+  const toolchainWarpedPath = join(GENERATED_DIR, "toolchain-overlay-warped.png");
+  await Promise.all([
+    perspectiveWarpPng(repositoryOverlayPath, repositoryWarpedPath, {
+      width: boardDesign.width,
+      height: boardDesign.height,
+      quad: boardQuad,
+      box: board,
+    }),
+    perspectiveWarpPng(toolchainOverlayPath, toolchainWarpedPath, {
+      width: toolchainDesign.width,
+      height: toolchainDesign.height,
+      quad: toolchainQuad,
+      box: toolchain,
+    }),
+  ]);
+
+  const resizedBackgroundPath = join(GENERATED_DIR, "background-resized.png");
+  const compositedPath = join(GENERATED_DIR, "signals-composited.png");
+  const outputPath = join(OUT_DIR, "signals.png");
+  await runMagick([
+    backgroundPath,
+    "-resize",
+    `${OUTPUT_WIDTH}x`,
+    pngOutput(resizedBackgroundPath),
+  ]);
+  await runMagick([
+    resizedBackgroundPath,
+    repositoryWarpedPath,
+    "-geometry",
+    `+${board.left}+${board.top}`,
+    "-compose",
+    "Over",
+    "-composite",
+    toolchainWarpedPath,
+    "-geometry",
+    `+${toolchain.left}+${toolchain.top}`,
+    "-compose",
+    "Over",
+    "-composite",
+    pngOutput(compositedPath),
+  ]);
+  await applyFinalGrade(compositedPath, outputPath, {
     width: OUTPUT_WIDTH,
     height: outputHeight,
   });
 
-  await validateImage(output, OUTPUT_WIDTH);
+  await validateImage(outputPath, OUTPUT_WIDTH);
   await validateSignals({
     scene,
     staticData,
     layout,
     repositorySvg,
     toolchainSvg,
-    output,
+    output: outputPath,
     width: OUTPUT_WIDTH,
     height: outputHeight,
   });
-  await mkdir(OUT_DIR, { recursive: true });
-  await mkdir(GENERATED_DIR, { recursive: true });
-  await writeDebugCrops(output, {
+  await writeDebugCrops(outputPath, {
     board,
     toolchain,
     width: OUTPUT_WIDTH,
     height: outputHeight,
   });
-  await Promise.all([
-    writeFile(join(OUT_DIR, "signals.png"), output),
-    writeFile(join(GENERATED_DIR, "repository-sign.svg"), repositorySvg),
-    writeFile(join(GENERATED_DIR, "repository-sign-emissive.svg"), repositoryEmissiveSvg),
-    writeFile(join(GENERATED_DIR, "toolchain-spectrum.svg"), toolchainSvg),
-    writeFile(join(GENERATED_DIR, "toolchain-spectrum-emissive.svg"), toolchainEmissiveSvg),
-    writeFile(join(GENERATED_DIR, "repository-sign.png"), repositoryLayers.panel),
-    writeFile(join(GENERATED_DIR, "repository-sign-emissive.png"), repositoryLayers.emissive),
-    writeFile(join(GENERATED_DIR, "repository-sign-glow.png"), repositoryLayers.glow),
-    writeFile(join(GENERATED_DIR, "repository-sign-glass.png"), repositoryLayers.glass),
-    writeFile(join(GENERATED_DIR, "repository-sign-absorption.png"), repositoryLayers.absorption),
-    writeFile(join(GENERATED_DIR, "repository-overlay.png"), repositoryOverlay),
-    writeFile(join(GENERATED_DIR, "repository-overlay-warped.png"), repositoryWarped.input),
-    writeFile(join(GENERATED_DIR, "toolchain-spectrum.png"), toolchainLayers.panel),
-    writeFile(join(GENERATED_DIR, "toolchain-spectrum-emissive.png"), toolchainLayers.emissive),
-    writeFile(join(GENERATED_DIR, "toolchain-spectrum-glow.png"), toolchainLayers.glow),
-    writeFile(join(GENERATED_DIR, "toolchain-spectrum-glass.png"), toolchainLayers.glass),
-    writeFile(join(GENERATED_DIR, "toolchain-spectrum-absorption.png"), toolchainLayers.absorption),
-    writeFile(join(GENERATED_DIR, "toolchain-overlay.png"), toolchainOverlay),
-    writeFile(join(GENERATED_DIR, "toolchain-overlay-warped.png"), toolchainWarped.input),
-  ]);
-  console.log(`assets/signals.png written with ${repos.length} repo rows`);
+  console.log(`assets/signals.png written with ImageMagick ${version} and ${repos.length} repo rows`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

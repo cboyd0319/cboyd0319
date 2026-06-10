@@ -2,7 +2,7 @@
 
 This update addresses the remaining active issues in `generate-overlays.mjs`:
 
-- Replaced the browser screenshot path with generated SVG panels composited by `sharp`.
+- Replaced the browser screenshot path with generated SVG panels rasterized, warped, and composited by ImageMagick 7.1.2-25 `magick`.
 - Writes preview SVGs to `assets/generated/repository-sign.svg` and `assets/generated/toolchain-spectrum.svg`.
 - Replaced invalid `TOKYO_NEON_PALETTE.paleHaze` fallback with `TOKYO_NEON_PALETTE.haze`.
 - Added dynamic weekly streak calculation from participation sparklines.

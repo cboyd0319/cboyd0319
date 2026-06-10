@@ -149,7 +149,7 @@ function compactLanguage(language) {
 }
 
 function repoDisplayName(name, compact) {
-  return shortText(name, compact ? 20 : 22);
+  return shortText(name, compact ? 21 : 24);
 }
 
 function statusForRepo(repo, index) {
@@ -158,14 +158,16 @@ function statusForRepo(repo, index) {
   return ["ON", "ON", "CHECK", "IDLE"][index] ?? "ON";
 }
 
-function repoRowText(repo, { y, index, emissiveOnly = false }) {
+function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
   const updated = (repo.updated_label || relativeTime(repo.pushed_at)).replace(/\s+ago$/i, "");
   const status = statusForRepo(repo, index);
   const statusFill = status === "CHECK" ? SIGN_COLORS.accentAmber : SIGN_COLORS.textSecondary;
-  const statusOpacity = status === "IDLE" ? 0.58 : status === "CHECK" ? 0.8 : 0.68;
-  return `${text(updated, { x: 16, y, size: 12.1, fill: SIGN_COLORS.accentAmber, weight: 500, opacity: emissiveOnly ? 0.82 : 0.72, style: "letter-spacing:0.035em" })}
-${text(repoDisplayName(repo.name, true), { x: 56, y, size: 14.8, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 1 : 0.98, style: "letter-spacing:0.018em" })}
-${text(status, { x: 326, y, size: 12, fill: statusFill, weight: 500, opacity: emissiveOnly ? Math.min(0.9, statusOpacity + 0.1) : statusOpacity, style: "letter-spacing:0.04em" })}`;
+  const statusOpacity = status === "IDLE" ? 0.64 : status === "CHECK" ? 0.86 : 0.74;
+  const language = shortText(repo.language || "PUBLIC", 14);
+  return `${text(updated, { x: 16, y, size: 17.2, fill: SIGN_COLORS.accentAmber, weight: 650, opacity: emissiveOnly ? 0.92 : 0.8, style: "letter-spacing:0.035em" })}
+${text(repoDisplayName(repo.name, true), { x: 72, y, size: 23.2, fill: SIGN_COLORS.textPrimary, weight: 650, opacity: emissiveOnly ? 1 : 0.98, style: "letter-spacing:0.008em" })}
+${text(status, { x: 72, y: detailY, size: 15.6, fill: statusFill, weight: 650, opacity: emissiveOnly ? Math.min(0.92, statusOpacity + 0.08) : statusOpacity, style: "letter-spacing:0.055em" })}
+${text(language, { x: 155, y: detailY, size: 14.4, fill: SIGN_COLORS.textSecondary, weight: 500, opacity: emissiveOnly ? 0.74 : 0.58, style: "letter-spacing:0.05em" })}`;
 }
 
 function stationCodeLabel({ emissiveOnly = false } = {}) {
@@ -180,12 +182,14 @@ export function renderRepositorySignSvg({ repos, allRepos, sparklines, summary =
   const totalStars = Number.isFinite(Number(summary?.starsTotal))
     ? Number(summary.starsTotal)
     : activeRepos.reduce((sum, repo) => sum + Math.max(0, Number(repo.stargazers_count) || 0), 0);
-  const rowBaselines = [70, 96, 122, 148];
+  const rowBaselines = [78, 129];
+  const detailBaselines = [102, 153];
 
   const rows = repos.map((repo, index) => {
     const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
+    const detailBaseline = detailBaselines[index] ?? detailBaselines[detailBaselines.length - 1];
     return `<g data-repo="${escapeHtml(repo.name)}">
-  ${repoRowText(repo, { y: baseline, index, emissiveOnly })}
+  ${repoRowText(repo, { y: baseline, detailY: detailBaseline, index, emissiveOnly })}
 </g>`;
   }).join("");
 
@@ -196,11 +200,8 @@ export function renderRepositorySignSvg({ repos, allRepos, sparklines, summary =
 <rect width="${width}" height="${height}" fill="url(#glass-sheen)" opacity="0.004"/>
 <rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.036"/>
 <rect width="${width}" height="${height}" filter="url(#displayNoise)" opacity="0.026"/>`;
-  const structure = emissiveOnly ? "" : `<line x1="16" y1="53" x2="486" y2="53" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.2" stroke-width="2" filter="url(#soft-glow)"/>
-<line x1="16" y1="83" x2="486" y2="83" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.16"/>
-<line x1="16" y1="109" x2="486" y2="109" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.15"/>
-<line x1="16" y1="135" x2="486" y2="135" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.14"/>
-<line x1="16" y1="154" x2="486" y2="154" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.12"/>`;
+  const structure = emissiveOnly ? "" : `<line x1="16" y1="53" x2="486" y2="53" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.22" stroke-width="2" filter="url(#soft-glow)"/>
+<line x1="16" y1="113" x2="486" y2="113" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.14"/>`;
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
@@ -219,9 +220,9 @@ ${rows}
 
 export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const langs = languageSummary(allRepos);
-  const rowBaselines = [106, 132, 158, 184];
-  const codeOpacities = [0.8, 0.8, 0.74, 0.72];
-  const valueOpacities = [0.7, 0.7, 0.64, 0.62];
+  const rowBaselines = [118, 154, 190, 226];
+  const codeOpacities = [0.84, 0.82, 0.78, 0.76];
+  const valueOpacities = [0.76, 0.74, 0.7, 0.68];
   const signalRows = langs.map((lang, index) => {
     const y = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
     const compactName = {
@@ -231,8 +232,8 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
       PowerShell: "PS",
     }[lang.name] ?? lang.name;
     return `<g data-lang="${escapeHtml(lang.name)}">
-  ${text(compactName, { x: 28, y, size: 15.2, fill: SIGN_COLORS.textSecondary, weight: 500, opacity: emissiveOnly ? Math.min(0.9, codeOpacities[index] + 0.08) : codeOpacities[index], style: "letter-spacing:0.07em" })}
-  ${text(`${String(lang.pct)}%`, { x: 56, y, size: 15.2, fill: SIGN_COLORS.textSecondary, weight: 500, opacity: emissiveOnly ? Math.min(0.78, valueOpacities[index] + 0.08) : valueOpacities[index], style: "letter-spacing:0.07em" })}
+  ${text(compactName, { x: 22, y, size: 23.4, fill: SIGN_COLORS.textSecondary, weight: 650, opacity: emissiveOnly ? Math.min(0.92, codeOpacities[index] + 0.08) : codeOpacities[index], style: "letter-spacing:0.045em" })}
+  ${text(`${String(lang.pct)}%`, { x: 69, y, size: 23.4, fill: SIGN_COLORS.textSecondary, weight: 650, opacity: emissiveOnly ? Math.min(0.84, valueOpacities[index] + 0.08) : valueOpacities[index], style: "letter-spacing:0.035em" })}
 </g>`;
   }).join("");
   const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.076"/>
@@ -248,9 +249,9 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
 <g clip-path="url(#display-clip)">
 ${surface}
 <g>
-${emissiveOnly ? "" : `<line x1="28" y1="45" x2="120" y2="45" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.2" stroke-width="2" filter="url(#soft-glow)"/>`}
-${text("M03 SERVICE", { x: 28, y: 63, size: 10.6, fill: SIGN_COLORS.accentAmber, weight: 500, opacity: emissiveOnly ? 0.86 : 0.74, style: "letter-spacing:0.075em" })}
-${text("TOOLCHAIN", { x: 28, y: 82, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.9 : 0.8, style: "letter-spacing:0.075em" })}
+${emissiveOnly ? "" : `<line x1="22" y1="44" x2="122" y2="44" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.2" stroke-width="2" filter="url(#soft-glow)"/>`}
+${text("M03 SERVICE", { x: 22, y: 66, size: 11.8, fill: SIGN_COLORS.accentAmber, weight: 650, opacity: emissiveOnly ? 0.9 : 0.78, style: "letter-spacing:0.07em" })}
+${text("TOOLCHAIN", { x: 22, y: 91, size: 16.8, fill: SIGN_COLORS.textPrimary, weight: 650, opacity: emissiveOnly ? 0.92 : 0.84, style: "letter-spacing:0.06em" })}
 ${signalRows}
 </g>
 </g>

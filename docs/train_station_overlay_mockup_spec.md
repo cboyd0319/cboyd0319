@@ -42,14 +42,16 @@ Use **two transparent overlay canvases**, then perspective-warp each canvas onto
 
 Do **not** draw opaque cards, panels, rounded boxes, dashboard containers, or chart backgrounds. The physical black display surface already exists in the artwork. The overlay should be text and subtle surface treatment only.
 
+ImageMagick 7.1.2-25 `magick` CLI is the required raster pipeline. JavaScript may fetch public data and emit SVG/text templates, but ImageMagick owns SVG rasterization, opacity/glass composition, blur/softness, perspective distortion, scene compositing, resizing, metadata inspection, PNG optimization, and debug crops. Do not use custom JavaScript homography/pixel sampling, Sharp, resvg, browser screenshots, or dashboard renderers for these raster steps.
+
 ### Recommended render pipeline
 
-1. Render each overlay to its own transparent canvas.
-2. Add very faint screen-surface effects to that canvas.
-3. Apply slight raster softness.
-4. Perspective-warp the canvas into the screen quad.
-5. Composite with normal/source-over blending.
-6. Add a final unified grain/noise pass over the entire image only if needed.
+1. Render each SVG overlay to a transparent PNG canvas with `magick`.
+2. Add very faint screen-surface effects with `magick` alpha/compose operations.
+3. Apply slight raster softness with `magick -blur`.
+4. Perspective-warp the canvas into the screen quad with `magick +distort Perspective`.
+5. Composite with normal/source-over blending through `magick -compose Over -composite`.
+6. Add a final unified grain/noise pass with `magick` only if needed.
 
 ### Oversampling
 
@@ -318,8 +320,9 @@ usable width:      464 px
 
 ```txt
 time column x:      16 px
-repo name x:        56 px
-status column x:    326 px
+repo name x:        72 px
+detail/status x:    72 px
+language x:         155 px
 right-aligned edge: 482 px
 ```
 
@@ -327,10 +330,10 @@ right-aligned edge: 482 px
 
 ```txt
 title baseline:     35 px
-row 1 baseline:     70 px
-row 2 baseline:     96 px
-row 3 baseline:     122 px
-row 4 baseline:     148 px
+row 1 repo:         78 px
+row 1 detail:       102 px
+row 2 repo:         129 px
+row 2 detail:       153 px
 ```
 
 ### Divider lines
@@ -339,7 +342,7 @@ Use one station-style red rule and faint row discipline:
 
 ```txt
 Marunouchi stripe y: 53 px
-row rules y:        83, 109, 135, 154 px
+row rule y:         113 px
 ```
 
 Both should be extremely faint. No visible table grid.
@@ -353,13 +356,14 @@ Final text block:
 ```txt
 M03 REPOSITORY SIGNALS                         新高円寺
 
-32m   JobSentinel              ON
-2w    PyGuard                  ON
-1mo   WormsWMD-macOS-Fix       CHECK
-6mo   PoshGuard                IDLE
+32m   JobSentinel
+      ON        TypeScript
+
+2w    PyGuard
+      ON        Python
 ```
 
-This should read like a station/service board, not like repository analytics.
+Show the two most recently updated public owner repositories. This should read like a station/service board, not like repository analytics.
 
 ---
 
@@ -391,33 +395,19 @@ softness: 0.2–0.3 px
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `32m` | 16 | 70 | left | 12.1 px | 0.035em | `--accent-amber` | 0.72 |
-| Repo | `JobSentinel` | 56 | 70 | left | 14.8 px | 0.018em | `--text-primary` | 0.98 |
-| Status | `ON` | 326 | 70 | left | 12.0 px | 0.04em | `--text-secondary` | 0.68 |
+| Time | `32m` | 16 | 78 | left | 17.2 px | 0.035em | `--accent-amber` | 0.80 |
+| Repo | `JobSentinel` | 72 | 78 | left | 23.2 px | 0.008em | `--text-primary` | 0.98 |
+| Status | `ON` | 72 | 102 | left | 15.6 px | 0.055em | `--text-secondary` | 0.74 |
+| Language | `TypeScript` | 155 | 102 | left | 14.4 px | 0.05em | `--text-secondary` | 0.58 |
 
 ### Row 2
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `2w` | 16 | 96 | left | 12.1 px | 0.035em | `--accent-amber` | 0.72 |
-| Repo | `PyGuard` | 56 | 96 | left | 14.8 px | 0.018em | `--text-primary` | 0.98 |
-| Status | `ON` | 326 | 96 | left | 12.0 px | 0.04em | `--text-secondary` | 0.68 |
-
-### Row 3
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `1mo` | 16 | 122 | left | 12.1 px | 0.035em | `--accent-amber` | 0.72 |
-| Repo | `WormsWMD-macOS-Fix` | 56 | 122 | left | 14.8 px | 0.018em | `--text-primary` | 0.98 |
-| Status | `CHECK` | 326 | 122 | left | 12.0 px | 0.04em | `--accent-amber` | 0.80 |
-
-### Row 4
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `6mo` | 16 | 148 | left | 12.1 px | 0.035em | `--accent-amber` | 0.72 |
-| Repo | `PoshGuard` | 56 | 148 | left | 14.8 px | 0.018em | `--text-primary` | 0.98 |
-| Status | `IDLE` | 326 | 148 | left | 12.0 px | 0.04em | `--text-secondary` | 0.58 |
+| Time | `2w` | 16 | 129 | left | 17.2 px | 0.035em | `--accent-amber` | 0.80 |
+| Repo | `PyGuard` | 72 | 129 | left | 23.2 px | 0.008em | `--text-primary` | 0.98 |
+| Status | `ON` | 72 | 153 | left | 15.6 px | 0.055em | `--text-secondary` | 0.74 |
+| Language | `Python` | 155 | 153 | left | 14.4 px | 0.05em | `--text-secondary` | 0.58 |
 
 ---
 
@@ -440,7 +430,7 @@ lamp size:      5 × 5 px
 lamp gap:       4 px
 lamp group x:   438 px
 lamp y offset:  baseline - 5 px
-lamp count:     4 max
+lamp count:     2 max
 opacity:        0.20–0.34
 ```
 
@@ -449,8 +439,6 @@ opacity:        0.20–0.34
 ```txt
 Row 1: ■ ■ ■ □
 Row 2: ■ ■ □ □
-Row 3: ■ ■ ■ □
-Row 4: ■ □ □ □
 ```
 
 If lamps are used, reduce status-word opacity by about `0.08` or remove the status words. Do not use both at full strength.
@@ -503,28 +491,28 @@ The Toolchain panel should feel like a **narrow station maintenance / subsystem 
 ## 8.2 Toolchain Layout Grid
 
 ```txt
-left margin:       30 px
-right margin:      28 px
+left margin:       22 px
+right margin:      22 px
 top visual center: slightly above center
 ```
 
 ### Column positions
 
 ```txt
-code column x:      28 px
-value column x:     56 px
+code column x:      22 px
+value column x:     69 px
 ```
 
 ### Baselines
 
 ```txt
-header rule y:       45 px
-header baseline:    63 px
-title baseline:     82 px
-row 1 baseline:     106 px
-row 2 baseline:     132 px
-row 3 baseline:     158 px
-row 4 baseline:     184 px
+header rule y:       44 px
+header baseline:    66 px
+title baseline:     91 px
+row 1 baseline:     118 px
+row 2 baseline:     154 px
+row 3 baseline:     190 px
+row 4 baseline:     226 px
 ```
 
 This top-anchors the text block like a service readout and leaves enough dark glass beneath it to preserve secondary-panel restraint.
@@ -553,17 +541,17 @@ PS     15%
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Header | `M03 SERVICE` | 28 | 63 | left | 10.6 px | 0.075em | `--accent-amber` | 0.74 |
-| Title | `TOOLCHAIN` | 28 | 82 | left | 13.2 px | 0.075em | `--text-primary` | 0.80 |
+| Header | `M03 SERVICE` | 22 | 66 | left | 11.8 px | 0.07em | `--accent-amber` | 0.78 |
+| Title | `TOOLCHAIN` | 22 | 91 | left | 16.8 px | 0.06em | `--text-primary` | 0.84 |
 
 ### Header rule
 
 Use a thin station-style red rule above the header.
 
 ```txt
-x1: 28
-x2: 120
-y: 45
+x1: 22
+x2: 122
+y: 44
 stroke: --marunouchi-red
 opacity: 0.20
 width: 2 px
@@ -577,29 +565,29 @@ Do not make the rule obvious. If it looks like UI furniture, dim it.
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `TS` | 28 | 106 | left | 15.2 px | 0.07em | `--text-secondary` | 0.80 |
-| Value | `25%` | 56 | 106 | left | 15.2 px | 0.07em | `--text-secondary` | 0.70 |
+| Code | `TS` | 22 | 118 | left | 23.4 px | 0.045em | `--text-secondary` | 0.84 |
+| Value | `25%` | 69 | 118 | left | 23.4 px | 0.035em | `--text-secondary` | 0.76 |
 
 ### Row 2
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PY` | 28 | 132 | left | 15.2 px | 0.07em | `--text-secondary` | 0.80 |
-| Value | `35%` | 56 | 132 | left | 15.2 px | 0.07em | `--text-secondary` | 0.70 |
+| Code | `PY` | 22 | 154 | left | 23.4 px | 0.045em | `--text-secondary` | 0.82 |
+| Value | `35%` | 69 | 154 | left | 23.4 px | 0.035em | `--text-secondary` | 0.74 |
 
 ### Row 3
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `SH` | 28 | 158 | left | 15.2 px | 0.07em | `--text-secondary` | 0.74 |
-| Value | `25%` | 56 | 158 | left | 15.2 px | 0.07em | `--text-secondary` | 0.64 |
+| Code | `SH` | 22 | 190 | left | 23.4 px | 0.045em | `--text-secondary` | 0.78 |
+| Value | `25%` | 69 | 190 | left | 23.4 px | 0.035em | `--text-secondary` | 0.70 |
 
 ### Row 4
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PS` | 28 | 184 | left | 15.2 px | 0.07em | `--text-secondary` | 0.72 |
-| Value | `15%` | 56 | 184 | left | 15.2 px | 0.07em | `--text-secondary` | 0.62 |
+| Code | `PS` | 22 | 226 | left | 23.4 px | 0.045em | `--text-secondary` | 0.76 |
+| Value | `15%` | 69 | 226 | left | 23.4 px | 0.035em | `--text-secondary` | 0.68 |
 
 ---
 
@@ -731,7 +719,7 @@ canvas (144, 420)   -> image (1447, 606)
 canvas (0, 420)     -> image (1320, 582)
 ```
 
-If using ImageMagick-style perspective distortion, the concept is:
+Use ImageMagick perspective distortion. The concept is:
 
 ```txt
 0,0        targetTL
@@ -740,7 +728,15 @@ W,H        targetBR
 0,H        targetBL
 ```
 
-Do the warp after rendering and softening the overlay canvas.
+Use a transparent virtual pixel and an explicit cropped output viewport:
+
+```txt
+-virtual-pixel transparent -background none
+-define distort:viewport=${cropWidth}x${cropHeight}+${cropLeft}+${cropTop}
++distort Perspective '<source/target control points>'
+```
+
+Do the warp after rendering and softening the overlay canvas. Composite the cropped warped overlay over the resized background with explicit `-geometry +${cropLeft}+${cropTop}` and `-compose Over -composite`.
 
 ---
 
@@ -782,6 +778,12 @@ no dashboard-card boundary
 no chart-like objects
 ```
 
+## GitHub profile scale test
+
+Resize the final image to about 1070 px wide, matching the common desktop
+profile display width. The two repository names and the four Toolchain rows
+should still be readable without opening the image in a new tab.
+
 ## Failure signs
 
 The overlay is wrong if you see any of these:
@@ -807,27 +809,27 @@ Use these exact defaults first. Do not tune until you see the full-image result.
 
 ```txt
 canvas:              500 × 160
-primary text opacity: 0.82 title, 0.82 repo names
-secondary opacity:    0.48–0.64
-accent opacity:       0.38–0.66
-softness:             0.22 px
+primary text opacity: 0.84 title, 0.98 repo names
+secondary opacity:    0.58–0.74
+accent opacity:       0.74–0.86
+softness:             0.10 px
 surface haze:         0.035 plus powered wash 0.045
 noise:                0.018
-layer opacity:        0.86
+layer opacity:        0.90
 status lamps:         off
-footer:               on
+footer:               off
 ```
 
 ## Toolchain defaults
 
 ```txt
 canvas:              144 × 420
-primary text opacity: 0.76 title, 0.60–0.66 rows
-secondary opacity:    0.48–0.54 values
-softness:             0.24 px
+primary text opacity: 0.84 title, 0.76–0.84 rows
+secondary opacity:    0.68–0.76 values
+softness:             0.10 px
 surface haze:         0.040 plus powered wash 0.042
 noise:                0.020
-layer opacity:        0.78
+layer opacity:        0.82
 ticks:                off
 footer:               off
 divider:              off

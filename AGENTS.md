@@ -4,6 +4,8 @@
 
 This is the `cboyd0319` GitHub profile README repository. The profile README must contain exactly two centered images: top `assets/tokyo-neon-city.png` and bottom `assets/signals.png`. The top image is static and should not be regenerated. The bottom image is generated from `assets/subway_blank_original.png` plus overlays based on public GitHub repository data. Keep the repository public and keep root `README.md` non-empty.
 
+ImageMagick 7.1.2-25 `magick` CLI owns all raster image work: SVG rasterization, glass/opacity composition, perspective warp, resizing, metadata inspection, PNG optimization, debug crops, grayscale previews, and image comparison. JavaScript owns public GitHub data collection, deterministic fixtures, layout math, validation rules, and SVG/text template generation only. Do not reintroduce custom JavaScript pixel homography/compositing or Sharp/resvg raster pipelines. Local default command path is `/opt/homebrew/opt/imagemagick-full/bin/magick`; CI installs the pinned source release with `scripts/install-imagemagick-ci.sh`.
+
 ## Project Structure
 
 - `README.md`: profile content, limited to the two image tags.
@@ -18,6 +20,7 @@ This is the `cboyd0319` GitHub profile README repository. The profile README mus
 ## Build and Test Commands
 
 Use Node from `.node-version` and install with `npm ci`.
+Use ImageMagick 7.1.2-25. Locally, `imagemagick-full` is expected at `/opt/homebrew/opt/imagemagick-full/`; set `MAGICK_BIN` only if `magick` lives elsewhere.
 
 - `npm run generate`: render `assets/signals.png` from live public GitHub data.
 - `STATIC=1 npm run generate`: deterministic render using `config/static-data.json`.
@@ -28,10 +31,11 @@ Use Node from `.node-version` and install with `npm ci`.
 - `npm test`: run focused custom tests in `scripts/test-utils.mjs`.
 - `npm run check`: syntax-check scripts listed in `scripts/check-syntax.mjs`.
 - `npm run audit`: run `npm audit --audit-level=moderate`.
+- `npm run render-magick-panels`: rasterize generated SVG panels with ImageMagick for inspection.
 
 ## Code Style Guidelines
 
-Use ESM JavaScript (`"type": "module"`), two-space indentation, `const`/`let`, and explicit `node:` imports. Prefer small functions, repo-relative paths, deterministic static fixtures, and standard library APIs over ad hoc parsing. Name scripts by action, for example `generate-overlays.mjs`, `validate-signals.mjs`, and `optimize-signals.mjs`. Keep comments short and only where they clarify non-obvious rendering or validation logic.
+Use ESM JavaScript (`"type": "module"`), two-space indentation, `const`/`let`, and explicit `node:` imports. Prefer small functions, repo-relative paths, deterministic static fixtures, and standard library APIs over ad hoc parsing. Name scripts by action, for example `generate-overlays.mjs`, `validate-signals.mjs`, and `optimize-signals.mjs`. Keep comments short and only where they clarify non-obvious rendering or validation logic. Call ImageMagick through `scripts/lib/imagemagick.mjs` argument arrays; do not build shell command strings for perspective control points or paths.
 
 ## Testing Instructions
 
@@ -45,7 +49,7 @@ Use public GitHub data only. Do not display private repository names, private or
 
 ## Dependency Pinning Contract
 
-All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and script-downloaded tools. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin runners, for example `ubuntu-24.04`.
+All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and script-downloaded tools. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin runners, for example `ubuntu-24.04`. Pin ImageMagick to source release `7.1.2-25` and SHA-256 in `scripts/install-imagemagick-ci.sh`; local and CI runs must fail fast on any other `magick` version.
 
 ## Assets, Data, and Large Files
 

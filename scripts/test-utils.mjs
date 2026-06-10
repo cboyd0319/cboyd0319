@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { ACCENTS, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { applyLayoutEnv } from "./generate-overlays.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
+import { parseMagickVersion, perspectiveControlPoints, REQUIRED_MAGICK_VERSION } from "./lib/imagemagick.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
 import { validateSignals } from "./validate-signals.mjs";
@@ -274,6 +275,26 @@ assert("toolchain SVG clips overlay paint inside sign display", toolchainSvg.inc
 assert("toolchain SVG uses abbreviated TypeScript label", toolchainSvg.includes(">TS<"), true);
 assert("toolchain SVG keeps full TypeScript name in metadata", toolchainSvg.includes('data-lang="TypeScript"'), true);
 
+// ImageMagick helper
+
+console.log("\nimagemagick helper");
+
+assert(
+  "parses required ImageMagick version",
+  parseMagickVersion(`Version: ImageMagick ${REQUIRED_MAGICK_VERSION} Q16-HDRI aarch64`),
+  REQUIRED_MAGICK_VERSION,
+);
+assert(
+  "perspective control points map source corners to target quad",
+  perspectiveControlPoints(500, 160, [
+    { x: 393, y: 56 },
+    { x: 893, y: 60 },
+    { x: 891, y: 214 },
+    { x: 393, y: 212 },
+  ]),
+  "0,0 393,56 500,0 893,60 500,160 891,214 0,160 393,212",
+);
+
 // config validation
 
 console.log("\nconfig validation");
@@ -281,31 +302,24 @@ console.log("\nconfig validation");
 const sceneConfig = JSON.parse(await readFile("config/scene.json", "utf8"));
 const staticDataConfig = JSON.parse(await readFile("config/static-data.json", "utf8"));
 const layoutConfig = JSON.parse(await readFile("config/layouts/subway-default.json", "utf8"));
+const staticReposForTests = staticDataConfig.repos.map((repo, index) => makeRepo(repo.name, index + 1, {
+  language: repo.language,
+  language_pct: repo.language_pct,
+  updated_label: repo.updated,
+  stargazers_count: repo.stars,
+}));
+const selectedStaticRepos = selectRepos(staticReposForTests, 2);
 const staticRepoSvg = renderRepositorySignSvg({
-  repos: staticDataConfig.repos.map((repo) => makeRepo(repo.name, 1, {
-    language: repo.language,
-    language_pct: repo.language_pct,
-    updated_label: repo.updated,
-    stargazers_count: repo.stars,
-  })),
-  allRepos: staticDataConfig.repos.map((repo) => makeRepo(repo.name, 1, {
-    language: repo.language,
-    language_pct: repo.language_pct,
-    updated_label: repo.updated,
-    stargazers_count: repo.stars,
-  })),
-  sparklines: staticDataConfig.repos.map((repo) => repo.sparkline),
+  repos: selectedStaticRepos,
+  allRepos: staticReposForTests,
+  sparklines: selectedStaticRepos.map((repo) => staticDataConfig.repos.find((item) => item.name === repo.name)?.sparkline ?? []),
   summary: staticDataConfig.summary,
   fontDataUrl: null,
   width: layoutConfig.board.designWidth,
   height: layoutConfig.board.designHeight,
 });
 const staticToolchainSvg = renderToolchainSpectrumSvg({
-  allRepos: staticDataConfig.repos.map((repo) => makeRepo(repo.name, 1, {
-    language: repo.language,
-    language_pct: repo.language_pct,
-    stargazers_count: repo.stars,
-  })),
+  allRepos: staticReposForTests,
   fontDataUrl: null,
   width: layoutConfig.toolchain.designWidth,
   height: layoutConfig.toolchain.designHeight,
@@ -322,7 +336,9 @@ assert("static repository SVG uses plain station route label", staticRepoSvg.inc
 assert("static repository SVG uses station target label", staticRepoSvg.includes("新高円寺"), true);
 assert("static repository SVG uses time-first row", staticRepoSvg.includes(">32m<"), true);
 assert("static repository SVG keeps JobSentinel row", staticRepoSvg.includes("JobSentinel"), true);
-assert("static repository SVG keeps Worms repo spelling", staticRepoSvg.includes("WormsWMD-macOS-Fix"), true);
+assert("static repository SVG keeps second most recently updated row", staticRepoSvg.includes("PyGuard"), true);
+assert("static repository SVG omits older Worms row", staticRepoSvg.includes("WormsWMD-macOS-Fix"), false);
+assert("static repository SVG omits older PoshGuard row", staticRepoSvg.includes("PoshGuard"), false);
 assert("static repository SVG rejects Norms typo", staticRepoSvg.includes("Norms macOS Fix"), false);
 assert("static repository SVG keeps station status", staticRepoSvg.includes(">ON<"), true);
 assert("static repository SVG removes language-code table column", staticRepoSvg.includes(">TS<"), false);

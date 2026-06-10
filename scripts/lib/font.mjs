@@ -15,7 +15,7 @@ const FONT_URL_RE = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
 
 /**
  * Fetches display fonts from Google Fonts and embeds font files into CSS
- * so generated SVG panels can render consistently in sharp and GitHub Actions.
+ * so generated SVG panels can render consistently through ImageMagick and GitHub Actions.
  *
  * Returns { css: string } on success or { css: "" } on any failure,
  * in which case the caller should fall back to the station-signage sans stack.

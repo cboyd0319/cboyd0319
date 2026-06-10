@@ -10,7 +10,8 @@
   "scripts": {
     "prepare-blank": "node scripts/prepare-blank.mjs",
     "generate": "node scripts/generate-overlays.mjs",
-    "compare-rasterizers": "node scripts/compare-rasterizers.mjs",
+    "compare-rasterizers": "node scripts/render-magick-panels.mjs",
+    "render-magick-panels": "node scripts/render-magick-panels.mjs",
     "optimize": "node scripts/optimize-signals.mjs",
     "optimize:web": "node scripts/optimize-signals.mjs --web",
     "optimize-signals": "node scripts/optimize-signals.mjs",
@@ -19,12 +20,5 @@
     "test": "node scripts/test-utils.mjs",
     "check": "node scripts/check-syntax.mjs",
     "audit": "npm audit --audit-level=moderate"
-  },
-  "devDependencies": {
-    "@resvg/resvg-js": "2.6.2",
-    "sharp": "0.34.5"
-  },
-  "allowScripts": {
-    "sharp@0.34.5": true
   }
 }

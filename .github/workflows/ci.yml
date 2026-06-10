@@ -26,5 +26,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install pinned ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libfontconfig1-dev \
+            libfreetype-dev \
+            libpng-dev \
+            librsvg2-dev \
+            pkg-config \
+            zlib1g-dev
+          ./scripts/install-imagemagick-ci.sh
+
       - name: Validate generated profile image
         run: npm run validate

@@ -2,9 +2,9 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { readFile } from "node:fs/promises";
 
-import sharp from "sharp";
-
+import { ensureImageMagick, identifyImage } from "./lib/imagemagick.mjs";
 import { renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+import { selectRepos } from "./lib/utils.mjs";
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -23,6 +23,13 @@ function requireExcludes(label, haystack, needles) {
   for (const needle of needles) {
     if (upper.includes(String(needle).toUpperCase())) fail(`${label} contains prohibited ${needle}`);
   }
+}
+
+function requireAny(label, haystack, needles) {
+  for (const needle of needles) {
+    if (haystack.includes(needle)) return;
+  }
+  fail(`${label} missing one of ${needles.join(", ")}`);
 }
 
 function sum(items) {
@@ -49,12 +56,13 @@ function requireDesignSize(label, box, expected) {
 }
 
 function staticRepos(staticData) {
-  return staticData.repos.map((repo) => ({
+  const baseTime = Date.UTC(2026, 0, 1, 0, 0, 0);
+  return staticData.repos.map((repo, index) => ({
     name: repo.name,
     language: repo.language,
     language_pct: repo.language_pct,
     updated_label: repo.updated,
-    pushed_at: new Date().toISOString(),
+    pushed_at: new Date(baseTime - index * 1000).toISOString(),
     stargazers_count: repo.stars,
     fork: false,
     archived: false,
@@ -63,11 +71,12 @@ function staticRepos(staticData) {
 
 function renderStaticSvgs(staticData, layout) {
   const repos = staticRepos(staticData);
+  const selectedRepos = selectRepos(repos, 2);
   return {
     repositorySvg: renderRepositorySignSvg({
-      repos,
+      repos: selectedRepos,
       allRepos: repos,
-      sparklines: staticData.repos.map((repo) => repo.sparkline),
+      sparklines: selectedRepos.map((repo) => staticData.repos.find((item) => item.name === repo.name)?.sparkline ?? []),
       summary: staticData.summary,
       width: layout.board.designWidth,
       height: layout.board.designHeight,
@@ -111,10 +120,8 @@ export async function validateSignals({
     "M03",
     "REPOSITORY SIGNALS",
     "新高円寺",
-    "CHECK",
-    "IDLE",
-    "ON",
   ]);
+  requireAny("repository SVG status", repositorySvg || "", ["ON", "CHECK", "IDLE"]);
   requireIncludes("toolchain SVG", toolchainSvg || "", [
     "M03 SERVICE",
     "TOOLCHAIN",
@@ -202,7 +209,7 @@ export async function validateSignals({
   ]);
 
   if (output) {
-    const metadata = await sharp(output).metadata();
+    const metadata = await identifyImage(output);
     if (metadata.width !== width || metadata.height !== height) {
       fail(`output dimensions ${metadata.width}x${metadata.height}, expected ${width}x${height}`);
     }
@@ -212,11 +219,12 @@ export async function validateSignals({
 }
 
 async function main() {
-  const [scene, staticData, layout, output] = await Promise.all([
+  await ensureImageMagick();
+  const output = join(ROOT_DIR, "assets/signals.png");
+  const [scene, staticData, layout] = await Promise.all([
     readFile(join(ROOT_DIR, "config/scene.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/static-data.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/layouts/subway-default.json"), "utf8").then(JSON.parse),
-    readFile(join(ROOT_DIR, "assets/signals.png")),
   ]);
   const { repositorySvg, toolchainSvg } = await readGeneratedSvgs(staticData, layout);
   await validateSignals({

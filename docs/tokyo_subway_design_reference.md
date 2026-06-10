@@ -25,7 +25,7 @@ The scene should feel like a real station that has been gradually upgraded with 
 - Commuters as small silhouettes or quiet background figures.
 - One main overhead sign surface for **Repository Signals**.
 - One smaller right-side wall panel for **Toolchain Spectrum**.
-- Supporting station signage, including Shibuya / Tokyo Metro cues.
+- Supporting station signage, including Shin-koenji / Tokyo Metro Marunouchi Line cues.
 - Mild floor sheen and subtle reflections, not a soaking-wet mirror surface.
 - Industrial ceiling structure, conduits, pipes, fluorescent fixtures, tiled walls, vending machines, and transit clutter.
 
@@ -330,27 +330,24 @@ Final text should be applied through `generate-overlays.mjs`.
 Recommended static contents:
 
 ```text
-REPOSITORY SIGNALS        リポジトリ・シグナル
+M03 REPOSITORY SIGNALS                         新高円寺
 
-LATEST   32m AGO     |     4 ACTIVE REPOS     |     65 STARS TOTAL
+32m   JobSentinel
+      ON        TypeScript
 
-JobSentinel              TypeScript    Updated 32m ago
-PyGuard                  Python        Updated 2w ago
-WormsWMD-macOS-Fix       Shell         Updated 1mo ago
-PoshGuard                PowerShell    Updated 6mo ago
-
-65 STAR SIGNAL       |       4 ACTIVE REPOS       |       3W STREAK
+2w    PyGuard
+      ON        Python
 ```
 
 Notes:
 
 - Keep the text aligned and readable.
 - Use monospaced or transit-display-inspired typography.
-- Use small sparklines on the right.
 - Keep row icons simple and clean.
 - Keep language labels compact.
 - Do not overfill the board.
 - Use a mostly opaque panel background to prevent baked-in sign text from ghosting through.
+- Show the two most recently updated public owner repositories, selected dynamically from GitHub data or from the sorted static fixture.
 
 ### 9.2 Right-side wall panel: Toolchain Spectrum
 
@@ -383,15 +380,18 @@ Supporting station signage may be baked into the base image, provided it is simp
 Preferred supporting text:
 
 ```text
-渋谷
-Shibuya
-S01
+新高円寺
+Shin-koenji
+M03
 
-次は 新宿
-Next: Shinjuku
+次は 南阿佐ヶ谷
+Next: Minami-asagaya
 
-都市地下鉄
-CITY METRO
+東京メトロ
+Tokyo Metro
+
+丸ノ内線
+Marunouchi Line
 
 安全第一
 SAFETY FIRST
@@ -405,9 +405,9 @@ Notes:
 
 - Japanese text should feel plausible and restrained.
 - Avoid filling every surface with nonsense glyphs.
-- Use fictional Tokyo-inspired canon, not literal Tokyo Metro branding.
-- Station code should be `S01`, not bare `01`.
-- Train destination display should read `渋谷` / `SHIBUYA`, not `SHIBUYA 01`.
+- Use the literal Tokyo Metro Marunouchi Line canon already baked into the approved blank.
+- Station code should be `M03`, not bare `03`.
+- Train destination display should read `荻窪` / `OGIKUBO` if visible.
 - Transit signs should sell the environment, not distract from the repository board.
 - If generated text is slightly off on secondary signs, it is less critical than errors on the main overlays, but obvious nonsense should still be avoided.
 
@@ -420,15 +420,12 @@ The image is decorative, but visible data should be internally consistent.
 ### Must include on final generated overlay
 
 - `Repository Signals`
+- `M03`
+- `新高円寺`
 - `JobSentinel`
 - `PyGuard`
-- `WormsWMD-macOS-Fix`
-- `PoshGuard`
-- `4 Active Repos`
-- `65 Stars Total`
-- `Latest 32m Ago` or a dynamic live equivalent
-- `65 Star Signal`
-- `3W Streak` or dynamically computed streak
+- Update age, status, and language detail for each displayed repository.
+- The two rows must be the two most recently updated public owner repositories, not a hard-coded pair in live mode.
 - Toolchain split:
   - TypeScript: `25%`
   - Python: `35%`
@@ -441,7 +438,8 @@ Use static data when producing a design-locked header for consistency.
 
 Use live GitHub data when the profile should refresh automatically, but accept that values may change:
 
-- `LATEST` may become `1h AGO`, `2h AGO`, etc.
+- Displayed repositories can change when another public owner repository becomes more recently updated.
+- Update ages may become `1h`, `2h`, etc.
 - Stars may increase.
 - Streak should be dynamically computed from participation data.
 - Language percentages may shift as repository contents change.
@@ -449,8 +447,7 @@ Use live GitHub data when the profile should refresh automatically, but accept t
 ### Should avoid
 
 - Random repo names.
-- Changing `65` to another number in static mode.
-- Turning `3W Streak` into `3% Streak`.
+- Showing older repositories on the main sign when newer public owner repositories exist.
 - Unreadable row labels.
 - Fake languages replacing TypeScript / Python / Shell / PowerShell.
 - Mixing static and live values inconsistently.
@@ -497,8 +494,8 @@ The overlay script should:
 - Read the real source image dimensions.
 - Scale coordinates from source-image pixels.
 - Generate SVG panels for the main sign and toolchain sign.
-- Composite those SVG panels onto the blank base image with `sharp`.
-- Add subtle scanline, glow, and display texture in SVG.
+- Rasterize, soften, perspective-warp, composite, resize, optimize, and inspect those panels with ImageMagick 7.1.2-25 `magick`.
+- Add subtle scanline, glow, and display texture through SVG plus ImageMagick alpha/compose steps.
 - Validate PNG output before writing.
 - Support static data mode for deterministic design output.
 - Support live GitHub data mode for automated profile updates.
@@ -507,17 +504,17 @@ The overlay script should:
 
 ### 11.3.1 Transit Canon and Signage Consistency
 
-This project uses a fictional Tokyo-inspired transit system rather than a literal recreation of a specific Tokyo Metro route. Supporting signs should feel plausible and internally consistent, but should avoid implying exact real-world operator or line accuracy unless that accuracy is intentionally maintained.
+This project currently uses literal Tokyo Metro Marunouchi Line signage because the approved blank image contains that branding. Supporting signs should feel plausible and internally consistent with the configured station details.
 
 All readable sign text should be authored through configuration or overlay rendering. Generated background art may contain non-readable microtexture, but it should not contain important route, station, repository, or toolchain text.
 
 Current canon:
 
-- Current station: `Shibuya` / `渋谷`
-- Next direction: `Shinjuku` / `新宿`
-- Station code: `S01`
-- Operator: `CITY METRO` / `都市地下鉄`
-- Real Tokyo Metro branding: disabled
+- Current station: `Shin-koenji` / `新高円寺`
+- Next direction: `Minami-asagaya` / `南阿佐ヶ谷`
+- Station code: `M03`
+- Operator: `Tokyo Metro` / `東京メトロ`
+- Real Tokyo Metro branding: enabled
 
 ### 11.3.2 Validation and Determinism
 
@@ -530,7 +527,7 @@ The production path should be deterministic:
 
 ### 11.3.3 Rasterization and Optimization
 
-Sharp remains the default compositor and SVG rasterizer. `@resvg/resvg-js` is available for A/B rasterizer comparison through `npm run compare-rasterizers` and opt-in generation with `RASTERIZER=resvg`.
+ImageMagick 7.1.2-25 `magick` is the default and required raster pipeline. JavaScript generates SVG/text templates; ImageMagick owns SVG rasterization, panel compositing, perspective distortion, final scene compositing, metadata checks, debug crops, and PNG optimization. `npm run compare-rasterizers` is retained as a compatibility alias and writes ImageMagick raster crops for inspection.
 
 Default optimization should preserve truecolor PNG quality. Palette quantization belongs in the explicit web-size path:
 
@@ -622,7 +619,7 @@ Place one large overhead dark digital transit-style sign surface near the upper-
 
 Remove any second large top-right sign. On the right wall, include a smaller secondary dark panel intended for a later Toolchain Spectrum overlay. Keep this panel simple, dark, and readable as a surface.
 
-Keep supporting signage plausible: Shibuya, Tokyo Metro, Safety First, Next: Shinjuku, Exit 1-4. Use Japanese station typography sparingly and naturally.
+Keep supporting signage plausible and consistent with the approved blank: Shin-koenji, Tokyo Metro, Marunouchi Line, Safety First, Next: Minami-asagaya, Exit 1-4. Use Japanese station typography sparingly and naturally.
 
 Aesthetic references: Ghost in the Shell 1995, Akira 1988, Ghost in the Shell 2 Innocence, Neo Tokyo, Perfect Blue, Metropolis 2002, Interstella 5555, The Boy and the Beast, Psycho-Pass, Armitage III, Appleseed, and Blade Runner-style cinematic lighting. Do not copy any exact frame, character, or composition. Use these only as mood references.
 
@@ -636,7 +633,7 @@ Wide header composition, no large foreground character, no motorcycle, no extrem
 Use this prompt when refining an image that already has the correct composition and sign surfaces.
 
 ```text
-Refine the provided Tokyo subway platform image without changing the composition, camera angle, train placement, main sign surface, left vertical sign, Shibuya pillar sign, right service sign, right metro poster, or small toolchain panel.
+Refine the provided Tokyo subway platform image without changing the composition, camera angle, train placement, main sign surface, left vertical sign, Shin-koenji pillar sign, right service sign, right metro poster, or small toolchain panel.
 
 Push the image closer to a cinematic Japanese cyberpunk anime background inspired by Ghost in the Shell, Akira, Psycho-Pass, Armitage III, Appleseed, Neo Tokyo, and late-80s/90s sci-fi anime production art. Do not copy any specific character, shot, or scene.
 
@@ -777,7 +774,7 @@ Adjust:
 
 The ideal final image should feel like:
 
-> A quiet late-night Shibuya subway platform from a lost 1990s cyberpunk anime film, later upgraded with a GitHub repository status board. The image should be cinematic, blue-green, slightly hazy, lightly worn, and readable. Neon exists, but it is not the entire personality. The station is alive, not abandoned; futuristic, not sterile; damp-looking, not flooded; detailed, not cluttered.
+> A quiet late-night Shin-koenji subway platform from a lost 1990s cyberpunk anime film, later upgraded with a GitHub repository status board. The image should be cinematic, blue-green, slightly hazy, lightly worn, and readable. Neon exists, but it is not the entire personality. The station is alive, not abandoned; futuristic, not sterile; damp-looking, not flooded; detailed, not cluttered.
 
 The final production image should separate mood and data:
 
@@ -846,9 +843,9 @@ Before accepting a final render:
 - [ ] No copyrighted characters, exact movie frames, or directly copied compositions.
 - [ ] No decorative bottom-right sparkle icon.
 - [ ] No loose unexplained floor cable/device.
-- [ ] Station code is consistently `S01`, not bare `01`.
-- [ ] Left neon sign does not say `NEXT STOP: SHIBUYA`.
-- [ ] Fictional mode does not show `TOKYO METRO`.
+- [ ] Station code is consistently `M03`, not bare `03`.
+- [ ] No stale station text from earlier concepts remains.
+- [ ] Tokyo Metro Marunouchi Line signage stays consistent with the approved blank.
 - [ ] Service panel has one `24H OPEN`, not duplicate baked-in text.
 - [ ] Small hanging sign is authored or visually non-readable.
 
@@ -859,13 +856,10 @@ Before accepting a final render:
 - [ ] Base image does not contain duplicate baked-in overlay text behind the generated overlay.
 - [ ] No ghosting from previous generated overlays.
 - [ ] Repo names are correct.
-- [ ] `WormsWMD-macOS-Fix` is spelled consistently.
+- [ ] Main sign shows the two most recently updated public owner repositories.
 - [ ] Toolchain percentages are correct for the chosen mode.
-- [ ] `65 Stars Total` is visible in static mode.
-- [ ] `4 Active Repos` is visible.
-- [ ] `Latest 32m Ago` is visible in static mode, or dynamic latest activity is intentional.
-- [ ] `3W Streak` is visible in static mode, or dynamic streak is intentional.
-- [ ] `3W Streak` has not become `3% Streak`.
+- [ ] `JobSentinel` and `PyGuard` are visible in current static mode.
+- [ ] Update ages are visible in static mode, or dynamic latest activity is intentional.
 - [ ] Toolchain Spectrum text is readable and not competing with the main sign.
 - [ ] Generated output passes PNG validation.
 - [ ] Final output is checked at GitHub display size.

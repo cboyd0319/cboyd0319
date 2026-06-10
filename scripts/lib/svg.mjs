@@ -31,6 +31,20 @@ export function ownActiveRepos(allRepos) {
 
 export function languageSummary(allRepos) {
   const activeRepos = ownActiveRepos(allRepos);
+  const languageMaps = activeRepos.map((repo) => repo.languages).filter(isLanguageMap);
+
+  if (languageMaps.length && languageMaps.length === activeRepos.length) {
+    const totals = new Map();
+    for (const languages of languageMaps) {
+      for (const [language, bytes] of Object.entries(languages)) {
+        const count = Number(bytes);
+        if (!Number.isFinite(count) || count <= 0) continue;
+        totals.set(language, (totals.get(language) || 0) + count);
+      }
+    }
+    if (totals.size) return summarizeLanguageEntries([...totals.entries()]);
+  }
+
   const weighted = activeRepos.filter((repo) => repo.language && Number.isFinite(Number(repo.language_pct)));
 
   if (weighted.length) {
@@ -49,6 +63,10 @@ export function languageSummary(allRepos) {
   }
 
   return summarizeLanguageEntries([...counts.entries()]);
+}
+
+function isLanguageMap(value) {
+  return value && !Array.isArray(value) && typeof value === "object";
 }
 
 function summarizeLanguageEntries(entries, { sort = true } = {}) {
@@ -149,12 +167,7 @@ ${text(DISPLAY_ROUTE_CODE, { x: 36, y: 29, size: 12.8, fill: SIGN_COLORS.textSec
 </g>`;
 }
 
-export function renderRepositorySignSvg({ repos, allRepos, sparklines, summary = null, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
-  const activeRepos = ownActiveRepos(allRepos);
-  const activeRepoCount = Number.isFinite(Number(summary?.activeRepos)) ? Number(summary.activeRepos) : activeRepos.length;
-  const totalStars = Number.isFinite(Number(summary?.starsTotal))
-    ? Number(summary.starsTotal)
-    : activeRepos.reduce((sum, repo) => sum + Math.max(0, Number(repo.stargazers_count) || 0), 0);
+export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const rowBaselines = [72, 123];
   const detailBaselines = [96, 147];
 
@@ -200,9 +213,15 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
     const y = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
     const compactName = {
       TypeScript: "TS",
+      JavaScript: "JS",
       Python: "PY",
       Shell: "SH",
       PowerShell: "PS",
+      Rust: "RS",
+      Ruby: "RB",
+      Dockerfile: "DK",
+      Makefile: "MK",
+      Other: "OT",
     }[lang.name] ?? lang.name;
     return `<g data-lang="${escapeHtml(lang.name)}">
   ${text(compactName, { x: 16, y, size: 17.2, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 1 : codeOpacities[index], style: "letter-spacing:0.012em" })}

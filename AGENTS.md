@@ -57,7 +57,7 @@ Do not replace `assets/tokyo-neon-city.png` unless the profile art direction int
 
 ## Deployment and Automation
 
-`.github/workflows/update-profile.yml` refreshes `assets/signals.png` once per day at `23:00 UTC`. It renders, optimizes, validates through the lightweight CI path, and publishes only when the image changes. Keep automation scoped to this profile image workflow.
+`.github/workflows/update-profile.yml` refreshes `assets/signals.png` once per day at `23:00 UTC` and supports manual `workflow_dispatch`. It renders, optimizes, validates through the lightweight CI path, and publishes only when the image changes. Keep automation scoped to this profile image workflow.
 
 `.github/workflows/ci.yml` exists only to provide the `validate` check expected by the profile update publisher. It runs for `automation/update-signals-panel` and manual dispatch, not for every push or pull request. Do not restore broad CI without a concrete reason.
 

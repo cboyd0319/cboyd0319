@@ -425,7 +425,7 @@ The image is decorative, but visible data should be internally consistent.
 - `PyGuard`
 - Update age, status, language, and star count for each displayed repository.
 - The two rows must be the two most recently updated public owner repositories, not a hard-coded pair in live mode.
-- Toolchain split:
+- Static Toolchain split:
   - TypeScript: `25%`
   - Python: `35%`
   - Shell: `25%`
@@ -440,8 +440,7 @@ Use live GitHub data when the profile should refresh automatically, but accept t
 - Displayed repositories can change when another public owner repository becomes more recently updated.
 - Update ages may become `1h`, `2h`, etc.
 - Stars may increase.
-- Streak should be dynamically computed from participation data.
-- Language percentages may shift as repository contents change.
+- Language percentages come from public GitHub language byte totals and may shift as repository contents change.
 
 ### Should avoid
 
@@ -498,7 +497,6 @@ The overlay script should:
 - Validate PNG output before writing.
 - Support static data mode for deterministic design output.
 - Support live GitHub data mode for automated profile updates.
-- Compute streak dynamically when live data is used.
 - Avoid running unconditionally when imported.
 
 ### 11.3.1 Transit Canon and Signage Consistency
@@ -520,7 +518,7 @@ Current canon:
 The production path should be deterministic:
 
 - Local font files in `fonts/` are used before network font fetching.
-- `scripts/validate-signals.mjs` checks required repository strings, toolchain strings, static totals, layout bounds, and transit canon contradictions.
+- `scripts/validate-signals.mjs` checks required repository strings, toolchain strings, static totals, layout bounds, transit canon contradictions, output dimensions, and that only the configured overlay regions differ from the blank source image.
 - Static mode should preserve configured labels such as `1mo ago` instead of recomputing them into equivalent but visually different strings.
 - `assets/generated/` crops should be used for sign-level QA before judging the full image.
 
@@ -569,7 +567,7 @@ GITHUB_TOKEN=your_token_here OUTPUT_WIDTH=1672 npm run generate
 
 The overlay should not appear as a clean SVG sticker. It should feel like emitted data sitting inside a powered display surface embedded in the subway station.
 
-The blank image owns most of the physical sign material: frame, dark glass, reflections, and uneven ambient light. The SVG layer owns the data: text, icons, sparklines, subtle dividers, and local emission. If the SVG paints an opaque display card, the result reads as a sticker even when the typography and coordinates are correct.
+The blank image owns most of the physical sign material: frame, dark glass, reflections, and uneven ambient light. The SVG layer owns the data: text, icons, subtle dividers, and local emission. If the SVG paints an opaque display card, the result reads as a sticker even when the typography and coordinates are correct.
 
 Use multi-pass compositing:
 

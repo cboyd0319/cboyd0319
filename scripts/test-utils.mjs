@@ -1,11 +1,13 @@
 // Focused tests - no live network calls.
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
-import { applyLayoutEnv } from "./generate-overlays.mjs";
+import { applyLayoutEnv, panelTextureArgs } from "./generate-overlays.mjs";
 import { extractFontUrls, replaceFontUrlsWithDataUrls } from "./lib/font.mjs";
-import { github, githubParticipation } from "./lib/github.mjs";
-import { parseMagickVersion, perspectiveControlPoints, REQUIRED_MAGICK_VERSION } from "./lib/imagemagick.mjs";
+import { github } from "./lib/github.mjs";
+import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick } from "./lib/imagemagick.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
 import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
@@ -234,6 +236,28 @@ assertDeepEqual(
   ],
 );
 
+const byteLanguageSummary = languageSummary([
+  makeRepo("frontend", 1, {
+    language: "TypeScript",
+    languages: { TypeScript: 100, JavaScript: 50 },
+  }),
+  makeRepo("backend", 2, {
+    language: "Python",
+    languages: { Python: 150, Shell: 50 },
+  }),
+]).map(({ name, pct }) => ({ name, pct }));
+
+assertDeepEqual(
+  "language byte totals beat primary-language repo counts",
+  byteLanguageSummary,
+  [
+    { name: "Python", pct: 43 },
+    { name: "TypeScript", pct: 29 },
+    { name: "JavaScript", pct: 14 },
+    { name: "Shell", pct: 14 },
+  ],
+);
+
 const escapedRepoSvg = renderRepositorySignSvg({
   repos: [
     makeRepo("<bad & repo>", 1, {
@@ -247,7 +271,6 @@ const escapedRepoSvg = renderRepositorySignSvg({
       stargazers_count: 1,
     }),
   ],
-  sparklines: [[0, 1, 0, 2, 0, 0, 0, 2, 3, 5]],
   fontDataUrl: null,
   width: 500,
   height: 160,
@@ -279,6 +302,19 @@ assert("toolchain SVG uses code lines title", toolchainSvg.includes(">CODE LINES
 assert("toolchain SVG sorts largest share first", toolchainSvg.indexOf(">PY<") < toolchainSvg.indexOf(">TS<"), true);
 assert("toolchain SVG removes old toolchain title", toolchainSvg.includes(">TOOLCHAIN<"), false);
 
+const liveLanguageToolchainSvg = renderToolchainSpectrumSvg({
+  allRepos: [
+    makeRepo("a", 1, { language: "TypeScript", languages: { TypeScript: 100, Rust: 80 } }),
+    makeRepo("b", 2, { language: "Python", languages: { Python: 120, Ruby: 40 } }),
+    makeRepo("c", 3, { language: "Shell", languages: { Shell: 20, JavaScript: 20 } }),
+  ],
+  fontDataUrl: null,
+  width: 131,
+  height: 420,
+});
+assert("toolchain SVG abbreviates Rust route code", liveLanguageToolchainSvg.includes(">RS<"), true);
+assert("toolchain SVG abbreviates Other route code", liveLanguageToolchainSvg.includes(">OT<"), true);
+
 // ImageMagick helper
 
 console.log("\nimagemagick helper");
@@ -298,6 +334,12 @@ assert(
   ]),
   "0,0 445,55 500,0 945,64 500,160 945,207 0,160 445,220",
 );
+assertDeepEqual(
+  "panel texture noise is seeded for deterministic renders",
+  panelTextureArgs(0.012),
+  ["-seed", "31", "-attenuate", "0.012", "+noise", "Gaussian"],
+);
+assertDeepEqual("panel texture disabled emits no args", panelTextureArgs(0), []);
 
 // font loader
 
@@ -338,8 +380,6 @@ const selectedStaticRepos = selectRepos(staticReposForTests, 2);
 const staticRepoSvg = renderRepositorySignSvg({
   repos: selectedStaticRepos,
   allRepos: staticReposForTests,
-  sparklines: selectedStaticRepos.map((repo) => staticDataConfig.repos.find((item) => item.name === repo.name)?.sparkline ?? []),
-  summary: staticDataConfig.summary,
   fontDataUrl: null,
   width: layoutConfig.board.designWidth,
   height: layoutConfig.board.designHeight,
@@ -414,6 +454,18 @@ assertDeepEqual("board env overrides rebuild quad", envLayout.board.quad, [
   { x: 40, y: 60 },
   { x: 10, y: 60 },
 ]);
+try {
+  await validateSignals({
+    scene: sceneConfig,
+    staticData: staticDataConfig,
+    layout: envLayout,
+    repositorySvg: staticRepoSvg,
+    toolchainSvg: staticToolchainSvg,
+  });
+  assert("semantic validator accepts layout env overrides", true, true);
+} catch (err) {
+  assert("semantic validator accepts layout env overrides", err.message, "no error");
+}
 if (originalBoardLeft === undefined) delete process.env.BOARD_LEFT;
 else process.env.BOARD_LEFT = originalBoardLeft;
 if (originalBoardTop === undefined) delete process.env.BOARD_TOP;
@@ -422,6 +474,32 @@ if (originalBoardWidth === undefined) delete process.env.BOARD_WIDTH;
 else process.env.BOARD_WIDTH = originalBoardWidth;
 if (originalBoardHeight === undefined) delete process.env.BOARD_HEIGHT;
 else process.env.BOARD_HEIGHT = originalBoardHeight;
+
+console.log("\nimage validation");
+
+const validationTmp = await mkdtemp(join(tmpdir(), "signals-validation-"));
+try {
+  const blackImage = join(validationTmp, "black.png");
+  await runMagick(["-size", "1672x941", "xc:black", pngOutput(blackImage)]);
+  try {
+    await validateSignals({
+      scene: sceneConfig,
+      staticData: staticDataConfig,
+      layout: layoutConfig,
+      repositorySvg: staticRepoSvg,
+      toolchainSvg: staticToolchainSvg,
+      output: blackImage,
+      background: "assets/subway_blank_original.png",
+      width: 1672,
+      height: 941,
+    });
+    assert("validator rejects blank or unrelated PNG content", "accepted", "rejected");
+  } catch (err) {
+    assert("validator rejects blank or unrelated PNG content", err.message.includes("outside overlay region"), true);
+  }
+} finally {
+  await rm(validationTmp, { recursive: true, force: true });
+}
 
 // palette
 
@@ -454,34 +532,6 @@ await assertResolvesDeepEqual(
   [{ name: "ok" }],
 );
 assert("github retried once", githubFetchCalls, 2);
-
-let participationFetchCalls = 0;
-globalThis.fetch = async () => {
-  participationFetchCalls++;
-  if (participationFetchCalls === 1) return jsonResponse(503, { message: "try later" });
-  return jsonResponse(200, { all: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] });
-};
-
-await assertResolvesDeepEqual(
-  "githubParticipation retries retryable status",
-  () => githubParticipation("owner", "repo", { retryDelayMs: 0 }),
-  [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-);
-assert("githubParticipation retried once", participationFetchCalls, 2);
-
-globalThis.fetch = async () => ({
-  status: 200,
-  ok: true,
-  json: async () => {
-    throw new Error("bad json");
-  },
-});
-
-await assertResolvesDeepEqual(
-  "githubParticipation degrades on malformed stats payload",
-  () => githubParticipation("owner", "repo", { retryDelayMs: 0 }),
-  Array(10).fill(0),
-);
 
 globalThis.fetch = originalFetch;
 

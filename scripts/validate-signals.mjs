@@ -1,12 +1,18 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 
-import { ensureImageMagick, identifyImage } from "./lib/imagemagick.mjs";
+import { ensureImageMagick, identifyImage, pngOutput, runMagick } from "./lib/imagemagick.mjs";
 import { renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { selectRepos } from "./lib/utils.mjs";
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
+const OVERLAY_BOX_PAD = 18;
+const MIN_INSIDE_DIFF_MEAN = 0.0001;
+const MIN_INSIDE_DIFF_MAX = 0.05;
+const MAX_OUTSIDE_DIFF_MEAN = 0.000001;
+const MAX_OUTSIDE_DIFF_MAX = 0.001;
 
 function fail(message) {
   throw new Error(`signals validation failed: ${message}`);
@@ -36,17 +42,24 @@ function sum(items) {
   return items.reduce((total, value) => total + Number(value || 0), 0);
 }
 
-function samePoint(actual, expected) {
-  return Number(actual?.x) === expected.x && Number(actual?.y) === expected.y;
-}
-
-function requireQuad(label, box, expected) {
+function requireQuad(label, box) {
   if (!Array.isArray(box.quad) || box.quad.length !== 4) fail(`${label} quad missing`);
-  for (let i = 0; i < 4; i++) {
-    if (!samePoint(box.quad[i], expected[i])) {
-      fail(`${label} quad point ${i} is ${JSON.stringify(box.quad[i])}, expected ${JSON.stringify(expected[i])}`);
+  for (const [index, point] of box.quad.entries()) {
+    if (!Number.isFinite(Number(point?.x)) || !Number.isFinite(Number(point?.y))) {
+      fail(`${label} quad point ${index} is invalid: ${JSON.stringify(point)}`);
     }
   }
+  const area = polygonArea(box.quad);
+  if (area < 1) fail(`${label} quad area is too small: ${area}`);
+}
+
+function polygonArea(points) {
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const next = points[(i + 1) % points.length];
+    area += Number(points[i].x) * Number(next.y) - Number(next.x) * Number(points[i].y);
+  }
+  return Math.abs(area / 2);
 }
 
 function requireDesignSize(label, box, expected) {
@@ -76,8 +89,6 @@ function renderStaticSvgs(staticData, layout) {
     repositorySvg: renderRepositorySignSvg({
       repos: selectedRepos,
       allRepos: repos,
-      sparklines: selectedRepos.map((repo) => staticData.repos.find((item) => item.name === repo.name)?.sparkline ?? []),
-      summary: staticData.summary,
       width: layout.board.designWidth,
       height: layout.board.designHeight,
     }),
@@ -87,6 +98,87 @@ function renderStaticSvgs(staticData, layout) {
       height: layout.toolchain.designHeight,
     }),
   };
+}
+
+function scaledOverlayBoxes(layout, width, height) {
+  const scaleX = width / layout.sourceWidth;
+  const scaleY = height / layout.sourceHeight;
+  return [layout.board, layout.toolchain].map((box) => {
+    const points = (box.quad || [
+      { x: box.left, y: box.top },
+      { x: box.left + box.width, y: box.top },
+      { x: box.left + box.width, y: box.top + box.height },
+      { x: box.left, y: box.top + box.height },
+    ]).map((point) => ({ x: point.x * scaleX, y: point.y * scaleY }));
+    const left = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x)) - OVERLAY_BOX_PAD));
+    const top = Math.max(0, Math.floor(Math.min(...points.map((point) => point.y)) - OVERLAY_BOX_PAD));
+    const right = Math.min(width - 1, Math.ceil(Math.max(...points.map((point) => point.x)) + OVERLAY_BOX_PAD));
+    const bottom = Math.min(height - 1, Math.ceil(Math.max(...points.map((point) => point.y)) + OVERLAY_BOX_PAD));
+    return { left, top, right, bottom };
+  });
+}
+
+function maskDraw(boxes) {
+  return boxes.map((box) => `rectangle ${box.left},${box.top} ${box.right},${box.bottom}`).join(" ");
+}
+
+function parseMetric(stdout) {
+  const [mean, max] = stdout.trim().split(/\s+/).map(Number);
+  return { mean, max };
+}
+
+async function maskedDiffMetric(diffPath, maskPath) {
+  const { stdout } = await runMagick([
+    diffPath,
+    "-alpha",
+    "off",
+    maskPath,
+    "-alpha",
+    "off",
+    "-compose",
+    "multiply",
+    "-composite",
+    "-format",
+    "%[fx:mean] %[fx:maxima]\n",
+    "info:",
+  ]);
+  return parseMetric(stdout);
+}
+
+export function assertOverlayPixelMetrics(metrics) {
+  if (metrics.outside.mean > MAX_OUTSIDE_DIFF_MEAN || metrics.outside.max > MAX_OUTSIDE_DIFF_MAX) {
+    fail(`output changed outside overlay region: mean ${metrics.outside.mean}, max ${metrics.outside.max}`);
+  }
+  if (metrics.inside.mean < MIN_INSIDE_DIFF_MEAN || metrics.inside.max < MIN_INSIDE_DIFF_MAX) {
+    fail(`output missing overlay-region changes: mean ${metrics.inside.mean}, max ${metrics.inside.max}`);
+  }
+}
+
+async function overlayPixelMetrics({ output, background, layout, width, height }) {
+  const tempDir = await mkdtemp(join(tmpdir(), "signals-validate-"));
+  try {
+    const resizedBackground = join(tempDir, "background.png");
+    const diffPath = join(tempDir, "diff.png");
+    const outsideMask = join(tempDir, "outside-mask.png");
+    const insideMask = join(tempDir, "inside-mask.png");
+    const boxes = scaledOverlayBoxes(layout, width, height);
+    const draw = maskDraw(boxes);
+
+    await runMagick([background, "-resize", `${width}x${height}!`, pngOutput(resizedBackground)]);
+    await runMagick([resizedBackground, output, "-compose", "difference", "-composite", pngOutput(diffPath)]);
+    await Promise.all([
+      runMagick(["-size", `${width}x${height}`, "xc:white", "-fill", "black", "-draw", draw, pngOutput(outsideMask)]),
+      runMagick(["-size", `${width}x${height}`, "xc:black", "-fill", "white", "-draw", draw, pngOutput(insideMask)]),
+    ]);
+
+    const [outside, inside] = await Promise.all([
+      maskedDiffMetric(diffPath, outsideMask),
+      maskedDiffMetric(diffPath, insideMask),
+    ]);
+    return { outside, inside };
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 }
 
 async function readGeneratedSvgs(staticData, layout) {
@@ -109,6 +201,7 @@ export async function validateSignals({
   repositorySvg,
   toolchainSvg,
   output,
+  background,
   width,
   height,
 } = {}) {
@@ -152,9 +245,6 @@ export async function validateSignals({
   if (staticData.repos.length !== Number(staticData.summary?.activeRepos)) {
     fail(`active repo summary ${staticData.summary?.activeRepos} does not match repo count ${staticData.repos.length}`);
   }
-  if (!/^\d+W$/.test(String(staticData.summary?.streak || ""))) {
-    fail(`streak malformed: ${staticData.summary?.streak}`);
-  }
 
   const currentStation = String(scene.station?.name_en || "").toUpperCase();
   const nextStation = String(scene.direction?.next_en || "").toUpperCase();
@@ -194,26 +284,18 @@ export async function validateSignals({
         fail(`${name} quad point exceeds source image bounds: ${JSON.stringify(point)}`);
       }
     }
+    requireQuad(name, box);
   }
   requireDesignSize("repository board", layout.board, { width: 500, height: 160 });
   requireDesignSize("toolchain panel", layout.toolchain, { width: 131, height: 420 });
-  requireQuad("repository board", layout.board, [
-    { x: 445, y: 55 },
-    { x: 945, y: 64 },
-    { x: 945, y: 207 },
-    { x: 445, y: 220 },
-  ]);
-  requireQuad("toolchain panel", layout.toolchain, [
-    { x: 1416, y: 203 },
-    { x: 1518, y: 184 },
-    { x: 1500, y: 604 },
-    { x: 1412, y: 583 },
-  ]);
 
   if (output) {
     const metadata = await identifyImage(output);
     if (metadata.width !== width || metadata.height !== height) {
       fail(`output dimensions ${metadata.width}x${metadata.height}, expected ${width}x${height}`);
+    }
+    if (background) {
+      assertOverlayPixelMetrics(await overlayPixelMetrics({ output, background, layout, width, height }));
     }
   }
 
@@ -234,6 +316,7 @@ export function expectedOutputSize(layout, env = process.env) {
 async function main() {
   await ensureImageMagick();
   const output = join(ROOT_DIR, "assets/signals.png");
+  const background = join(ROOT_DIR, "assets/subway_blank_original.png");
   const [scene, staticData, layout] = await Promise.all([
     readFile(join(ROOT_DIR, "config/scene.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/static-data.json"), "utf8").then(JSON.parse),
@@ -248,6 +331,7 @@ async function main() {
     repositorySvg,
     toolchainSvg,
     output,
+    background,
     width,
     height,
   });

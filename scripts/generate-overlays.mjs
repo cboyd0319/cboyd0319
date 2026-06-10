@@ -38,6 +38,7 @@ const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_DENSITY = 144;
 const PANEL_SOFTEN_SIGMA = 0.08;
 const PANEL_TEXTURE_ATTENUATE = 0.012;
+const PANEL_TEXTURE_SEED = 31;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 const FINAL_WARM_WASH_ALPHA = 0;
@@ -136,11 +137,33 @@ async function fetchOwnerRepos() {
   return repos;
 }
 
+async function fetchRepoLanguages(repoName) {
+  try {
+    const data = await github(`/repos/${USERNAME}/${encodeURIComponent(repoName)}/languages`);
+    if (!data || Array.isArray(data) || typeof data !== "object") return null;
+    return data;
+  } catch (err) {
+    console.warn(`Language fetch failed for ${repoName}: ${err.message}`);
+    return null;
+  }
+}
+
+async function withLanguageBreakdowns(repos) {
+  const activeRepos = ownActiveRepos(repos);
+  const languagesByName = new Map(await Promise.all(activeRepos.map(async (repo) => [
+    repo.name,
+    await fetchRepoLanguages(repo.name),
+  ])));
+  return repos.map((repo) => {
+    const languages = languagesByName.get(repo.name);
+    return languages ? { ...repo, languages } : repo;
+  });
+}
+
 async function collectData(staticData) {
-  const allRepos = USE_STATIC_DATA ? staticRepos(staticData) : await fetchOwnerRepos();
+  const allRepos = USE_STATIC_DATA ? staticRepos(staticData) : await withLanguageBreakdowns(await fetchOwnerRepos());
   const repos = selectRepos(ownActiveRepos(allRepos), REPO_LIMIT);
-  const sparklines = [];
-  return { allRepos, repos, sparklines };
+  return { allRepos, repos };
 }
 
 function designSize(box) {
@@ -238,14 +261,18 @@ async function rasterizeSvg(svgPath, outputPath, { width, height }) {
   ]);
 }
 
+export function panelTextureArgs(attenuate = PANEL_TEXTURE_ATTENUATE) {
+  return attenuate > 0
+    ? ["-seed", String(PANEL_TEXTURE_SEED), "-attenuate", String(attenuate), "+noise", "Gaussian"]
+    : [];
+}
+
 async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_SIGMA) {
   if (sigma <= 0) {
     await copyFile(inputPath, outputPath);
     return;
   }
-  const textureArgs = PANEL_TEXTURE_ATTENUATE > 0
-    ? ["-attenuate", String(PANEL_TEXTURE_ATTENUATE), "+noise", "Gaussian"]
-    : [];
+  const textureArgs = panelTextureArgs();
   if (sigma < 0.3) {
     await runMagick([
       inputPath,
@@ -484,7 +511,7 @@ async function main() {
     scaleY: outputHeight / sourceHeight,
   };
 
-  const { allRepos, repos, sparklines } = await collectData(staticData);
+  const { allRepos, repos } = await collectData(staticData);
   if (SMOKE) {
     console.log(`Smoke OK - ImageMagick ${version}, ${repos.length} repos, ${allRepos.length} total ${USE_STATIC_DATA ? "static" : "fetched"}, ${sourceWidth}x${sourceHeight} background`);
     return;
@@ -500,8 +527,6 @@ async function main() {
   const repositorySvg = renderRepositorySignSvg({
     repos,
     allRepos,
-    sparklines,
-    summary: STATIC ? staticData.summary : null,
     fontCss,
     width: boardDesign.width,
     height: boardDesign.height,
@@ -511,8 +536,6 @@ async function main() {
   const repositoryEmissiveSvg = renderRepositorySignSvg({
     repos,
     allRepos,
-    sparklines,
-    summary: STATIC ? staticData.summary : null,
     fontCss,
     width: boardDesign.width,
     height: boardDesign.height,
@@ -640,6 +663,7 @@ async function main() {
     repositorySvg,
     toolchainSvg,
     output: outputPath,
+    background: backgroundPath,
     width: OUTPUT_WIDTH,
     height: outputHeight,
   });

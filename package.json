@@ -17,7 +17,7 @@
     "smoke": "node scripts/generate-overlays.mjs --smoke",
     "validate": "node scripts/validate-signals.mjs",
     "test": "node scripts/test-utils.mjs",
-    "check": "node --check scripts/prepare-blank.mjs scripts/generate-overlays.mjs scripts/compare-rasterizers.mjs scripts/optimize-signals.mjs scripts/validate-signals.mjs scripts/test-utils.mjs scripts/lib/config.mjs scripts/lib/utils.mjs scripts/lib/github.mjs scripts/lib/font.mjs scripts/lib/svg.mjs",
+    "check": "node scripts/check-syntax.mjs",
     "audit": "npm audit --audit-level=moderate"
   },
   "devDependencies": {

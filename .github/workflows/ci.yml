@@ -38,5 +38,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Static render validation
+        run: npm run generate && npm run validate
+        env:
+          STATIC: "1"
+
       - name: Security audit
         run: npm run audit

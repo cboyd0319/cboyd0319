@@ -149,7 +149,6 @@ function compactLanguage(language) {
 }
 
 function repoDisplayName(name, compact) {
-  if (name === "WormsWMD-macOS-Fix") return "Norms macOS Fix";
   return shortText(name, compact ? 20 : 22);
 }
 

@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 
 import { ACCENTS, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
+import { applyLayoutEnv } from "./generate-overlays.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
@@ -321,6 +322,8 @@ assert("static repository SVG uses plain station route label", staticRepoSvg.inc
 assert("static repository SVG uses station target label", staticRepoSvg.includes("新高円寺"), true);
 assert("static repository SVG uses time-first row", staticRepoSvg.includes(">32m<"), true);
 assert("static repository SVG keeps JobSentinel row", staticRepoSvg.includes("JobSentinel"), true);
+assert("static repository SVG keeps Worms repo spelling", staticRepoSvg.includes("WormsWMD-macOS-Fix"), true);
+assert("static repository SVG rejects Norms typo", staticRepoSvg.includes("Norms macOS Fix"), false);
 assert("static repository SVG keeps station status", staticRepoSvg.includes(">ON<"), true);
 assert("static repository SVG removes language-code table column", staticRepoSvg.includes(">TS<"), false);
 assert("static repository SVG removes old route-code language badge", staticRepoSvg.includes("M03-TS"), false);
@@ -342,6 +345,30 @@ try {
 } catch (err) {
   assert("semantic validator accepts static config/SVGs", err.message, "no error");
 }
+
+const originalBoardLeft = process.env.BOARD_LEFT;
+const originalBoardTop = process.env.BOARD_TOP;
+const originalBoardWidth = process.env.BOARD_WIDTH;
+const originalBoardHeight = process.env.BOARD_HEIGHT;
+process.env.BOARD_LEFT = "10";
+process.env.BOARD_TOP = "20";
+process.env.BOARD_WIDTH = "30";
+process.env.BOARD_HEIGHT = "40";
+const envLayout = applyLayoutEnv(layoutConfig);
+assertDeepEqual("board env overrides rebuild quad", envLayout.board.quad, [
+  { x: 10, y: 20 },
+  { x: 40, y: 20 },
+  { x: 40, y: 60 },
+  { x: 10, y: 60 },
+]);
+if (originalBoardLeft === undefined) delete process.env.BOARD_LEFT;
+else process.env.BOARD_LEFT = originalBoardLeft;
+if (originalBoardTop === undefined) delete process.env.BOARD_TOP;
+else process.env.BOARD_TOP = originalBoardTop;
+if (originalBoardWidth === undefined) delete process.env.BOARD_WIDTH;
+else process.env.BOARD_WIDTH = originalBoardWidth;
+if (originalBoardHeight === undefined) delete process.env.BOARD_HEIGHT;
+else process.env.BOARD_HEIGHT = originalBoardHeight;
 
 // palette
 

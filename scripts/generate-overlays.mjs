@@ -85,23 +85,38 @@ function staticParticipation(repoName, staticData) {
   return staticData.repos.find((repo) => repo.name === repoName)?.sparkline ?? Array(10).fill(0);
 }
 
-function applyLayoutEnv(layout) {
+function rectQuad(box) {
+  return [
+    { x: box.left, y: box.top },
+    { x: box.left + box.width, y: box.top },
+    { x: box.left + box.width, y: box.top + box.height },
+    { x: box.left, y: box.top + box.height },
+  ];
+}
+
+function applyBoxEnv(box, prefix) {
+  const adjusted = {
+    ...box,
+    left: envNumber(`${prefix}_LEFT`, box.left),
+    top: envNumber(`${prefix}_TOP`, box.top),
+    width: envNumber(`${prefix}_WIDTH`, box.width),
+    height: envNumber(`${prefix}_HEIGHT`, box.height),
+  };
+  const geometryChanged = adjusted.left !== box.left
+    || adjusted.top !== box.top
+    || adjusted.width !== box.width
+    || adjusted.height !== box.height;
+  return {
+    ...adjusted,
+    quad: geometryChanged ? rectQuad(adjusted) : box.quad,
+  };
+}
+
+export function applyLayoutEnv(layout) {
   return {
     ...layout,
-    board: {
-      ...layout.board,
-      left: envNumber("BOARD_LEFT", layout.board.left),
-      top: envNumber("BOARD_TOP", layout.board.top),
-      width: envNumber("BOARD_WIDTH", layout.board.width),
-      height: envNumber("BOARD_HEIGHT", layout.board.height),
-    },
-    toolchain: {
-      ...layout.toolchain,
-      left: envNumber("TOOLCHAIN_LEFT", layout.toolchain.left),
-      top: envNumber("TOOLCHAIN_TOP", layout.toolchain.top),
-      width: envNumber("TOOLCHAIN_WIDTH", layout.toolchain.width),
-      height: envNumber("TOOLCHAIN_HEIGHT", layout.toolchain.height),
-    },
+    board: applyBoxEnv(layout.board, "BOARD"),
+    toolchain: applyBoxEnv(layout.toolchain, "TOOLCHAIN"),
   };
 }
 
@@ -133,12 +148,7 @@ function designSize(box) {
 }
 
 function fallbackQuad(box) {
-  return [
-    { x: box.left, y: box.top },
-    { x: box.left + box.width, y: box.top },
-    { x: box.left + box.width, y: box.top + box.height },
-    { x: box.left, y: box.top + box.height },
-  ];
+  return rectQuad(box);
 }
 
 function scaledQuad(box, { scaleX, scaleY }) {

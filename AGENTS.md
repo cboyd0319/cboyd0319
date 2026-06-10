@@ -1,37 +1,62 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Project Overview
 
-This is the `cboyd0319` GitHub profile README repository. Keep it public, keep root `README.md` non-empty, and keep the README limited to two images: top `assets/tokyo-neon-city.png` (static, do not regenerate) and bottom `assets/signals.png` (generated). The generator starts from `assets/subway_blank_original.png`, overlays live public GitHub repo signals, and writes `assets/signals.png`. Source scripts live in `scripts/`; shared helpers are in `scripts/lib/`. Scene data and overlay geometry live in `config/`, especially `config/layouts/subway-default.json`. The visual contract for train-station overlays is `docs/train_station_overlay_mockup_spec.md`. Fonts live in `fonts/`; visual notes live in `docs/`. `assets/generated/` is ignored debug output.
+This is the `cboyd0319` GitHub profile README repository. The profile README must contain exactly two centered images: top `assets/tokyo-neon-city.png` and bottom `assets/signals.png`. The top image is static and should not be regenerated. The bottom image is generated from `assets/subway_blank_original.png` plus overlays based on public GitHub repository data. Keep the repository public and keep root `README.md` non-empty.
 
-## Build, Test, and Development Commands
+## Project Structure
+
+- `README.md`: profile content, limited to the two image tags.
+- `assets/`: source and generated profile images. `assets/generated/` is ignored debug output.
+- `config/`: scene data, static data, and layout geometry. Main layout: `config/layouts/subway-default.json`.
+- `docs/`: visual references. Primary overlay contract: `docs/train_station_overlay_mockup_spec.md`.
+- `fonts/`: checked-in fonts used by the renderer.
+- `scripts/`: generator, optimizer, validators, and tests. Shared helpers live in `scripts/lib/`.
+- `.githooks/`: local pre-commit and pre-push hooks. Enable with `git config core.hooksPath .githooks`.
+- `.github/workflows/`: scheduled profile update and lightweight validation workflows.
+
+## Build and Test Commands
 
 Use Node from `.node-version` and install with `npm ci`.
 
-- `npm run generate`: generate `assets/signals.png` from public GitHub repo data.
-- `STATIC=1 npm run generate`: deterministic render from `config/static-data.json`.
+- `npm run generate`: render `assets/signals.png` from live public GitHub data.
+- `STATIC=1 npm run generate`: deterministic render using `config/static-data.json`.
 - `npm run optimize-signals`: compress `assets/signals.png`.
-- `npm run smoke`: static smoke check; use `npm run smoke -- --live` for live API smoke.
+- `npm run smoke`: run a static generator smoke check.
+- `npm run smoke -- --live`: smoke-check live GitHub API access.
 - `npm run validate`: validate config, generated SVG semantics, layout, and PNG dimensions.
 - `npm test`: run focused custom tests in `scripts/test-utils.mjs`.
-- `npm run check`: syntax-check every script listed in `scripts/check-syntax.mjs`.
+- `npm run check`: syntax-check scripts listed in `scripts/check-syntax.mjs`.
+- `npm run audit`: run `npm audit --audit-level=moderate`.
 
-## Coding Style & Naming Conventions
+## Code Style Guidelines
 
-Use ESM JavaScript (`"type": "module"`), two-space indentation, `const`/`let`, and explicit `node:` imports. Prefer small functions and repo-relative paths. Name scripts by action, such as `generate-overlays.mjs`, `validate-signals.mjs`, and `optimize-signals.mjs`.
+Use ESM JavaScript (`"type": "module"`), two-space indentation, `const`/`let`, and explicit `node:` imports. Prefer small functions, repo-relative paths, deterministic static fixtures, and standard library APIs over ad hoc parsing. Name scripts by action, for example `generate-overlays.mjs`, `validate-signals.mjs`, and `optimize-signals.mjs`. Keep comments short and only where they clarify non-obvious rendering or validation logic.
 
-## Testing Guidelines
+## Testing Instructions
 
-There is no external test framework. Add focused assertions to `scripts/test-utils.mjs`, using static data or fixed timestamps for deterministic tests. For visual changes, run `STATIC=1 npm run generate`, `npm run validate`, `npm run optimize-signals`, and inspect `assets/signals.png` at profile scale.
+Add focused assertions to `scripts/test-utils.mjs`; there is no external test framework. Use static data or fixed timestamps for deterministic tests. For script changes, run `npm run check` and `npm test`. For image, layout, or renderer changes, run `STATIC=1 npm run generate`, `npm run validate`, and `npm run optimize-signals`, then inspect `assets/signals.png` at GitHub profile scale. Before pushing, use local hooks or run the same checks manually.
 
-## Commit & Pull Request Guidelines
+Local hooks are the default guardrail: enable them with `git config core.hooksPath .githooks`. The pre-commit hook runs `npm run check`; the pre-push hook runs `npm test` and `npm run validate`.
 
-Use short imperative commit subjects, for example `Fix CI smoke and workflow pins`. Keep changes scoped. PRs should describe intent, affected commands or assets, and verification. Include a screenshot when `assets/signals.png` changes. Avoid heavyweight CI; this repo only needs enough checks to protect the profile images.
+## Security Considerations
 
-## Security & Configuration Tips
-
-Do not commit tokens. `GITHUB_TOKEN` can be used locally or by GitHub Actions for live generation, but static mode is preferred for review and CI.
+Use public GitHub data only. Do not display private repository names, private organization data, secrets, raw logs, employer data, tokens, email addresses, or data that implies private access. Do not commit tokens. `GITHUB_TOKEN` can be used locally or in GitHub Actions for live generation; static mode is preferred for review and CI. Keep workflow permissions least-privilege and do not add heavyweight CI such as CodeQL unless the threat model changes.
 
 ## Dependency Pinning Contract
 
-All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and any script-downloaded tool. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`; transitive npm resolutions are pinned by the lockfile `version`, `resolved`, and `integrity` fields, so do not hand-edit upstream package metadata ranges inside lockfile entries. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin workflow runners, for example `ubuntu-24.04`.
+All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and script-downloaded tools. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin runners, for example `ubuntu-24.04`.
+
+## Assets, Data, and Large Files
+
+Do not replace `assets/tokyo-neon-city.png` unless the profile art direction intentionally changes. Treat `assets/subway_blank_original.png` as the approved blank for generated signals. Keep `assets/signals.png` committed because GitHub serves the README image from the repository. Do not commit large datasets, raw API dumps, or debug renders from `assets/generated/`.
+
+## Deployment and Automation
+
+`.github/workflows/update-profile.yml` refreshes `assets/signals.png` once per day at `23:00 UTC`. It renders, optimizes, validates through the lightweight CI path, and publishes only when the image changes. Keep automation scoped to this profile image workflow.
+
+`.github/workflows/ci.yml` exists only to provide the `validate` check expected by the profile update publisher. It runs for `automation/update-signals-panel` and manual dispatch, not for every push or pull request. Do not restore broad CI without a concrete reason.
+
+## Commit and Pull Request Guidelines
+
+Use short imperative commit subjects, for example `Fix profile update schedule`. Keep changes scoped. PRs should describe intent, affected commands or assets, and verification. Include a screenshot when `assets/signals.png` changes. Prefer local pre-commit and pre-push checks for routine guardrails; keep GitHub Actions minimal and cost-conscious.

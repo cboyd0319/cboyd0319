@@ -1,9 +1,8 @@
 name: Update profile README
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "17 13 * * *"
+    - cron: "0 23 * * *"
 
 concurrency:
   group: update-profile

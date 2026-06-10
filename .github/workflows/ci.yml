@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, automation/update-signals-panel]
-  pull_request:
+    branches: [automation/update-signals-panel]
   workflow_dispatch:
 
 permissions:
@@ -27,21 +26,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Syntax check
-        run: npm run check
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Smoke test generator
-        run: npm run smoke
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Static render validation
-        run: npm run generate && npm run validate
-        env:
-          STATIC: "1"
-
-      - name: Security audit
-        run: npm run audit
+      - name: Validate generated profile image
+        run: npm run validate

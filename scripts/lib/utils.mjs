@@ -55,6 +55,7 @@ export function selectRepos(allRepos, limit = 5) {
       name: repo.name,
       description: repo.description ?? null,
       language: repo.language ?? null,
+      updated_label: repo.updated_label ?? null,
       pushed_at: repo.pushed_at,
       stargazers_count: Number.isFinite(Number(repo.stargazers_count))
         ? Math.max(0, Number(repo.stargazers_count))

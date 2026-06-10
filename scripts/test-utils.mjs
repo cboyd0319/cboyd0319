@@ -1,9 +1,11 @@
-// Pure unit tests - no network calls and no file I/O.
-// Imports only side-effect-free lib modules.
+// Focused tests - no live network calls.
+import { readFile } from "node:fs/promises";
+
 import { ACCENTS, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
-import { languageSummary, renderRepositorySignSvg } from "./lib/svg.mjs";
+import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
+import { validateSignals } from "./validate-signals.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -244,14 +246,102 @@ const escapedRepoSvg = renderRepositorySignSvg({
   ],
   sparklines: [[0, 1, 0, 2, 0, 0, 0, 2, 3, 5]],
   fontDataUrl: null,
-  width: 612,
-  height: 336,
+  width: 500,
+  height: 160,
 });
 
-assert("repository SVG uses requested dimensions", escapedRepoSvg.startsWith('<svg width="612" height="336" viewBox="0 0 612 336"'), true);
+assert("repository SVG uses requested dimensions", escapedRepoSvg.startsWith('<svg width="500" height="160" viewBox="0 0 500 160"'), true);
+assert("repository SVG clips overlay paint inside sign display", escapedRepoSvg.includes('clip-path="url(#display-clip)"'), true);
 assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
-assert("repository SVG avoids unsupported CJK overlay label", escapedRepoSvg.includes("リポジトリ"), false);
+assert("repository SVG keeps station target label", escapedRepoSvg.includes("新高円寺"), true);
+
+const toolchainSvg = renderToolchainSpectrumSvg({
+  allRepos: [
+    makeRepo("ts", 1, { language: "TypeScript", language_pct: 25 }),
+    makeRepo("py", 2, { language: "Python", language_pct: 35 }),
+    makeRepo("sh", 3, { language: "Shell", language_pct: 25 }),
+    makeRepo("ps", 4, { language: "PowerShell", language_pct: 15 }),
+  ],
+  fontDataUrl: null,
+  width: 144,
+  height: 420,
+});
+
+assert("toolchain SVG uses requested primary dimensions", toolchainSvg.startsWith('<svg width="144" height="420" viewBox="0 0 144 420"'), true);
+assert("toolchain SVG clips overlay paint inside sign display", toolchainSvg.includes('clip-path="url(#display-clip)"'), true);
+assert("toolchain SVG uses abbreviated TypeScript label", toolchainSvg.includes(">TS<"), true);
+assert("toolchain SVG keeps full TypeScript name in metadata", toolchainSvg.includes('data-lang="TypeScript"'), true);
+
+// config validation
+
+console.log("\nconfig validation");
+
+const sceneConfig = JSON.parse(await readFile("config/scene.json", "utf8"));
+const staticDataConfig = JSON.parse(await readFile("config/static-data.json", "utf8"));
+const layoutConfig = JSON.parse(await readFile("config/layouts/subway-default.json", "utf8"));
+const staticRepoSvg = renderRepositorySignSvg({
+  repos: staticDataConfig.repos.map((repo) => makeRepo(repo.name, 1, {
+    language: repo.language,
+    language_pct: repo.language_pct,
+    updated_label: repo.updated,
+    stargazers_count: repo.stars,
+  })),
+  allRepos: staticDataConfig.repos.map((repo) => makeRepo(repo.name, 1, {
+    language: repo.language,
+    language_pct: repo.language_pct,
+    updated_label: repo.updated,
+    stargazers_count: repo.stars,
+  })),
+  sparklines: staticDataConfig.repos.map((repo) => repo.sparkline),
+  summary: staticDataConfig.summary,
+  fontDataUrl: null,
+  width: layoutConfig.board.designWidth,
+  height: layoutConfig.board.designHeight,
+});
+const staticToolchainSvg = renderToolchainSpectrumSvg({
+  allRepos: staticDataConfig.repos.map((repo) => makeRepo(repo.name, 1, {
+    language: repo.language,
+    language_pct: repo.language_pct,
+    stargazers_count: repo.stars,
+  })),
+  fontDataUrl: null,
+  width: layoutConfig.toolchain.designWidth,
+  height: layoutConfig.toolchain.designHeight,
+});
+
+assert("static language percentages total 100", staticDataConfig.repos.reduce((total, repo) => total + repo.language_pct, 0), 100);
+assert("static star total is configured", staticDataConfig.summary.starsTotal, 65);
+assert("scene uses literal Marunouchi canon for the current blank", sceneConfig.mode, "literal_tokyo_metro_marunouchi");
+assert("scene station code is M03", sceneConfig.station.code, "M03");
+assert("scene service title not duplicated as item", sceneConfig.servicePanel.items.includes(sceneConfig.servicePanel.title), false);
+assert("layout board inside source width", layoutConfig.board.left + layoutConfig.board.width <= layoutConfig.sourceWidth, true);
+assert("layout toolchain inside source height", layoutConfig.toolchain.top + layoutConfig.toolchain.height <= layoutConfig.sourceHeight, true);
+assert("static repository SVG uses plain station route label", staticRepoSvg.includes('data-station-code="M03"'), true);
+assert("static repository SVG uses station target label", staticRepoSvg.includes("新高円寺"), true);
+assert("static repository SVG uses time-first row", staticRepoSvg.includes(">32m<"), true);
+assert("static repository SVG keeps JobSentinel row", staticRepoSvg.includes("JobSentinel"), true);
+assert("static repository SVG keeps station status", staticRepoSvg.includes(">ON<"), true);
+assert("static repository SVG removes language-code table column", staticRepoSvg.includes(">TS<"), false);
+assert("static repository SVG removes old route-code language badge", staticRepoSvg.includes("M03-TS"), false);
+assert("static repository SVG removes dashboard footer active metric", staticRepoSvg.includes("ACTIVE"), false);
+assert("static repository SVG removes dashboard footer total metric", staticRepoSvg.includes("TOTAL"), false);
+assert("static toolchain SVG uses station service header", staticToolchainSvg.includes("M03 SERVICE"), true);
+assert("static toolchain SVG keeps compact percentage row", staticToolchainSvg.includes(">25%<"), true);
+assert("static toolchain SVG removes old local label", staticToolchainSvg.includes("M03 LOCAL"), false);
+
+try {
+  await validateSignals({
+    scene: sceneConfig,
+    staticData: staticDataConfig,
+    layout: layoutConfig,
+    repositorySvg: staticRepoSvg,
+    toolchainSvg: staticToolchainSvg,
+  });
+  assert("semantic validator accepts static config/SVGs", true, true);
+} catch (err) {
+  assert("semantic validator accepts static config/SVGs", err.message, "no error");
+}
 
 // palette
 

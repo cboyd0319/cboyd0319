@@ -363,10 +363,10 @@ Current preferred static split:
 ```text
 TOOLCHAIN SPECTRUM
 
-TypeScript   25%
-Python       35%
-Shell        25%
-PowerShell   15%
+TS   25%
+PY   35%
+SH   25%
+PS   15%
 ```
 
 Visual options:
@@ -385,13 +385,13 @@ Preferred supporting text:
 ```text
 渋谷
 Shibuya
-01
+S01
 
 次は 新宿
 Next: Shinjuku
 
-東京地下鉄
-TOKYO METRO
+都市地下鉄
+CITY METRO
 
 安全第一
 SAFETY FIRST
@@ -405,6 +405,9 @@ Notes:
 
 - Japanese text should feel plausible and restrained.
 - Avoid filling every surface with nonsense glyphs.
+- Use fictional Tokyo-inspired canon, not literal Tokyo Metro branding.
+- Station code should be `S01`, not bare `01`.
+- Train destination display should read `渋谷` / `SHIBUYA`, not `SHIBUYA 01`.
 - Transit signs should sell the environment, not distract from the repository board.
 - If generated text is slightly off on secondary signs, it is less critical than errors on the main overlays, but obvious nonsense should still be avoided.
 
@@ -488,6 +491,9 @@ Do **not** use an already-overlaid output as the next base image unless intentio
 
 The overlay script should:
 
+- Load transit/world signage from `config/scene.json`.
+- Load static profile data from `config/static-data.json`.
+- Load source-resolution layout boxes from `config/layouts/subway-default.json`.
 - Read the real source image dimensions.
 - Scale coordinates from source-image pixels.
 - Generate SVG panels for the main sign and toolchain sign.
@@ -498,6 +504,38 @@ The overlay script should:
 - Support live GitHub data mode for automated profile updates.
 - Compute streak dynamically when live data is used.
 - Avoid running unconditionally when imported.
+
+### 11.3.1 Transit Canon and Signage Consistency
+
+This project uses a fictional Tokyo-inspired transit system rather than a literal recreation of a specific Tokyo Metro route. Supporting signs should feel plausible and internally consistent, but should avoid implying exact real-world operator or line accuracy unless that accuracy is intentionally maintained.
+
+All readable sign text should be authored through configuration or overlay rendering. Generated background art may contain non-readable microtexture, but it should not contain important route, station, repository, or toolchain text.
+
+Current canon:
+
+- Current station: `Shibuya` / `渋谷`
+- Next direction: `Shinjuku` / `新宿`
+- Station code: `S01`
+- Operator: `CITY METRO` / `都市地下鉄`
+- Real Tokyo Metro branding: disabled
+
+### 11.3.2 Validation and Determinism
+
+The production path should be deterministic:
+
+- Local font files in `fonts/` are used before network font fetching.
+- `scripts/validate-signals.mjs` checks required repository strings, toolchain strings, static totals, layout bounds, and transit canon contradictions.
+- Static mode should preserve configured labels such as `1mo ago` instead of recomputing them into equivalent but visually different strings.
+- `assets/generated/` crops should be used for sign-level QA before judging the full image.
+
+### 11.3.3 Rasterization and Optimization
+
+Sharp remains the default compositor and SVG rasterizer. `@resvg/resvg-js` is available for A/B rasterizer comparison through `npm run compare-rasterizers` and opt-in generation with `RASTERIZER=resvg`.
+
+Default optimization should preserve truecolor PNG quality. Palette quantization belongs in the explicit web-size path:
+
+- `npm run optimize`: truecolor PNG optimization.
+- `npm run optimize:web`: palette/quantized PNG optimization when size matters more than gradient fidelity.
 
 ### 11.4 Coordinate tuning
 
@@ -510,7 +548,7 @@ BOARD_WIDTH=612
 BOARD_HEIGHT=336
 
 TOOLCHAIN_LEFT=1324
-TOOLCHAIN_TOP=628
+TOOLCHAIN_TOP=624
 TOOLCHAIN_WIDTH=176
 TOOLCHAIN_HEIGHT=156
 ```
@@ -531,7 +569,28 @@ For live GitHub output:
 GITHUB_TOKEN=your_token_here OUTPUT_WIDTH=1672 npm run generate
 ```
 
-### 11.6 Common overlay problems and fixes
+### 11.6 Optical Integration Rules
+
+The overlay should not appear as a clean SVG sticker. It should feel like emitted data sitting inside a powered display surface embedded in the subway station.
+
+The blank image owns most of the physical sign material: frame, dark glass, reflections, and uneven ambient light. The SVG layer owns the data: text, icons, sparklines, subtle dividers, and local emission. If the SVG paints an opaque display card, the result reads as a sticker even when the typography and coordinates are correct.
+
+Use multi-pass compositing:
+
+1. local shadow
+2. faint display stabilizer
+3. emissive-only glow layer
+4. readable content layer
+5. subtle glass/scan/noise layer
+6. local environmental wash
+7. sign-face reflection pass
+8. final whole-image grade/grain
+
+Avoid making the panel smoky or opaque. Integration should come from the native blank sign face, local content glow, subtle structure, environmental color, and final grading.
+
+The primary sign should remain readable at GitHub display size. If integration reduces readability, prioritize readability.
+
+### 11.7 Common overlay problems and fixes
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
@@ -540,7 +599,12 @@ GITHUB_TOKEN=your_token_here OUTPUT_WIDTH=1672 npm run generate
 | Overlay is shifted | Coordinate mismatch after resizing/cropping | Adjust `BOARD_LEFT`, `BOARD_TOP`, `TOOLCHAIN_LEFT`, `TOOLCHAIN_TOP` |
 | Toolchain panel floats off the wall sign | Toolchain coordinates too large or too far left/right | Shrink and align to wall panel frame |
 | Text is too small after export | Output width too small or panel too dense | Increase output width, simplify content, or enlarge text |
-| Main sign looks pasted on | Panel too opaque without matching lighting | Add subtle border, slight glow, and match sign frame dimensions |
+| Main sign looks pasted on | No local shadow or environmental wash | Add contact shadow, subtle wash, and final unified grade |
+| Full rectangle reads as dark card | SVG base layer is doing too much sign-surface work | Reduce SVG base opacity, weaken shadow, increase local emissive glow |
+| Sign looks smoky/dim | Too much glass/wash, or SVG panel owns too much surface | Reduce glass/wash, lighten the stabilizer, increase local emissive glow |
+| SVG looks too clean | Readable layer too perfect, no local glow | Add emissive-only blur pass and tiny final grain |
+| Data does not feel behind glass | Missing sign-face reflection | Add low-opacity reflection PNGs above content with `screen` blend |
+| Text gets blurry | Readable layer blur too high | Blur emissive layer, not primary readable layer |
 | Values change unexpectedly | Live mode used instead of static mode | Use `STATIC=1` for final art-locked output |
 
 ---
@@ -782,6 +846,11 @@ Before accepting a final render:
 - [ ] No copyrighted characters, exact movie frames, or directly copied compositions.
 - [ ] No decorative bottom-right sparkle icon.
 - [ ] No loose unexplained floor cable/device.
+- [ ] Station code is consistently `S01`, not bare `01`.
+- [ ] Left neon sign does not say `NEXT STOP: SHIBUYA`.
+- [ ] Fictional mode does not show `TOKYO METRO`.
+- [ ] Service panel has one `24H OPEN`, not duplicate baked-in text.
+- [ ] Small hanging sign is authored or visually non-readable.
 
 ### Overlay output
 
@@ -800,6 +869,16 @@ Before accepting a final render:
 - [ ] Toolchain Spectrum text is readable and not competing with the main sign.
 - [ ] Generated output passes PNG validation.
 - [ ] Final output is checked at GitHub display size.
+
+### README-scale QA
+
+Inspect `assets/generated/debug-full-small.png` at 640px width:
+
+- [ ] `REPOSITORY SIGNALS` reads.
+- [ ] Repo names read.
+- [ ] Key metrics read.
+- [ ] Toolchain title is recognizable.
+- [ ] Supporting signs do not look like AI text mush.
 
 ---
 

@@ -23,6 +23,7 @@ const SIGN_COLORS = {
 };
 
 const DISPLAY_ROUTE_CODE = "M03";
+const STATUS_LED_GREEN = "#39FF14";
 
 export function ownActiveRepos(allRepos) {
   return allRepos.filter((repo) => repo && !repo.fork && !repo.archived && repo.name !== USERNAME);
@@ -145,20 +146,25 @@ function repoDisplayName(name, compact) {
   return shortText(name, compact ? 21 : 24);
 }
 
-function statusForRepo(repo, index) {
-  return ["ACTIVE", "STANDBY", "QUIET"][index] ?? "QUIET";
+function statusForRepo(index) {
+  return ["ON", "CHECK", "IDLE"][index] ?? "IDLE";
 }
 
 function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
   const updated = (repo.updated_label || relativeTime(repo.pushed_at)).replace(/\s+ago$/i, "");
-  const status = statusForRepo(repo, index);
-  const statusOpacity = status === "QUIET" ? 0.86 : status === "STANDBY" ? 0.9 : 0.94;
+  const status = statusForRepo(index);
+  const statusFill = status === "CHECK" ? SIGN_COLORS.accentAmber : SIGN_COLORS.textSecondary;
+  const dotColor = status === "ON" ? STATUS_LED_GREEN : statusFill;
+  const statusOpacity = status === "IDLE" ? 0.64 : status === "CHECK" ? 0.86 : 0.74;
   const language = shortText(repo.language || "PUBLIC", 14);
   const stars = Math.max(0, Number(repo.stargazers_count) || 0);
+  const dotX = 98;
+  const dotY = detailY - 4;
   return `${text(updated, { x: 82, y, size: 16.6, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 1 : 0.96, style: "letter-spacing:0.025em" })}
 ${text(repoDisplayName(repo.name, true), { x: 110, y, size: 22.2, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 1 : 0.99, style: "letter-spacing:0" })}
 ${text(language, { x: 420, y, size: 14.8, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.98 : 0.94, style: "letter-spacing:0.025em" })}
-${text(status, { x: 110, y: detailY, size: 15.2, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.98 : statusOpacity, style: "letter-spacing:0.035em" })}
+${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="4" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
+${text(status, { x: 110, y: detailY, size: 15.2, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.92, statusOpacity + 0.08) : statusOpacity, style: "letter-spacing:0.035em" })}
 ${text(`★ ${stars}`, { x: 420, y: detailY, size: 14.8, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.98 : 0.94, style: "letter-spacing:0.02em" })}`;
 }
 

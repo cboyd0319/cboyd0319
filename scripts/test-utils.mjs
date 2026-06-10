@@ -343,8 +343,10 @@ assert("static repository SVG keeps second most recently updated row", staticRep
 assert("static repository SVG omits older Worms row", staticRepoSvg.includes("WormsWMD-macOS-Fix"), false);
 assert("static repository SVG omits older PoshGuard row", staticRepoSvg.includes("PoshGuard"), false);
 assert("static repository SVG rejects Norms typo", staticRepoSvg.includes("Norms macOS Fix"), false);
-assert("static repository SVG keeps active station status", staticRepoSvg.includes(">ACTIVE<"), true);
-assert("static repository SVG keeps standby station status", staticRepoSvg.includes(">STANDBY<"), true);
+assert("static repository SVG keeps on station status", staticRepoSvg.includes(">ON<"), true);
+assert("static repository SVG keeps check station status", staticRepoSvg.includes(">CHECK<"), true);
+assert("static repository SVG renders status LEDs", staticRepoSvg.includes('data-status-led="ON"') && staticRepoSvg.includes('data-status-led="CHECK"'), true);
+assert("static repository SVG uses neon green active LED", staticRepoSvg.includes('fill="#39FF14"'), true);
 assert("static repository SVG keeps star counts", staticRepoSvg.includes(">★ 28<") && staticRepoSvg.includes(">★ 19<"), true);
 assert("static repository SVG removes language-code table column", staticRepoSvg.includes(">TS<"), false);
 assert("static repository SVG removes old route-code language badge", staticRepoSvg.includes("M03-TS"), false);

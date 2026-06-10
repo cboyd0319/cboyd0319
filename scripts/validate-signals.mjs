@@ -120,7 +120,8 @@ export async function validateSignals({
     "M03",
     "REPOSITORY SIGNALS",
   ]);
-  requireAny("repository SVG status", repositorySvg || "", ["ACTIVE", "STANDBY", "QUIET"]);
+  requireAny("repository SVG status", repositorySvg || "", ["ON", "CHECK", "IDLE"]);
+  requireIncludes("repository SVG status LEDs", repositorySvg || "", ['data-status-led="']);
   requireIncludes("toolchain SVG", toolchainSvg || "", [
     "M03 SERVICE",
     "CODE LINES",
@@ -138,7 +139,6 @@ export async function validateSignals({
     "M03-PY",
     "M03-SH",
     "M03-PS",
-    "<circle",
     "<path",
   ]);
 

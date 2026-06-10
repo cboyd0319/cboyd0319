@@ -38,6 +38,8 @@ const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_DENSITY = 144;
 const PANEL_SOFTEN_SIGMA = 0.08;
 const PANEL_TEXTURE_ATTENUATE = 0.012;
+const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
+const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 const FINAL_WARM_WASH_ALPHA = 0;
 const FINAL_FILM_GRAIN_OPACITY = 0;
 
@@ -338,6 +340,23 @@ async function renderOverlayCanvas(layers, outputPath, { width, height, emissive
   await runMagick(args);
 }
 
+async function applyChromaticAberration(inputPath, outputPath) {
+  await runMagick([
+    inputPath,
+    "-channel",
+    "R",
+    "-roll",
+    CHROMATIC_ABERRATION_RED_SHIFT,
+    "+channel",
+    "-channel",
+    "B",
+    "-roll",
+    CHROMATIC_ABERRATION_BLUE_SHIFT,
+    "+channel",
+    pngOutput(outputPath),
+  ]);
+}
+
 async function perspectiveWarpPng(inputPath, outputPath, { width, height, quad, box }) {
   await runMagick([
     inputPath,
@@ -568,14 +587,20 @@ async function main() {
 
   const repositoryWarpedPath = join(GENERATED_DIR, "repository-overlay-warped.png");
   const toolchainWarpedPath = join(GENERATED_DIR, "toolchain-overlay-warped.png");
+  const repositoryAberratedPath = join(GENERATED_DIR, "repository-overlay-aberrated.png");
+  const toolchainAberratedPath = join(GENERATED_DIR, "toolchain-overlay-aberrated.png");
   await Promise.all([
-    perspectiveWarpPng(repositoryOverlayPath, repositoryWarpedPath, {
+    applyChromaticAberration(repositoryOverlayPath, repositoryAberratedPath),
+    applyChromaticAberration(toolchainOverlayPath, toolchainAberratedPath),
+  ]);
+  await Promise.all([
+    perspectiveWarpPng(repositoryAberratedPath, repositoryWarpedPath, {
       width: boardDesign.width,
       height: boardDesign.height,
       quad: boardQuad,
       box: board,
     }),
-    perspectiveWarpPng(toolchainOverlayPath, toolchainWarpedPath, {
+    perspectiveWarpPng(toolchainAberratedPath, toolchainWarpedPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
       quad: toolchainQuad,

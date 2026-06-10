@@ -333,10 +333,10 @@ Recommended static contents:
 M03 REPOSITORY SIGNALS
 
 32m   JobSentinel                         TypeScript
-      ACTIVE                              ★ 28
+      ● ON                                ★ 28
 
 2w    PyGuard                                 Python
-      STANDBY                             ★ 19
+      ● CHECK                             ★ 19
 ```
 
 Notes:

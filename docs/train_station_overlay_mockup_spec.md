@@ -368,10 +368,10 @@ Final text block:
 M03 REPOSITORY SIGNALS
 
 32m   JobSentinel                         TypeScript
-      ACTIVE                              ★ 28
+      ● ON                                ★ 28
 
 2w    PyGuard                                 Python
-      STANDBY                             ★ 19
+      ● CHECK                             ★ 19
 ```
 
 Show the two most recently updated public owner repositories. This should read like a station/service board, not like repository analytics.
@@ -408,7 +408,8 @@ softness: 0.2–0.3 px
 | Time | `32m` | 82 | 72 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
 | Repo | `JobSentinel` | 110 | 72 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
 | Language | `TypeScript` | 420 | 72 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
-| Status | `ACTIVE` | 110 | 96 | left | 15.2 px | 0.035em | `--text-secondary` | 0.94 |
+| LED | `●` | 98 | 92 | center | 4 px radius | n/a | `#39FF14` | 0.74 |
+| Status | `ON` | 110 | 96 | left | 15.2 px | 0.035em | `--text-secondary` | 0.74 |
 | Stars | `★ 28` | 420 | 96 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
 
 ### Row 2
@@ -418,7 +419,8 @@ softness: 0.2–0.3 px
 | Time | `2w` | 82 | 123 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
 | Repo | `PyGuard` | 110 | 123 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
 | Language | `Python` | 420 | 123 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
-| Status | `STANDBY` | 110 | 147 | left | 15.2 px | 0.035em | `--text-secondary` | 0.90 |
+| LED | `●` | 98 | 143 | center | 4 px radius | n/a | `--accent-amber` | 0.86 |
+| Status | `CHECK` | 110 | 147 | left | 15.2 px | 0.035em | `--accent-amber` | 0.86 |
 | Stars | `★ 19` | 420 | 147 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
 
 ---
@@ -429,31 +431,29 @@ Default recommendation: **off**. Do not render `ACTIVE REPOS` or `TOTAL` metrics
 
 ---
 
-## 7.5 Optional Repository Status Lamps
+## 7.5 Repository Status LEDs
 
-Default recommendation: **do not render lamps**. Use text statuses first.
+Default recommendation: render only the two small status LEDs beside status text.
 
-If the board still feels too empty after the text-only pass, add tiny hardware-like lamps at far right. These must not look like charts.
+These are physical indicator dots paired with the status word, not chart marks or row bullets.
 
-### Lamp geometry
-
-```txt
-lamp size:      5 × 5 px
-lamp gap:       4 px
-lamp group x:   420 px
-lamp y offset:  baseline - 5 px
-lamp count:     2 max
-opacity:        0.20–0.34
-```
-
-### Lamp patterns
+### LED geometry
 
 ```txt
-Row 1: ■ ■ ■ □
-Row 2: ■ ■ □ □
+dot radius:     4 px
+dot x:          98 px
+row 1 dot y:    92 px
+row 2 dot y:    143 px
+filter:         soft-glow
 ```
 
-If lamps are used, reduce status-word opacity by about `0.08` or remove the status words. Do not use both at full strength.
+### Status mapping
+
+```txt
+ON:     #39FF14 at 0.74
+CHECK:  --accent-amber at 0.86
+IDLE:   --text-secondary at 0.64
+```
 
 ---
 

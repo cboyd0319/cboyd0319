@@ -5,6 +5,7 @@ import { stat, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 
 const MIN_OPTIMIZED_BYTES = 10_000;
+const WEB = process.argv.includes("--web");
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const outputPath = join(dir, "../assets/signals.png");
@@ -24,8 +25,8 @@ const optimized = await sharp(outputPath, { limitInputPixels: 40_000_000 })
     adaptiveFiltering: true,
     compressionLevel: 9,
     effort: 10,
-    palette: true,
-    quality: 90,
+    palette: WEB,
+    ...(WEB ? { quality: 90 } : {}),
   })
   .toBuffer();
 

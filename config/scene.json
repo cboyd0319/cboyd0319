@@ -1,0 +1,34 @@
+{
+  "mode": "literal_tokyo_metro_marunouchi",
+  "station": {
+    "name_en": "Shin-koenji",
+    "name_ja": "新高円寺",
+    "code": "M03"
+  },
+  "direction": {
+    "next_en": "Minami-asagaya",
+    "next_ja": "南阿佐ヶ谷"
+  },
+  "operator": {
+    "brand_en": "Tokyo Metro",
+    "brand_ja": "東京メトロ",
+    "line_en": "Marunouchi Line",
+    "line_ja": "丸ノ内線",
+    "show_real_tokyo_metro_branding": true
+  },
+  "leftNeonSign": {
+    "title_ja_vertical": "未来を接続",
+    "subtitle_en": "NIGHT PLATFORM",
+    "sector": "SECTOR 76"
+  },
+  "exitSign": {
+    "text_ja": "出口 1-4",
+    "text_en": "EXIT",
+    "platform": "1-4-5"
+  },
+  "servicePanel": {
+    "title": "24H OPEN",
+    "items": ["Service Info", "Maps", "Fares", "Restrooms", "Exit", "Lost & Found"]
+  },
+  "bannedStrings": ["NEXT STOP: SHIBUYA", "SHIBUYA 01"]
+}

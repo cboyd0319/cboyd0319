@@ -1,0 +1,42 @@
+{
+  "repos": [
+    {
+      "name": "JobSentinel",
+      "language": "TypeScript",
+      "language_pct": 25,
+      "updated": "32m ago",
+      "stars": 28,
+      "sparkline": [0, 1, 0, 2, 0, 0, 0, 2, 3, 5]
+    },
+    {
+      "name": "PyGuard",
+      "language": "Python",
+      "language_pct": 35,
+      "updated": "2w ago",
+      "stars": 19,
+      "sparkline": [0, 0, 1, 0, 0, 0, 0, 1, 4, 2]
+    },
+    {
+      "name": "WormsWMD-macOS-Fix",
+      "language": "Shell",
+      "language_pct": 25,
+      "updated": "1mo ago",
+      "stars": 11,
+      "sparkline": [0, 0, 0, 1, 0, 0, 0, 1, 2, 3]
+    },
+    {
+      "name": "PoshGuard",
+      "language": "PowerShell",
+      "language_pct": 15,
+      "updated": "6mo ago",
+      "stars": 7,
+      "sparkline": [0, 0, 0, 0, 1, 0, 0, 1, 1, 2]
+    }
+  ],
+  "summary": {
+    "latest": "32m ago",
+    "activeRepos": 4,
+    "starsTotal": 65,
+    "streak": "3W"
+  }
+}

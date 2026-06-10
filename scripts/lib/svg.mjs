@@ -2,12 +2,27 @@ import { USERNAME, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./config.mjs";
 import { escapeHtml, relativeTime, shortText } from "./utils.mjs";
 
 export const PANEL_ACCENTS = {
-  TypeScript: "#70bedd",
-  Python: "#238dbf",
-  Shell: "#8977b3",
-  PowerShell: "#7b2d69",
-  Other: "#cdcae1",
+  TypeScript: "#B8AD92",
+  Python: "#B8AD92",
+  Shell: "#9C917A",
+  PowerShell: "#9C917A",
+  Other: "#8B887A",
 };
+
+const SIGN_COLORS = {
+  glassHaze: "#172327",
+  poweredWash: "#2F3C35",
+  edgeDarken: "#000000",
+  textPrimary: "#D8CFB8",
+  textSecondary: "#B8AD92",
+  accentAmber: "#D69A3A",
+  accentCyan: "#6F817A",
+  accentMagenta: "#6F5E68",
+  marunouchiRed: "#78312E",
+  ruleLine: "#2B3432",
+};
+
+const DISPLAY_ROUTE_CODE = "M03";
 
 export function ownActiveRepos(allRepos) {
   return allRepos.filter((repo) => repo && !repo.fork && !repo.archived && repo.name !== USERNAME);
@@ -68,169 +83,177 @@ export function weeklyStreak(sparklines) {
   return streak;
 }
 
-function iconLabel(language, index) {
-  if (language === "TypeScript") return "TS";
-  if (language === "JavaScript") return "JS";
-  if (language === "Python") return "Py";
-  if (language === "Shell") return ">_";
-  if (language === "PowerShell") return ">";
-  return String(index + 1);
-}
-
-function svgFontFace(fontDataUrl) {
+function svgFontFace({ fontCss, fontDataUrl }) {
+  if (fontCss) return fontCss;
   if (!fontDataUrl) return "";
-  return `@font-face{font-family:SpaceMono;src:url("${fontDataUrl}") format("woff2");font-weight:400 700;font-display:block;}`;
+  return `@font-face{font-family:"Noto Sans JP";src:url("${fontDataUrl}") format("woff2");font-weight:500 700;font-display:block;}`;
 }
 
-function svgHeader({ width, height, viewWidth, viewHeight, fontDataUrl }) {
+function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl }) {
   return `<svg width="${width}" height="${height}" viewBox="0 0 ${viewWidth} ${viewHeight}" xmlns="http://www.w3.org/2000/svg">
 <defs>
+  <clipPath id="display-clip" clipPathUnits="userSpaceOnUse">
+    <rect x="0" y="0" width="${viewWidth}" height="${viewHeight}"/>
+  </clipPath>
   <pattern id="scan" width="1" height="4" patternUnits="userSpaceOnUse">
-    <rect x="0" y="0" width="1" height="1" fill="#ffffff" opacity="0.022"/>
+    <rect x="0" y="0" width="1" height="1" fill="${SIGN_COLORS.textPrimary}" opacity="0.12"/>
   </pattern>
-  <radialGradient id="display-vignette" cx="50%" cy="42%" r="78%">
-    <stop offset="0%" stop-color="#70bedd" stop-opacity="0.045"/>
-    <stop offset="72%" stop-color="#071011" stop-opacity="0"/>
-    <stop offset="100%" stop-color="#000000" stop-opacity="0.2"/>
+  <radialGradient id="edge-falloff" cx="50%" cy="46%" r="82%">
+    <stop offset="0%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0"/>
+    <stop offset="72%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0.02"/>
+    <stop offset="100%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0.14"/>
   </radialGradient>
+  <radialGradient id="panel-life" cx="44%" cy="48%" r="86%">
+    <stop offset="0%" stop-color="${SIGN_COLORS.poweredWash}" stop-opacity="0.075"/>
+    <stop offset="56%" stop-color="${SIGN_COLORS.poweredWash}" stop-opacity="0.028"/>
+    <stop offset="100%" stop-color="${SIGN_COLORS.poweredWash}" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="glass-sheen" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="${SIGN_COLORS.textPrimary}" stop-opacity="0.04"/>
+    <stop offset="30%" stop-color="${SIGN_COLORS.textPrimary}" stop-opacity="0.006"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+  </linearGradient>
   <filter id="soft-glow" x="-20%" y="-40%" width="140%" height="180%">
-    <feGaussianBlur stdDeviation="1.1" result="blur"/>
+    <feGaussianBlur stdDeviation="0.18" result="blur"/>
     <feMerge>
       <feMergeNode in="blur"/>
       <feMergeNode in="SourceGraphic"/>
     </feMerge>
   </filter>
+  <filter id="displayNoise">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="8" result="noise"/>
+    <feColorMatrix in="noise" type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncA type="table" tableValues="0 0.045"/>
+    </feComponentTransfer>
+  </filter>
 </defs>
 <style>
-${svgFontFace(fontDataUrl)}
-text{font-family:SpaceMono,"Courier New",monospace}
+${svgFontFace({ fontCss, fontDataUrl })}
+text{font-family:"Noto Sans JP","Source Han Sans JP","IBM Plex Sans Condensed","IBM Plex Sans","DIN Condensed","Arial Narrow",sans-serif;text-rendering:geometricPrecision}
 </style>`;
 }
 
-function sparklineSvg(values, color, { x, y, width, height }) {
-  const padded = Array.from({ length: 10 }, (_, i) => Math.max(0, Number(values?.[i] ?? 0) || 0));
-  const max = Math.max(...padded, 1);
-  const barWidth = 4;
-  const gap = (width - barWidth * padded.length) / (padded.length - 1);
-  return padded.map((value, i) => {
-    const barHeight = Math.round(4 + (value / max) * (height - 4));
-    const bx = x + i * (barWidth + gap);
-    const by = y + height - barHeight;
-    const opacity = (0.36 + i * 0.055).toFixed(2);
-    return `<rect x="${bx.toFixed(2)}" y="${by}" width="${barWidth}" height="${barHeight}" rx="1.4" fill="${color}" opacity="${opacity}"/>`;
-  }).join("");
+function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600, anchor = "start", opacity = 1, style = "", extra = "" }) {
+  const styleAttr = style ? `style="${escapeHtml(style)}"` : "";
+  return `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${fill}" opacity="${opacity}" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
 }
 
-function text(value, { x, y, size, fill = "#f0dec5", weight = 400, anchor = "start", opacity = 1, extra = "" }) {
-  return `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${fill}" opacity="${opacity}" ${extra}>${escapeHtml(value)}</text>`;
+function compactLanguage(language) {
+  return {
+    TypeScript: "TS",
+    Python: "PY",
+    Shell: "SH",
+    PowerShell: "PS",
+  }[language] ?? language;
 }
 
-export function renderRepositorySignSvg({ repos, allRepos, sparklines, fontDataUrl, width, height, outputWidth = width, outputHeight = height }) {
-  const latest = repos[0] ? relativeTime(repos[0].pushed_at).toUpperCase() : "—";
+function repoDisplayName(name, compact) {
+  if (name === "WormsWMD-macOS-Fix") return "Norms macOS Fix";
+  return shortText(name, compact ? 20 : 22);
+}
+
+function statusForRepo(repo, index) {
+  if (repo.name === "WormsWMD-macOS-Fix") return "CHECK";
+  if (repo.name === "PoshGuard") return "IDLE";
+  return ["ON", "ON", "CHECK", "IDLE"][index] ?? "ON";
+}
+
+function repoRowText(repo, { y, index, emissiveOnly = false }) {
+  const updated = (repo.updated_label || relativeTime(repo.pushed_at)).replace(/\s+ago$/i, "");
+  const status = statusForRepo(repo, index);
+  const statusFill = status === "CHECK" ? SIGN_COLORS.accentAmber : SIGN_COLORS.textSecondary;
+  const statusOpacity = status === "IDLE" ? 0.58 : status === "CHECK" ? 0.8 : 0.68;
+  return `${text(updated, { x: 16, y, size: 12.1, fill: SIGN_COLORS.accentAmber, weight: 500, opacity: emissiveOnly ? 0.82 : 0.72, style: "letter-spacing:0.035em" })}
+${text(repoDisplayName(repo.name, true), { x: 56, y, size: 14.8, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 1 : 0.98, style: "letter-spacing:0.018em" })}
+${text(status, { x: 326, y, size: 12, fill: statusFill, weight: 500, opacity: emissiveOnly ? Math.min(0.9, statusOpacity + 0.1) : statusOpacity, style: "letter-spacing:0.04em" })}`;
+}
+
+function stationCodeLabel({ emissiveOnly = false } = {}) {
+  return `<g data-station-code="${DISPLAY_ROUTE_CODE}">
+${text(DISPLAY_ROUTE_CODE, { x: 16, y: 35, size: 12.8, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.78 : 0.64, style: "letter-spacing:0.055em" })}
+</g>`;
+}
+
+export function renderRepositorySignSvg({ repos, allRepos, sparklines, summary = null, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const activeRepos = ownActiveRepos(allRepos);
-  const totalStars = activeRepos.reduce((sum, repo) => sum + Math.max(0, Number(repo.stargazers_count) || 0), 0);
-  const streak = weeklyStreak(sparklines);
-
-  const rowTop = 82;
-  const rowBottom = height - 40;
-  const rowHeight = (rowBottom - rowTop) / Math.max(repos.length, 1);
-  const sparkX = width - 90;
-  const nameX = 45;
-  const langX = width - 260;
-  const timeX = width - 184;
-  const lineStart = 14;
-  const lineEnd = width - 14;
+  const activeRepoCount = Number.isFinite(Number(summary?.activeRepos)) ? Number(summary.activeRepos) : activeRepos.length;
+  const totalStars = Number.isFinite(Number(summary?.starsTotal))
+    ? Number(summary.starsTotal)
+    : activeRepos.reduce((sum, repo) => sum + Math.max(0, Number(repo.stargazers_count) || 0), 0);
+  const rowBaselines = [70, 96, 122, 148];
 
   const rows = repos.map((repo, index) => {
-    const language = repo.language || "Code";
-    const color = PANEL_ACCENTS[language] || LANGUAGE_COLORS.get(language) || TOKYO_NEON_PALETTE.lavender;
-    const cy = rowTop + rowHeight * index + rowHeight / 2;
-    const baseline = cy + 5;
-    return `<g>
-  <line x1="${lineStart}" y1="${rowTop + rowHeight * index}" x2="${lineEnd}" y2="${rowTop + rowHeight * index}" stroke="#b5d5dc" stroke-opacity="0.15"/>
-  <rect x="14" y="${cy - 10}" width="20" height="20" rx="3" fill="${color}" opacity="0.95"/>
-  ${text(iconLabel(language, index), { x: 24, y: baseline - 1, size: 8.5, fill: "#07101a", weight: 700, anchor: "middle" })}
-  ${text(shortText(repo.name, 22), { x: nameX, y: baseline, size: 14.8, fill: "#ead8be", weight: 700, extra: 'filter="url(#soft-glow)"' })}
-  ${text(shortText(language, 11), { x: langX, y: baseline, size: 11.8, fill: color, extra: 'filter="url(#soft-glow)"' })}
-  ${text(`Updated ${relativeTime(repo.pushed_at)}`, { x: timeX, y: baseline, size: 11.8, fill: "#d7c2dc" })}
-  <g>${sparklineSvg(sparklines[index], color, { x: sparkX, y: cy - 10, width: 76, height: 20 })}</g>
+    const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
+    return `<g data-repo="${escapeHtml(repo.name)}">
+  ${repoRowText(repo, { y: baseline, index, emissiveOnly })}
 </g>`;
   }).join("");
 
-  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontDataUrl })}
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.064"/>
+<rect width="${width}" height="${height}" fill="url(#panel-life)"/>
+<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.04"/>
+<rect width="${width}" height="${height}" fill="url(#edge-falloff)"/>
+<rect width="${width}" height="${height}" fill="url(#glass-sheen)" opacity="0.004"/>
+<rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.036"/>
+<rect width="${width}" height="${height}" filter="url(#displayNoise)" opacity="0.026"/>`;
+  const structure = emissiveOnly ? "" : `<line x1="16" y1="53" x2="486" y2="53" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.2" stroke-width="2" filter="url(#soft-glow)"/>
+<line x1="16" y1="83" x2="486" y2="83" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.16"/>
+<line x1="16" y1="109" x2="486" y2="109" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.15"/>
+<line x1="16" y1="135" x2="486" y2="135" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.14"/>
+<line x1="16" y1="154" x2="486" y2="154" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.12"/>`;
+
+  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
-<rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.72"/>
-<rect width="${width}" height="${height}" fill="url(#display-vignette)" opacity="0.85"/>
-${text("REPOSITORY SIGNALS", { x: 16, y: 30, size: 23, fill: "#f0dec5", weight: 700, extra: 'filter="url(#soft-glow)"' })}
-${text("SHIBUYA SIGNAL", { x: width - 14, y: 30, size: 12, fill: "#d7c2dc", anchor: "end", extra: 'filter="url(#soft-glow)"' })}
-<line x1="14" y1="42" x2="${lineEnd}" y2="42" stroke="#b5d5dc" stroke-opacity="0.24"/>
-<line x1="14" y1="72" x2="${lineEnd}" y2="72" stroke="#b5d5dc" stroke-opacity="0.16"/>
-<line x1="${width / 3}" y1="45" x2="${width / 3}" y2="72" stroke="#b5d5dc" stroke-opacity="0.16"/>
-<line x1="${(width / 3) * 2}" y1="45" x2="${(width / 3) * 2}" y2="72" stroke="#b5d5dc" stroke-opacity="0.16"/>
-${text(`LATEST  ${latest}`, { x: width / 6, y: 61, size: 12, fill: "#f0dec5", weight: 700, anchor: "middle" })}
-${text(`${activeRepos.length}  ACTIVE REPOS`, { x: width / 2, y: 61, size: 12, fill: "#f0dec5", weight: 700, anchor: "middle" })}
-${text(`${totalStars}  STARS TOTAL`, { x: (width / 6) * 5, y: 61, size: 12, fill: "#f0dec5", weight: 700, anchor: "middle" })}
+<g clip-path="url(#display-clip)">
+${surface}
+<g>
+${stationCodeLabel({ emissiveOnly })}
+${text("REPOSITORY SIGNALS", { x: 50, y: 35, size: 12.8, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.82 : 0.72, style: "letter-spacing:0.06em" })}
+${text("新高円寺", { x: 478, y: 35, size: 9.4, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.78 : 0.68, style: 'letter-spacing:0.045em;font-family:"Noto Sans JP","Source Han Sans JP","Hiragino Sans","Yu Gothic",sans-serif' })}
+${structure}
 ${rows}
-<line x1="${lineStart}" y1="${rowBottom}" x2="${lineEnd}" y2="${rowBottom}" stroke="#b5d5dc" stroke-opacity="0.15"/>
-${text(`${totalStars} STAR SIGNAL`, { x: 14, y: height - 19, size: 12, fill: "#ec6cc8", weight: 700, extra: 'filter="url(#soft-glow)"' })}
-${text(`${activeRepos.length} ACTIVE REPOS`, { x: width / 2, y: height - 19, size: 12, fill: "#1fc7e6", weight: 700, anchor: "middle", extra: 'filter="url(#soft-glow)"' })}
-${text(`${streak}W STREAK`, { x: width - 14, y: height - 19, size: 12, fill: "#1fc7e6", weight: 700, anchor: "end", extra: 'filter="url(#soft-glow)"' })}
+</g>
+</g>
 </svg>`;
 }
 
-function polarToCartesian(cx, cy, r, angleDeg) {
-  const angle = (angleDeg - 90) * Math.PI / 180;
-  return {
-    x: cx + r * Math.cos(angle),
-    y: cy + r * Math.sin(angle),
-  };
-}
-
-function donutSlice(cx, cy, outerR, innerR, startAngle, endAngle, color) {
-  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
-  const startOuter = polarToCartesian(cx, cy, outerR, startAngle);
-  const endOuter = polarToCartesian(cx, cy, outerR, endAngle);
-  const startInner = polarToCartesian(cx, cy, innerR, endAngle);
-  const endInner = polarToCartesian(cx, cy, innerR, startAngle);
-  return `<path d="M ${startOuter.x.toFixed(2)} ${startOuter.y.toFixed(2)} A ${outerR} ${outerR} 0 ${largeArc} 1 ${endOuter.x.toFixed(2)} ${endOuter.y.toFixed(2)} L ${startInner.x.toFixed(2)} ${startInner.y.toFixed(2)} A ${innerR} ${innerR} 0 ${largeArc} 0 ${endInner.x.toFixed(2)} ${endInner.y.toFixed(2)} Z" fill="${color}"/>`;
-}
-
-export function renderToolchainSpectrumSvg({ allRepos, fontDataUrl, width, height, outputWidth = width, outputHeight = height }) {
+export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const langs = languageSummary(allRepos);
-  let barX = 8;
-  let angle = 0;
-  const barWidth = width - 16;
-  const barSegments = langs.map((lang) => {
-    const segmentWidth = Math.max(1, (lang.pct / 100) * barWidth);
-    const rect = `<rect x="${barX.toFixed(2)}" y="31" width="${segmentWidth.toFixed(2)}" height="7" fill="${lang.color}"/>`;
-    barX += segmentWidth;
-    return rect;
-  }).join("");
-
-  const donut = langs.map((lang) => {
-    const next = angle + (lang.pct / 100) * 360;
-    const path = donutSlice(38, 74, 23, 13, angle, next, lang.color);
-    angle = next;
-    return path;
-  }).join("");
-
-  const legend = langs.map((lang, index) => {
-    const y = 58 + index * 18;
-    return `<g>
-  <circle cx="72" cy="${y - 4}" r="3.4" fill="${lang.color}"/>
-  ${text(lang.name, { x: 80, y, size: 8, fill: "#f0dec5", weight: 700 })}
-  ${text(`${lang.pct}%`, { x: width - 8, y, size: 8, fill: "#d7c2dc", anchor: "end", weight: 700 })}
+  const rowBaselines = [106, 132, 158, 184];
+  const codeOpacities = [0.8, 0.8, 0.74, 0.72];
+  const valueOpacities = [0.7, 0.7, 0.64, 0.62];
+  const signalRows = langs.map((lang, index) => {
+    const y = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
+    const compactName = {
+      TypeScript: "TS",
+      Python: "PY",
+      Shell: "SH",
+      PowerShell: "PS",
+    }[lang.name] ?? lang.name;
+    return `<g data-lang="${escapeHtml(lang.name)}">
+  ${text(compactName, { x: 28, y, size: 15.2, fill: SIGN_COLORS.textSecondary, weight: 500, opacity: emissiveOnly ? Math.min(0.9, codeOpacities[index] + 0.08) : codeOpacities[index], style: "letter-spacing:0.07em" })}
+  ${text(`${String(lang.pct)}%`, { x: 56, y, size: 15.2, fill: SIGN_COLORS.textSecondary, weight: 500, opacity: emissiveOnly ? Math.min(0.78, valueOpacities[index] + 0.08) : valueOpacities[index], style: "letter-spacing:0.07em" })}
 </g>`;
   }).join("");
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.076"/>
+<rect width="${width}" height="${height}" fill="url(#panel-life)"/>
+<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.044"/>
+<rect width="${width}" height="${height}" fill="url(#edge-falloff)"/>
+<rect width="${width}" height="${height}" fill="url(#glass-sheen)" opacity="0.004"/>
+<rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.036"/>
+<rect width="${width}" height="${height}" filter="url(#displayNoise)" opacity="0.026"/>`;
 
-  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontDataUrl })}
+  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
-<rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.55"/>
-<rect width="${width}" height="${height}" fill="url(#display-vignette)" opacity="0.65"/>
-${text("TOOLCHAIN SPECTRUM", { x: 8, y: 18, size: 9, fill: "#1fc7e6", weight: 700, extra: 'filter="url(#soft-glow)"' })}
-<rect x="8" y="31" width="${barWidth}" height="7" fill="#102536"/>
-<g clip-path="inset(31px 8px ${height - 38}px 8px round 4px)">${barSegments}</g>
-<g filter="url(#soft-glow)">${donut}</g>
-${legend}
+<g clip-path="url(#display-clip)">
+${surface}
+<g>
+${emissiveOnly ? "" : `<line x1="28" y1="45" x2="120" y2="45" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.2" stroke-width="2" filter="url(#soft-glow)"/>`}
+${text("M03 SERVICE", { x: 28, y: 63, size: 10.6, fill: SIGN_COLORS.accentAmber, weight: 500, opacity: emissiveOnly ? 0.86 : 0.74, style: "letter-spacing:0.075em" })}
+${text("TOOLCHAIN", { x: 28, y: 82, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.9 : 0.8, style: "letter-spacing:0.075em" })}
+${signalRows}
+</g>
+</g>
 </svg>`;
 }

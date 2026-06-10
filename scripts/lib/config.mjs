@@ -1,12 +1,5 @@
 export const USERNAME = "cboyd0319";
 
-export const REPO_SUMMARIES = new Map([
-  ["PyGuard", "Python static analysis and security checks"],
-  ["PoshGuard", "PowerShell AST-aware QA and security guardrails"],
-  ["JobSentinel", "Self-hosted job search automation - scrape, de-dupe, signal"],
-  ["WormsWMD-macOS-Fix", "macOS compatibility repair workflow"],
-]);
-
 export const TOKYO_NEON_PALETTE = {
   indigo: "#252a57",
   blue: "#2b4f8b",
@@ -37,12 +30,5 @@ export const LANGUAGE_COLORS = new Map([
   ["Dockerfile", TOKYO_NEON_PALETTE.blue],
   ["Makefile",   TOKYO_NEON_PALETTE.cyan],
 ]);
-
-export const ACCENTS = [
-  TOKYO_NEON_PALETTE.ice,
-  TOKYO_NEON_PALETTE.cyan,
-  TOKYO_NEON_PALETTE.magenta,
-  TOKYO_NEON_PALETTE.lavender,
-];
 
 export const OUTPUT_WIDTH = 1672;

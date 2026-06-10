@@ -8,7 +8,6 @@
     "node": "26.3.0"
   },
   "scripts": {
-    "prepare-blank": "node scripts/prepare-blank.mjs",
     "generate": "node scripts/generate-overlays.mjs",
     "render-magick-panels": "node scripts/render-magick-panels.mjs",
     "optimize": "node scripts/optimize-signals.mjs",

@@ -1,7 +1,7 @@
 // Focused tests - no live network calls.
 import { readFile } from "node:fs/promises";
 
-import { ACCENTS, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
+import { LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { applyLayoutEnv } from "./generate-overlays.mjs";
 import { github, githubParticipation } from "./lib/github.mjs";
 import { parseMagickVersion, perspectiveControlPoints, REQUIRED_MAGICK_VERSION } from "./lib/imagemagick.mjs";
@@ -403,16 +403,6 @@ console.log("\npalette");
 
 const tokyoColors = new Set(Object.values(TOKYO_NEON_PALETTE));
 
-assertDeepEqual(
-  "signal accents use Tokyo neon palette",
-  ACCENTS,
-  [
-    TOKYO_NEON_PALETTE.ice,
-    TOKYO_NEON_PALETTE.cyan,
-    TOKYO_NEON_PALETTE.magenta,
-    TOKYO_NEON_PALETTE.lavender,
-  ],
-);
 assert(
   "language colors stay inside Tokyo neon palette",
   [...LANGUAGE_COLORS.values()].every((color) => tokyoColors.has(color)),

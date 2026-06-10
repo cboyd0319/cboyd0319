@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 
 const files = [
   "scripts/check-syntax.mjs",
-  "scripts/prepare-blank.mjs",
   "scripts/generate-overlays.mjs",
   "scripts/render-magick-panels.mjs",
   "scripts/optimize-signals.mjs",

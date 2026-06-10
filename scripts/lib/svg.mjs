@@ -68,22 +68,6 @@ function summarizeLanguageEntries(entries, { sort = true } = {}) {
   }));
 }
 
-export function weeklyStreak(sparklines) {
-  const byWeek = Array.from({ length: 10 }, (_, i) =>
-    sparklines.reduce((sum, sparkline) => {
-      const value = Number(sparkline?.[i] ?? 0);
-      return sum + (Number.isFinite(value) && value > 0 ? value : 0);
-    }, 0),
-  );
-
-  let streak = 0;
-  for (let i = byWeek.length - 1; i >= 0; i--) {
-    if (byWeek[i] > 0) streak++;
-    else break;
-  }
-  return streak;
-}
-
 function svgFontFace({ fontCss, fontDataUrl }) {
   if (fontCss) return fontCss;
   if (!fontDataUrl) return "";
@@ -131,15 +115,6 @@ text{font-family:"Noto Sans JP","Source Han Sans JP","Hiragino Sans","Yu Gothic"
 function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600, anchor = "start", opacity = 1, style = "", extra = "" }) {
   const styleAttr = style ? `style="${escapeHtml(style)}"` : "";
   return `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${fill}" opacity="${opacity}" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
-}
-
-function compactLanguage(language) {
-  return {
-    TypeScript: "TS",
-    Python: "PY",
-    Shell: "SH",
-    PowerShell: "PS",
-  }[language] ?? language;
 }
 
 function repoDisplayName(name, compact) {

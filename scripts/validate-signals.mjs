@@ -196,16 +196,16 @@ export async function validateSignals({
     }
   }
   requireDesignSize("repository board", layout.board, { width: 500, height: 160 });
-  requireDesignSize("toolchain panel", layout.toolchain, { width: 144, height: 420 });
+  requireDesignSize("toolchain panel", layout.toolchain, { width: 131, height: 420 });
   requireQuad("repository board", layout.board, [
     { x: 445, y: 55 },
-    { x: 945, y: 57 },
-    { x: 945, y: 212 },
+    { x: 945, y: 64 },
+    { x: 945, y: 207 },
     { x: 445, y: 220 },
   ]);
   requireQuad("toolchain panel", layout.toolchain, [
-    { x: 1419, y: 203 },
-    { x: 1514, y: 184 },
+    { x: 1416, y: 203 },
+    { x: 1518, y: 184 },
     { x: 1500, y: 604 },
     { x: 1412, y: 583 },
   ]);

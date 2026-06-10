@@ -526,7 +526,7 @@ The production path should be deterministic:
 
 ### 11.3.3 Rasterization and Optimization
 
-ImageMagick 7.1.2-25 `magick` is the default and required raster pipeline. JavaScript generates SVG/text templates; ImageMagick owns SVG rasterization, panel compositing, perspective distortion, final scene compositing, metadata checks, debug crops, and PNG optimization. `npm run compare-rasterizers` is retained as a compatibility alias and writes ImageMagick raster crops for inspection.
+ImageMagick 7.1.2-25 `magick` is the default and required raster pipeline. JavaScript generates SVG/text templates; ImageMagick owns SVG rasterization, panel compositing, perspective distortion, final scene compositing, metadata checks, debug crops, and PNG optimization. `npm run render-magick-panels` writes ImageMagick raster crops for inspection.
 
 Default optimization should preserve truecolor PNG quality. Palette quantization belongs in the explicit web-size path:
 
@@ -545,7 +545,7 @@ BOARD_HEIGHT=165
 
 TOOLCHAIN_LEFT=1412
 TOOLCHAIN_TOP=184
-TOOLCHAIN_WIDTH=102
+TOOLCHAIN_WIDTH=106
 TOOLCHAIN_HEIGHT=420
 ```
 

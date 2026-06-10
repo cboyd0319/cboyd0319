@@ -266,11 +266,11 @@ const toolchainSvg = renderToolchainSpectrumSvg({
     makeRepo("ps", 4, { language: "PowerShell", language_pct: 15 }),
   ],
   fontDataUrl: null,
-  width: 144,
+  width: 131,
   height: 420,
 });
 
-assert("toolchain SVG uses requested primary dimensions", toolchainSvg.startsWith('<svg width="144" height="420" viewBox="0 0 144 420"'), true);
+assert("toolchain SVG uses requested primary dimensions", toolchainSvg.startsWith('<svg width="131" height="420" viewBox="0 0 131 420"'), true);
 assert("toolchain SVG clips overlay paint inside sign display", toolchainSvg.includes('clip-path="url(#display-clip)"'), true);
 assert("toolchain SVG uses abbreviated TypeScript label", toolchainSvg.includes(">TS<"), true);
 assert("toolchain SVG keeps full TypeScript name visible", toolchainSvg.includes(">TypeScript<"), true);
@@ -291,11 +291,11 @@ assert(
   "perspective control points map source corners to target quad",
   perspectiveControlPoints(500, 160, [
     { x: 445, y: 55 },
-    { x: 945, y: 57 },
-    { x: 945, y: 212 },
+    { x: 945, y: 64 },
+    { x: 945, y: 207 },
     { x: 445, y: 220 },
   ]),
-  "0,0 445,55 500,0 945,57 500,160 945,212 0,160 445,220",
+  "0,0 445,55 500,0 945,64 500,160 945,207 0,160 445,220",
 );
 
 // config validation

@@ -61,8 +61,8 @@ Render overlays at **2×** their design canvas size, then downsample before fina
 Repository design canvas: 500 × 160 px
 Repository render canvas: 1000 × 320 px
 
-Toolchain design canvas: 144 × 420 px
-Toolchain render canvas: 288 × 840 px
+Toolchain design canvas: 131 × 420 px
+Toolchain render canvas: 262 × 840 px
 ```
 
 All coordinates below are given in **design-canvas pixels**, not 2× render pixels.
@@ -78,8 +78,8 @@ Use these quads for final placement. These are inner-screen targets, not outer f
 ```txt
 Repository screen inner quad, full-image pixels:
 TL: (445, 55)
-TR: (945, 57)
-BR: (945, 212)
+TR: (945, 64)
+BR: (945, 207)
 BL: (445, 220)
 ```
 
@@ -102,8 +102,8 @@ The fallback is acceptable because this board is close to rectangular. Still, pe
 
 ```txt
 Toolchain screen inner quad, full-image pixels:
-TL: (1419, 203)
-TR: (1514, 184)
+TL: (1416, 203)
+TR: (1518, 184)
 BR: (1500, 604)
 BL: (1412, 583)
 ```
@@ -115,7 +115,7 @@ Use only if perspective warping is unavailable:
 ```txt
 x: 1412
 y: 184
-width: 102
+width: 106
 height: 420
 ```
 
@@ -330,11 +330,11 @@ usable width:      414 px
 ### Column positions
 
 ```txt
-time column x:      64 px, right-aligned
-repo name x:        88 px
-detail/status x:    88 px
-language x:         438 px, right-aligned
-star count x:       438 px, right-aligned
+time column x:      82 px, right-aligned
+repo name x:        110 px
+detail/status x:    110 px
+language x:         420 px, right-aligned
+star count x:       420 px, right-aligned
 ```
 
 ### Row baselines
@@ -384,14 +384,14 @@ Show the two most recently updated public owner repositories. This should read l
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Route label | `M03` | 24 | 29 | left | 12.8 px | 0.045em | `--text-secondary` | 0.86 |
-| English title | `REPOSITORY SIGNALS` | 58 | 29 | left | 12.8 px | 0.045em | `--text-primary` | 0.78 |
+| Route label | `M03` | 36 | 29 | left | 12.8 px | 0.045em | `--text-secondary` | 0.86 |
+| English title | `REPOSITORY SIGNALS` | 72 | 29 | left | 12.8 px | 0.045em | `--text-primary` | 0.78 |
 
 ### Header stripe
 
 ```txt
-x1: 24
-x2: 474
+x1: 36
+x2: 456
 y: 47
 stroke: --marunouchi-red
 opacity: 0.20
@@ -405,21 +405,21 @@ softness: 0.2–0.3 px
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `32m` | 64 | 72 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
-| Repo | `JobSentinel` | 88 | 72 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
-| Language | `TypeScript` | 438 | 72 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
-| Status | `ACTIVE` | 88 | 96 | left | 15.2 px | 0.035em | `--text-secondary` | 0.94 |
-| Stars | `★ 28` | 438 | 96 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
+| Time | `32m` | 82 | 72 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
+| Repo | `JobSentinel` | 110 | 72 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
+| Language | `TypeScript` | 420 | 72 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
+| Status | `ACTIVE` | 110 | 96 | left | 15.2 px | 0.035em | `--text-secondary` | 0.94 |
+| Stars | `★ 28` | 420 | 96 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
 
 ### Row 2
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `2w` | 64 | 123 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
-| Repo | `PyGuard` | 88 | 123 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
-| Language | `Python` | 438 | 123 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
-| Status | `STANDBY` | 88 | 147 | left | 15.2 px | 0.035em | `--text-secondary` | 0.90 |
-| Stars | `★ 19` | 438 | 147 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
+| Time | `2w` | 82 | 123 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
+| Repo | `PyGuard` | 110 | 123 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
+| Language | `Python` | 420 | 123 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
+| Status | `STANDBY` | 110 | 147 | left | 15.2 px | 0.035em | `--text-secondary` | 0.90 |
+| Stars | `★ 19` | 420 | 147 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
 
 ---
 
@@ -440,7 +440,7 @@ If the board still feels too empty after the text-only pass, add tiny hardware-l
 ```txt
 lamp size:      5 × 5 px
 lamp gap:       4 px
-lamp group x:   438 px
+lamp group x:   420 px
 lamp y offset:  baseline - 5 px
 lamp count:     2 max
 opacity:        0.20–0.34
@@ -492,7 +492,7 @@ bright cyan/magenta accents
 ## 8.1 Design Canvas
 
 ```txt
-canvas width:  144 px
+canvas width:  131 px
 canvas height: 420 px
 ```
 
@@ -504,16 +504,16 @@ The Toolchain panel should feel like a **narrow station maintenance / subsystem 
 
 ```txt
 left margin:       18 px
-right margin:      12 px for value column
+right margin:      17 px for value column
 top visual center: slightly above center
 ```
 
 ### Column positions
 
 ```txt
-line code x:        18 px
-line name x:        48 px
-share x:            132 px, right-aligned
+line code x:        16 px
+line name x:        39 px
+share x:            114 px, right-aligned
 ```
 
 ### Baselines
@@ -554,16 +554,16 @@ PS   PowerShell  15%
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Header | `M03 SERVICE` | 18 | 66 | left | 11.8 px | 0.05em | `--accent-amber` | 0.86 |
-| Title | `CODE LINES` | 18 | 91 | left | 15.8 px | 0.04em | `--text-primary` | 0.94 |
+| Header | `M03 SERVICE` | 16 | 66 | left | 11.8 px | 0.05em | `--accent-amber` | 0.86 |
+| Title | `CODE LINES` | 16 | 91 | left | 15.8 px | 0.04em | `--text-primary` | 0.94 |
 
 ### Header rule
 
 Use a thin station-style red rule above the header.
 
 ```txt
-x1: 22
-x2: 122
+x1: 16
+x2: 114
 y: 44
 stroke: --marunouchi-red
 opacity: 0.20
@@ -578,33 +578,33 @@ Do not make the rule obvious. If it looks like UI furniture, dim it.
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PY` | 18 | 118 | left | 17.2 px | 0.012em | `--text-primary` | 0.98 |
-| Name | `Python` | 48 | 118 | left | 7.4 px | 0 | `--text-secondary` | 0.88 |
-| Share | `35%` | 132 | 118 | right | 13.2 px | 0 | `--text-primary` | 0.98 |
+| Code | `PY` | 16 | 118 | left | 17.2 px | 0.012em | `--text-primary` | 0.98 |
+| Name | `Python` | 39 | 118 | left | 6.4 px | 0 | `--text-secondary` | 0.88 |
+| Share | `35%` | 114 | 118 | right | 13.2 px | 0 | `--text-primary` | 0.98 |
 
 ### Row 2
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `TS` | 18 | 156 | left | 17.2 px | 0.012em | `--text-primary` | 0.97 |
-| Name | `TypeScript` | 48 | 156 | left | 7.4 px | 0 | `--text-secondary` | 0.87 |
-| Share | `25%` | 132 | 156 | right | 13.2 px | 0 | `--text-primary` | 0.97 |
+| Code | `TS` | 16 | 156 | left | 17.2 px | 0.012em | `--text-primary` | 0.97 |
+| Name | `TypeScript` | 39 | 156 | left | 6.4 px | 0 | `--text-secondary` | 0.87 |
+| Share | `25%` | 114 | 156 | right | 13.2 px | 0 | `--text-primary` | 0.97 |
 
 ### Row 3
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `SH` | 18 | 194 | left | 17.2 px | 0.012em | `--text-primary` | 0.96 |
-| Name | `Shell` | 48 | 194 | left | 7.4 px | 0 | `--text-secondary` | 0.86 |
-| Share | `25%` | 132 | 194 | right | 13.2 px | 0 | `--text-primary` | 0.96 |
+| Code | `SH` | 16 | 194 | left | 17.2 px | 0.012em | `--text-primary` | 0.96 |
+| Name | `Shell` | 39 | 194 | left | 6.4 px | 0 | `--text-secondary` | 0.86 |
+| Share | `25%` | 114 | 194 | right | 13.2 px | 0 | `--text-primary` | 0.96 |
 
 ### Row 4
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PS` | 18 | 232 | left | 17.2 px | 0.012em | `--text-primary` | 0.94 |
-| Name | `PowerShell` | 48 | 232 | left | 7.4 px | 0 | `--text-secondary` | 0.84 |
-| Share | `15%` | 132 | 232 | right | 13.2 px | 0 | `--text-primary` | 0.94 |
+| Code | `PS` | 16 | 232 | left | 17.2 px | 0.012em | `--text-primary` | 0.94 |
+| Name | `PowerShell` | 39 | 232 | left | 6.4 px | 0 | `--text-secondary` | 0.84 |
+| Share | `15%` | 114 | 232 | right | 13.2 px | 0 | `--text-primary` | 0.94 |
 
 ---
 
@@ -723,8 +723,8 @@ Map Repository canvas corners:
 
 ```txt
 canvas (0, 0)       -> image (445, 55)
-canvas (500, 0)     -> image (945, 57)
-canvas (500, 160)   -> image (945, 212)
+canvas (500, 0)     -> image (945, 64)
+canvas (500, 160)   -> image (945, 207)
 canvas (0, 160)     -> image (445, 220)
 ```
 
@@ -733,9 +733,9 @@ canvas (0, 160)     -> image (445, 220)
 Map Toolchain canvas corners:
 
 ```txt
-canvas (0, 0)       -> image (1419, 203)
-canvas (144, 0)     -> image (1514, 184)
-canvas (144, 420)   -> image (1500, 604)
+canvas (0, 0)       -> image (1416, 203)
+canvas (131, 0)     -> image (1518, 184)
+canvas (131, 420)   -> image (1500, 604)
 canvas (0, 420)     -> image (1412, 583)
 ```
 
@@ -846,7 +846,7 @@ footer:               off
 ## Toolchain defaults
 
 ```txt
-canvas:              144 × 420
+canvas:              131 × 420
 primary text opacity: 0.98 title, 0.97–1.00 code/value rows
 secondary opacity:    0.90–0.93 names
 softness:             0.08 sigma readable layer, 0.75 sigma glow layer

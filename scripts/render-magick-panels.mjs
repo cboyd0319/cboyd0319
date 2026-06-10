@@ -26,7 +26,7 @@ async function main() {
   await ensureImageMagick();
   const jobs = [
     ["repository-sign.svg", 500, 160],
-    ["toolchain-spectrum.svg", 144, 420],
+    ["toolchain-spectrum.svg", 131, 420],
   ];
 
   for (const [file, width, height] of jobs) {

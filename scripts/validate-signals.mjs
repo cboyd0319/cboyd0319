@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 
 import sharp from "sharp";
 
+import { renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function fail(message) {
@@ -43,6 +45,51 @@ function requireQuad(label, box, expected) {
 function requireDesignSize(label, box, expected) {
   if (Number(box.designWidth) !== expected.width || Number(box.designHeight) !== expected.height) {
     fail(`${label} design size ${box.designWidth}x${box.designHeight}, expected ${expected.width}x${expected.height}`);
+  }
+}
+
+function staticRepos(staticData) {
+  return staticData.repos.map((repo) => ({
+    name: repo.name,
+    language: repo.language,
+    language_pct: repo.language_pct,
+    updated_label: repo.updated,
+    pushed_at: new Date().toISOString(),
+    stargazers_count: repo.stars,
+    fork: false,
+    archived: false,
+  }));
+}
+
+function renderStaticSvgs(staticData, layout) {
+  const repos = staticRepos(staticData);
+  return {
+    repositorySvg: renderRepositorySignSvg({
+      repos,
+      allRepos: repos,
+      sparklines: staticData.repos.map((repo) => repo.sparkline),
+      summary: staticData.summary,
+      width: layout.board.designWidth,
+      height: layout.board.designHeight,
+    }),
+    toolchainSvg: renderToolchainSpectrumSvg({
+      allRepos: repos,
+      width: layout.toolchain.designWidth,
+      height: layout.toolchain.designHeight,
+    }),
+  };
+}
+
+async function readGeneratedSvgs(staticData, layout) {
+  try {
+    const [repositorySvg, toolchainSvg] = await Promise.all([
+      readFile(join(ROOT_DIR, "assets/generated/repository-sign.svg"), "utf8"),
+      readFile(join(ROOT_DIR, "assets/generated/toolchain-spectrum.svg"), "utf8"),
+    ]);
+    return { repositorySvg, toolchainSvg };
+  } catch (err) {
+    if (err?.code !== "ENOENT") throw err;
+    return renderStaticSvgs(staticData, layout);
   }
 }
 
@@ -165,14 +212,13 @@ export async function validateSignals({
 }
 
 async function main() {
-  const [scene, staticData, layout, repositorySvg, toolchainSvg, output] = await Promise.all([
+  const [scene, staticData, layout, output] = await Promise.all([
     readFile(join(ROOT_DIR, "config/scene.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/static-data.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/layouts/subway-default.json"), "utf8").then(JSON.parse),
-    readFile(join(ROOT_DIR, "assets/generated/repository-sign.svg"), "utf8"),
-    readFile(join(ROOT_DIR, "assets/generated/toolchain-spectrum.svg"), "utf8"),
     readFile(join(ROOT_DIR, "assets/signals.png")),
   ]);
+  const { repositorySvg, toolchainSvg } = await readGeneratedSvgs(staticData, layout);
   await validateSignals({
     scene,
     staticData,

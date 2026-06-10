@@ -355,7 +355,7 @@ M03 REPOSITORY SIGNALS                         新高円寺
 
 32m   JobSentinel              ON
 2w    PyGuard                  ON
-1mo   Norms macOS Fix          CHECK
+1mo   WormsWMD-macOS-Fix       CHECK
 6mo   PoshGuard                IDLE
 ```
 
@@ -408,7 +408,7 @@ softness: 0.2–0.3 px
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
 | Time | `1mo` | 16 | 122 | left | 12.1 px | 0.035em | `--accent-amber` | 0.72 |
-| Repo | `Norms macOS Fix` | 56 | 122 | left | 14.8 px | 0.018em | `--text-primary` | 0.98 |
+| Repo | `WormsWMD-macOS-Fix` | 56 | 122 | left | 14.8 px | 0.018em | `--text-primary` | 0.98 |
 | Status | `CHECK` | 326 | 122 | left | 12.0 px | 0.04em | `--accent-amber` | 0.80 |
 
 ### Row 4

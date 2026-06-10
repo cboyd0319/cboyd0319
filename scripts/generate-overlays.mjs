@@ -25,6 +25,8 @@ const MAX_REPO_PAGES = 10;
 const REPO_LIMIT = 4;
 const SMOKE = process.argv.includes("--smoke");
 const STATIC = ["1", "true", "yes"].includes(String(process.env.STATIC ?? "").toLowerCase());
+const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].includes(String(process.env.LIVE_SMOKE ?? "").toLowerCase());
+const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const RASTERIZER = process.env.RASTERIZER?.trim() || "sharp";
 const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_SCALE = 4;
@@ -132,9 +134,9 @@ async function fetchOwnerRepos() {
 }
 
 async function collectData(staticData) {
-  const allRepos = STATIC ? staticRepos(staticData) : await fetchOwnerRepos();
+  const allRepos = USE_STATIC_DATA ? staticRepos(staticData) : await fetchOwnerRepos();
   const repos = selectRepos(ownActiveRepos(allRepos), REPO_LIMIT);
-  const sparklines = STATIC
+  const sparklines = USE_STATIC_DATA
     ? repos.map((repo) => staticParticipation(repo.name, staticData))
     : await Promise.all(repos.map((repo) => githubParticipation(USERNAME, repo.name)));
   return { allRepos, repos, sparklines };
@@ -552,7 +554,7 @@ async function main() {
 
   const { allRepos, repos, sparklines } = await collectData(staticData);
   if (SMOKE) {
-    console.log(`Smoke OK - ${repos.length} repos, ${allRepos.length} total ${STATIC ? "static" : "fetched"}, ${sourceWidth}x${sourceHeight} background`);
+    console.log(`Smoke OK - ${repos.length} repos, ${allRepos.length} total ${USE_STATIC_DATA ? "static" : "fetched"}, ${sourceWidth}x${sourceHeight} background`);
     return;
   }
 

@@ -24,6 +24,7 @@ const SIGN_COLORS = {
 
 const DISPLAY_ROUTE_CODE = "M03";
 const STATUS_LED_GREEN = "#39FF14";
+const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
 
 export function ownActiveRepos(allRepos) {
   return allRepos.filter((repo) => repo && !repo.fork && !repo.archived && repo.name !== USERNAME);
@@ -126,13 +127,13 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
 </defs>
 <style>
 ${svgFontFace({ fontCss, fontDataUrl })}
-text{font-family:"Noto Sans JP","Source Han Sans JP","Hiragino Sans","Yu Gothic","Helvetica Neue",Arial,sans-serif;text-rendering:geometricPrecision}
+text{font-family:${TEXT_FONT_FAMILY};text-rendering:geometricPrecision}
 </style>`;
 }
 
 function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600, anchor = "start", opacity = 1, style = "", extra = "" }) {
   const styleAttr = style ? `style="${escapeHtml(style)}"` : "";
-  return `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${fill}" opacity="${opacity}" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
+  return `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" font-family="${TEXT_FONT_FAMILY}" text-anchor="${anchor}" fill="${fill}" opacity="${opacity}" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
 }
 
 function repoDisplayName(name, compact) {

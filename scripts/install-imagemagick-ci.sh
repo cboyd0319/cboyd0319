@@ -6,6 +6,8 @@ sha256="c4ce2d982fbedf0347aeca804326308311d767c8da6a69e91ed39371f8de137b"
 url="https://imagemagick.org/archive/releases/ImageMagick-${version}.tar.gz"
 prefix="${RUNNER_TEMP:-${PWD}/.tools}/ImageMagick-${version}"
 
+# Official 7.1.2-25 Linux AppImages omit the rsvg delegate and render this
+# repo's SVG text incorrectly under MSVG, so CI builds the pinned source.
 if [[ -x "${prefix}/bin/magick" ]]; then
   detected="$("${prefix}/bin/magick" -version | sed -n 's/^Version: ImageMagick \([^ ]*\).*/\1/p')"
   if [[ "${detected}" == "${version}" ]]; then

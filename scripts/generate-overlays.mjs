@@ -35,8 +35,9 @@ const STATIC = ["1", "true", "yes"].includes(String(process.env.STATIC ?? "").to
 const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].includes(String(process.env.LIVE_SMOKE ?? "").toLowerCase());
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
-const PANEL_RASTER_DENSITY = 288;
-const PANEL_SOFTEN_SIGMA = 0.025;
+const PANEL_RASTER_DENSITY = 144;
+const PANEL_SOFTEN_SIGMA = 0.08;
+const PANEL_TEXTURE_ATTENUATE = 0.012;
 const FINAL_WARM_WASH_ALPHA = 0;
 const FINAL_FILM_GRAIN_OPACITY = 0;
 
@@ -191,26 +192,23 @@ function panelGlassSvg(width, height) {
   return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <linearGradient id="panel-glass" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#D8CFB8" stop-opacity="0.10"/>
-    <stop offset="20%" stop-color="#D8CFB8" stop-opacity="0.02"/>
-    <stop offset="70%" stop-color="#78312E" stop-opacity="0.010"/>
-    <stop offset="100%" stop-color="#000000" stop-opacity="0.24"/>
+    <stop offset="0%" stop-color="#E8B46A" stop-opacity="0.16"/>
+    <stop offset="18%" stop-color="#D8CFB8" stop-opacity="0.032"/>
+    <stop offset="64%" stop-color="#78312E" stop-opacity="0.012"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.055"/>
   </linearGradient>
-  <pattern id="panel-scan" width="1" height="4" patternUnits="userSpaceOnUse">
-    <rect x="0" y="0" width="1" height="1" fill="#D8CFB8" opacity="0.16"/>
-  </pattern>
-  <filter id="panel-noise">
-    <feTurbulence type="fractalNoise" baseFrequency="0.92" numOctaves="2" seed="19" result="noise"/>
-    <feColorMatrix in="noise" type="saturate" values="0"/>
-    <feComponentTransfer>
-      <feFuncA type="table" tableValues="0 0.055"/>
-    </feComponentTransfer>
+  <linearGradient id="panel-reflection" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#D8CFB8" stop-opacity="0"/>
+    <stop offset="16%" stop-color="#E8B46A" stop-opacity="0.20"/>
+    <stop offset="28%" stop-color="#D8CFB8" stop-opacity="0.045"/>
+    <stop offset="100%" stop-color="#D8CFB8" stop-opacity="0"/>
+  </linearGradient>
+  <filter id="soft-reflection" x="-8%" y="-160%" width="116%" height="420%">
+    <feGaussianBlur stdDeviation="0.9"/>
   </filter>
 </defs>
-<rect width="${width}" height="${height}" rx="6" fill="#D8CFB8" opacity="0.004"/>
-<rect width="${width}" height="${height}" rx="6" fill="url(#panel-glass)"/>
-<rect width="${width}" height="${height}" fill="url(#panel-scan)" opacity="0.004"/>
-<rect width="${width}" height="${height}" filter="url(#panel-noise)" opacity="0.006"/>
+<rect width="${width}" height="${height}" fill="url(#panel-glass)" opacity="0.86"/>
+<rect x="${Math.round(width * 0.04)}" y="${Math.max(1, Math.round(height * 0.065))}" width="${Math.round(width * 0.76)}" height="${Math.max(1, Math.round(height * 0.018))}" fill="url(#panel-reflection)" opacity="0.34" filter="url(#soft-reflection)"/>
 </svg>`;
 }
 
@@ -223,17 +221,9 @@ function panelAbsorptionSvg(width, height) {
     <stop offset="62%" stop-color="#06100f" stop-opacity="0.12"/>
     <stop offset="100%" stop-color="#000000" stop-opacity="0.26"/>
   </linearGradient>
-  <filter id="grime">
-    <feTurbulence type="fractalNoise" baseFrequency="0.58" numOctaves="2" seed="37" result="noise"/>
-    <feColorMatrix in="noise" type="saturate" values="0"/>
-    <feComponentTransfer>
-      <feFuncA type="table" tableValues="0 0.07"/>
-    </feComponentTransfer>
-  </filter>
 </defs>
 <rect width="${width}" height="${height}" fill="#06100f" opacity="0.24"/>
 <rect width="${width}" height="${height}" fill="url(#top-shadow)" opacity="0.34"/>
-<rect width="${width}" height="${height}" filter="url(#grime)" opacity="0.22"/>
 </svg>`;
 }
 
@@ -257,6 +247,9 @@ async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_S
     await copyFile(inputPath, outputPath);
     return;
   }
+  const textureArgs = PANEL_TEXTURE_ATTENUATE > 0
+    ? ["-attenuate", String(PANEL_TEXTURE_ATTENUATE), "+noise", "Gaussian"]
+    : [];
   if (sigma < 0.3) {
     await runMagick([
       inputPath,
@@ -276,6 +269,7 @@ async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_S
       "-compose",
       "Over",
       "-composite",
+      ...textureArgs,
       pngOutput(outputPath),
     ]);
     return;
@@ -284,6 +278,7 @@ async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_S
     inputPath,
     "-blur",
     `0x${sigma}`,
+    ...textureArgs,
     pngOutput(outputPath),
   ]);
 }
@@ -544,12 +539,10 @@ async function main() {
   const repositoryLayers = await renderPanelLayers("repository-sign", repositorySvgPath, repositoryEmissiveSvgPath, {
     width: boardDesign.width,
     height: boardDesign.height,
-    panelSoftenSigma: 0.1,
   });
   const toolchainLayers = await renderPanelLayers("toolchain-spectrum", toolchainSvgPath, toolchainEmissiveSvgPath, {
     width: toolchainDesign.width,
     height: toolchainDesign.height,
-    panelSoftenSigma: 0.1,
   });
 
   const repositoryOverlayPath = join(GENERATED_DIR, "repository-overlay.png");
@@ -558,18 +551,18 @@ async function main() {
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
       height: boardDesign.height,
-      emissiveOpacity: 0.01,
-      panelOpacity: 0.9,
-      glassOpacity: 0.005,
-      throughGlassOpacity: 0.035,
+      emissiveOpacity: 0.008,
+      panelOpacity: 0.98,
+      glassOpacity: 0.12,
+      throughGlassOpacity: 0,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
-      emissiveOpacity: 0.006,
-      panelOpacity: 0.82,
-      glassOpacity: 0.005,
-      throughGlassOpacity: 0.045,
+      emissiveOpacity: 0.014,
+      panelOpacity: 1,
+      glassOpacity: 0.13,
+      throughGlassOpacity: 0,
     }),
   ]);
 

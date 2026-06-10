@@ -13,9 +13,9 @@ const SIGN_COLORS = {
   glassHaze: "#172327",
   poweredWash: "#2F3C35",
   edgeDarken: "#000000",
-  textPrimary: "#D8CFB8",
-  textSecondary: "#B8AD92",
-  accentAmber: "#D69A3A",
+  textPrimary: "#D8BE8C",
+  textSecondary: "#B99C76",
+  accentAmber: "#E0A047",
   accentCyan: "#6F817A",
   accentMagenta: "#6F5E68",
   marunouchiRed: "#78312E",
@@ -95,9 +95,6 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
   <clipPath id="display-clip" clipPathUnits="userSpaceOnUse">
     <rect x="0" y="0" width="${viewWidth}" height="${viewHeight}"/>
   </clipPath>
-  <pattern id="scan" width="1" height="4" patternUnits="userSpaceOnUse">
-    <rect x="0" y="0" width="1" height="1" fill="${SIGN_COLORS.textPrimary}" opacity="0.12"/>
-  </pattern>
   <radialGradient id="edge-falloff" cx="50%" cy="46%" r="82%">
     <stop offset="0%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0"/>
     <stop offset="72%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0.02"/>
@@ -113,6 +110,9 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
     <stop offset="30%" stop-color="${SIGN_COLORS.textPrimary}" stop-opacity="0.006"/>
     <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
   </linearGradient>
+  <pattern id="ui-scanline" width="1" height="5" patternUnits="userSpaceOnUse">
+    <rect x="0" y="0" width="1" height="1" fill="${SIGN_COLORS.textPrimary}" opacity="0.11"/>
+  </pattern>
   <filter id="soft-glow" x="-20%" y="-40%" width="140%" height="180%">
     <feGaussianBlur stdDeviation="0.18" result="blur"/>
     <feMerge>
@@ -120,17 +120,10 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
       <feMergeNode in="SourceGraphic"/>
     </feMerge>
   </filter>
-  <filter id="displayNoise">
-    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="8" result="noise"/>
-    <feColorMatrix in="noise" type="saturate" values="0"/>
-    <feComponentTransfer>
-      <feFuncA type="table" tableValues="0 0.045"/>
-    </feComponentTransfer>
-  </filter>
 </defs>
 <style>
 ${svgFontFace({ fontCss, fontDataUrl })}
-text{font-family:"Noto Sans JP","Source Han Sans JP","IBM Plex Sans Condensed","IBM Plex Sans","DIN Condensed","Arial Narrow",sans-serif;text-rendering:geometricPrecision}
+text{font-family:"Noto Sans JP","Source Han Sans JP","Hiragino Sans","Yu Gothic","Helvetica Neue",Arial,sans-serif;text-rendering:geometricPrecision}
 </style>`;
 }
 
@@ -153,26 +146,25 @@ function repoDisplayName(name, compact) {
 }
 
 function statusForRepo(repo, index) {
-  if (repo.name === "WormsWMD-macOS-Fix") return "CHECK";
-  if (repo.name === "PoshGuard") return "IDLE";
-  return ["ON", "ON", "CHECK", "IDLE"][index] ?? "ON";
+  return ["ACTIVE", "STANDBY", "QUIET"][index] ?? "QUIET";
 }
 
 function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
   const updated = (repo.updated_label || relativeTime(repo.pushed_at)).replace(/\s+ago$/i, "");
   const status = statusForRepo(repo, index);
-  const statusFill = status === "CHECK" ? SIGN_COLORS.accentAmber : SIGN_COLORS.textSecondary;
-  const statusOpacity = status === "IDLE" ? 0.64 : status === "CHECK" ? 0.86 : 0.74;
+  const statusOpacity = status === "QUIET" ? 0.86 : status === "STANDBY" ? 0.9 : 0.94;
   const language = shortText(repo.language || "PUBLIC", 14);
-  return `${text(updated, { x: 16, y, size: 17.2, fill: SIGN_COLORS.accentAmber, weight: 650, opacity: emissiveOnly ? 0.92 : 0.8, style: "letter-spacing:0.035em" })}
-${text(repoDisplayName(repo.name, true), { x: 72, y, size: 23.2, fill: SIGN_COLORS.textPrimary, weight: 650, opacity: emissiveOnly ? 1 : 0.98, style: "letter-spacing:0.008em" })}
-${text(status, { x: 72, y: detailY, size: 15.6, fill: statusFill, weight: 650, opacity: emissiveOnly ? Math.min(0.92, statusOpacity + 0.08) : statusOpacity, style: "letter-spacing:0.055em" })}
-${text(language, { x: 155, y: detailY, size: 14.4, fill: SIGN_COLORS.textSecondary, weight: 500, opacity: emissiveOnly ? 0.74 : 0.58, style: "letter-spacing:0.05em" })}`;
+  const stars = Math.max(0, Number(repo.stargazers_count) || 0);
+  return `${text(updated, { x: 64, y, size: 16.6, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 1 : 0.96, style: "letter-spacing:0.025em" })}
+${text(repoDisplayName(repo.name, true), { x: 88, y, size: 22.2, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 1 : 0.99, style: "letter-spacing:0" })}
+${text(language, { x: 438, y, size: 14.8, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.98 : 0.94, style: "letter-spacing:0.025em" })}
+${text(status, { x: 88, y: detailY, size: 15.2, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.98 : statusOpacity, style: "letter-spacing:0.035em" })}
+${text(`★ ${stars}`, { x: 438, y: detailY, size: 14.8, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.98 : 0.94, style: "letter-spacing:0.02em" })}`;
 }
 
 function stationCodeLabel({ emissiveOnly = false } = {}) {
   return `<g data-station-code="${DISPLAY_ROUTE_CODE}">
-${text(DISPLAY_ROUTE_CODE, { x: 16, y: 35, size: 12.8, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.78 : 0.64, style: "letter-spacing:0.055em" })}
+${text(DISPLAY_ROUTE_CODE, { x: 24, y: 29, size: 12.8, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.94 : 0.86, style: "letter-spacing:0.045em" })}
 </g>`;
 }
 
@@ -182,8 +174,8 @@ export function renderRepositorySignSvg({ repos, allRepos, sparklines, summary =
   const totalStars = Number.isFinite(Number(summary?.starsTotal))
     ? Number(summary.starsTotal)
     : activeRepos.reduce((sum, repo) => sum + Math.max(0, Number(repo.stargazers_count) || 0), 0);
-  const rowBaselines = [78, 129];
-  const detailBaselines = [102, 153];
+  const rowBaselines = [72, 123];
+  const detailBaselines = [96, 147];
 
   const rows = repos.map((repo, index) => {
     const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
@@ -193,15 +185,12 @@ export function renderRepositorySignSvg({ repos, allRepos, sparklines, summary =
 </g>`;
   }).join("");
 
-  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.064"/>
-<rect width="${width}" height="${height}" fill="url(#panel-life)"/>
-<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.04"/>
-<rect width="${width}" height="${height}" fill="url(#edge-falloff)"/>
-<rect width="${width}" height="${height}" fill="url(#glass-sheen)" opacity="0.004"/>
-<rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.036"/>
-<rect width="${width}" height="${height}" filter="url(#displayNoise)" opacity="0.026"/>`;
-  const structure = emissiveOnly ? "" : `<line x1="16" y1="53" x2="486" y2="53" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.22" stroke-width="2" filter="url(#soft-glow)"/>
-<line x1="16" y1="113" x2="486" y2="113" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.14"/>`;
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.012"/>
+<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.72"/>
+<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.08"/>`;
+  const structure = emissiveOnly ? "" : `<line x1="24" y1="47" x2="474" y2="47" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.2" stroke-width="2" filter="url(#soft-glow)"/>
+<line x1="24" y1="107" x2="474" y2="107" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.12"/>`;
+  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.018"/>`;
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
@@ -209,20 +198,23 @@ export function renderRepositorySignSvg({ repos, allRepos, sparklines, summary =
 ${surface}
 <g>
 ${stationCodeLabel({ emissiveOnly })}
-${text("REPOSITORY SIGNALS", { x: 50, y: 35, size: 12.8, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.82 : 0.72, style: "letter-spacing:0.06em" })}
-${text("新高円寺", { x: 478, y: 35, size: 9.4, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.78 : 0.68, style: 'letter-spacing:0.045em;font-family:"Noto Sans JP","Source Han Sans JP","Hiragino Sans","Yu Gothic",sans-serif' })}
+${text("REPOSITORY SIGNALS", { x: 58, y: 29, size: 12.8, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.86 : 0.78, style: "letter-spacing:0.045em" })}
 ${structure}
 ${rows}
 </g>
+${displayTexture}
 </g>
 </svg>`;
 }
 
 export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
-  const langs = languageSummary(allRepos);
-  const rowBaselines = [118, 154, 190, 226];
-  const codeOpacities = [0.84, 0.82, 0.78, 0.76];
-  const valueOpacities = [0.76, 0.74, 0.7, 0.68];
+  const langs = languageSummary(allRepos)
+    .map((lang, index) => ({ ...lang, index }))
+    .sort((a, b) => b.pct - a.pct || a.index - b.index);
+  const rowBaselines = [118, 156, 194, 232];
+  const codeOpacities = [1, 0.99, 0.98, 0.97];
+  const nameOpacities = [0.93, 0.92, 0.91, 0.9];
+  const valueOpacities = [1, 0.99, 0.98, 0.97];
   const signalRows = langs.map((lang, index) => {
     const y = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
     const compactName = {
@@ -232,17 +224,16 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
       PowerShell: "PS",
     }[lang.name] ?? lang.name;
     return `<g data-lang="${escapeHtml(lang.name)}">
-  ${text(compactName, { x: 22, y, size: 23.4, fill: SIGN_COLORS.textSecondary, weight: 650, opacity: emissiveOnly ? Math.min(0.92, codeOpacities[index] + 0.08) : codeOpacities[index], style: "letter-spacing:0.045em" })}
-  ${text(`${String(lang.pct)}%`, { x: 69, y, size: 23.4, fill: SIGN_COLORS.textSecondary, weight: 650, opacity: emissiveOnly ? Math.min(0.84, valueOpacities[index] + 0.08) : valueOpacities[index], style: "letter-spacing:0.035em" })}
+  ${text(compactName, { x: 18, y, size: 17.2, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 1 : codeOpacities[index], style: "letter-spacing:0.012em" })}
+  ${text(shortText(lang.name, 10), { x: 48, y, size: 7.4, fill: SIGN_COLORS.textSecondary, weight: 500, opacity: emissiveOnly ? 0.94 : nameOpacities[index], style: "letter-spacing:0" })}
+  ${text(`${String(lang.pct)}%`, { x: 132, y, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 1 : valueOpacities[index], style: "letter-spacing:0" })}
 </g>`;
   }).join("");
-  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.076"/>
-<rect width="${width}" height="${height}" fill="url(#panel-life)"/>
-<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.044"/>
-<rect width="${width}" height="${height}" fill="url(#edge-falloff)"/>
-<rect width="${width}" height="${height}" fill="url(#glass-sheen)" opacity="0.004"/>
-<rect width="${width}" height="${height}" fill="url(#scan)" opacity="0.036"/>
-<rect width="${width}" height="${height}" filter="url(#displayNoise)" opacity="0.026"/>`;
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.018"/>
+<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.62"/>
+<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.006"/>
+<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.22"/>`;
+  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.016"/>`;
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
@@ -250,10 +241,14 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
 ${surface}
 <g>
 ${emissiveOnly ? "" : `<line x1="22" y1="44" x2="122" y2="44" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.2" stroke-width="2" filter="url(#soft-glow)"/>`}
-${text("M03 SERVICE", { x: 22, y: 66, size: 11.8, fill: SIGN_COLORS.accentAmber, weight: 650, opacity: emissiveOnly ? 0.9 : 0.78, style: "letter-spacing:0.07em" })}
-${text("TOOLCHAIN", { x: 22, y: 91, size: 16.8, fill: SIGN_COLORS.textPrimary, weight: 650, opacity: emissiveOnly ? 0.92 : 0.84, style: "letter-spacing:0.06em" })}
+${text("M03 SERVICE", { x: 18, y: 66, size: 11.8, fill: SIGN_COLORS.accentAmber, weight: 600, opacity: emissiveOnly ? 0.98 : 0.94, style: "letter-spacing:0.05em" })}
+${text("CODE LINES", { x: 18, y: 91, size: 15.8, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 1 : 0.98, style: "letter-spacing:0.04em" })}
+${emissiveOnly ? "" : `<line x1="18" y1="135" x2="132" y2="135" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.1"/>
+<line x1="18" y1="173" x2="132" y2="173" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.085"/>
+<line x1="18" y1="211" x2="132" y2="211" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.07"/>`}
 ${signalRows}
 </g>
+${displayTexture}
 </g>
 </svg>`;
 }

@@ -5,7 +5,7 @@ import { ensureImageMagick, pngOutput, runMagick } from "./lib/imagemagick.mjs";
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const GENERATED_DIR = join(ROOT_DIR, "assets/generated");
-const RASTER_DENSITY = 288;
+const RASTER_DENSITY = 144;
 
 async function renderMagick(svgPath, outputPath, width, height) {
   await runMagick([

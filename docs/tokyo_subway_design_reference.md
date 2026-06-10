@@ -3,7 +3,7 @@
 
 **Purpose:** Create a GitHub/profile header image for the `cboyd0319` profile that blends a cinematic Tokyo subway platform scene with readable, script-rendered live repository data.
 
-This guide consolidates the visual direction, reference influences, image-generation constraints, final layout decisions, and production workflow for generating the base image and applying the **Repository Signals** and **Toolchain Spectrum** overlays.
+This guide consolidates the visual direction, reference influences, image-generation constraints, final layout decisions, and production workflow for generating the base image and applying the **Repository Signals** and **Code Lines** overlays.
 
 ---
 
@@ -24,7 +24,7 @@ The scene should feel like a real station that has been gradually upgraded with 
 - Long perspective down the platform.
 - Commuters as small silhouettes or quiet background figures.
 - One main overhead sign surface for **Repository Signals**.
-- One smaller right-side wall panel for **Toolchain Spectrum**.
+- One smaller right-side wall panel for **Code Lines**.
 - Supporting station signage, including Shin-koenji / Tokyo Metro Marunouchi Line cues.
 - Mild floor sheen and subtle reflections, not a soaking-wet mirror surface.
 - Industrial ceiling structure, conduits, pipes, fluorescent fixtures, tiled walls, vending machines, and transit clutter.
@@ -43,7 +43,7 @@ The best current direction is:
 - Train placement created a strong right-side focal anchor.
 - One large overhead sign became the hero data surface.
 - Right-side top sign was removed, reducing visual clutter.
-- **Toolchain Spectrum** moved to a smaller right-side wall panel.
+- **Code Lines** moved to a smaller right-side wall panel.
 - Mood moved closer to classic Japanese cyberpunk animation and cinematic sci-fi.
 - Image avoided flat synthwave poster art and excessive neon spectacle.
 
@@ -330,13 +330,13 @@ Final text should be applied through `generate-overlays.mjs`.
 Recommended static contents:
 
 ```text
-M03 REPOSITORY SIGNALS                         新高円寺
+M03 REPOSITORY SIGNALS
 
-32m   JobSentinel
-      ON        TypeScript
+32m   JobSentinel                         TypeScript
+      ACTIVE                              ★ 28
 
-2w    PyGuard
-      ON        Python
+2w    PyGuard                                 Python
+      STANDBY                             ★ 19
 ```
 
 Notes:
@@ -349,28 +349,28 @@ Notes:
 - Use a mostly opaque panel background to prevent baked-in sign text from ghosting through.
 - Show the two most recently updated public owner repositories, selected dynamically from GitHub data or from the sorted static fixture.
 
-### 9.2 Right-side wall panel: Toolchain Spectrum
+### 9.2 Right-side wall panel: Code Lines
 
-Since the main overhead right-side sign was removed, this smaller panel carries toolchain data.
+Since the main overhead right-side sign was removed, this smaller panel carries language-share data as train line service information.
 
 Final text should be applied through `generate-overlays.mjs`.
 
 Current preferred static split:
 
 ```text
-TOOLCHAIN SPECTRUM
+M03 SERVICE
+CODE LINES
 
-TS   25%
-PY   35%
-SH   25%
-PS   15%
+PY   Python      35%
+TS   TypeScript  25%
+SH   Shell       25%
+PS   PowerShell  15%
 ```
 
 Visual options:
 
-- Small donut chart.
-- Compact horizontal stacked bar.
-- Small legend with colored dots.
+- Route-code column, full language line name, right-aligned share.
+- Faint schedule-board row separators.
 - Keep it secondary. It should not compete with the Repository Signals board.
 
 ### 9.3 Station signage
@@ -421,10 +421,9 @@ The image is decorative, but visible data should be internally consistent.
 
 - `Repository Signals`
 - `M03`
-- `新高円寺`
 - `JobSentinel`
 - `PyGuard`
-- Update age, status, and language detail for each displayed repository.
+- Update age, status, language, and star count for each displayed repository.
 - The two rows must be the two most recently updated public owner repositories, not a hard-coded pair in live mode.
 - Toolchain split:
   - TypeScript: `25%`
@@ -477,7 +476,7 @@ The base image should include physical sign surfaces, but should avoid final tex
 Best base image behavior:
 
 - Main overhead sign surface exists and is dark enough for overlay text.
-- Right-side Toolchain Spectrum wall panel exists and is dark enough for overlay text.
+- Right-side Code Lines wall panel exists and is dark enough for overlay text.
 - Baked-in text on these two surfaces is minimal, faint, or absent.
 - The sign frames, lighting, and perspective are already part of the art.
 - The base image is not a previously generated `signals.png` with overlays already applied.
@@ -495,7 +494,7 @@ The overlay script should:
 - Scale coordinates from source-image pixels.
 - Generate SVG panels for the main sign and toolchain sign.
 - Rasterize, soften, perspective-warp, composite, resize, optimize, and inspect those panels with ImageMagick 7.1.2-25 `magick`.
-- Add subtle scanline, glow, and display texture through SVG plus ImageMagick alpha/compose steps.
+- Add readable content plus separate warm sign-face reflection through SVG and ImageMagick alpha/compose steps.
 - Validate PNG output before writing.
 - Support static data mode for deterministic design output.
 - Support live GitHub data mode for automated profile updates.
@@ -539,18 +538,18 @@ Default optimization should preserve truecolor PNG quality. Palette quantization
 Coordinates should be tuned in source-image pixels. For the current subway composition, the default coordinate family is approximately:
 
 ```bash
-BOARD_LEFT=300
-BOARD_TOP=30
-BOARD_WIDTH=612
-BOARD_HEIGHT=336
+BOARD_LEFT=445
+BOARD_TOP=55
+BOARD_WIDTH=500
+BOARD_HEIGHT=165
 
-TOOLCHAIN_LEFT=1324
-TOOLCHAIN_TOP=624
-TOOLCHAIN_WIDTH=176
-TOOLCHAIN_HEIGHT=156
+TOOLCHAIN_LEFT=1412
+TOOLCHAIN_TOP=184
+TOOLCHAIN_WIDTH=102
+TOOLCHAIN_HEIGHT=420
 ```
 
-These values may need minor adjustment if the base image is regenerated, cropped, resized, or recomposed.
+These rectangle values are only rough tuning aids. The authoritative perspective quads live in `config/layouts/subway-default.json` and should be updated whenever the base image is regenerated, cropped, resized, or recomposed.
 
 ### 11.5 Recommended static render command
 
@@ -578,14 +577,14 @@ Use multi-pass compositing:
 2. faint display stabilizer
 3. emissive-only glow layer
 4. readable content layer
-5. subtle glass/scan/noise layer
+5. subtle glass reflection layer
 6. local environmental wash
 7. sign-face reflection pass
 8. final whole-image grade/grain
 
 Avoid making the panel smoky or opaque. Integration should come from the native blank sign face, local content glow, subtle structure, environmental color, and final grading.
 
-The primary sign should remain readable at GitHub display size. If integration reduces readability, prioritize readability.
+The primary sign should remain readable at GitHub display size. If integration reduces readability, prioritize readability. Do not fake integration by dropping text opacity until the sign becomes muddy; use glass reflections and source-image lighting instead.
 
 ### 11.7 Common overlay problems and fixes
 
@@ -599,7 +598,8 @@ The primary sign should remain readable at GitHub display size. If integration r
 | Main sign looks pasted on | No local shadow or environmental wash | Add contact shadow, subtle wash, and final unified grade |
 | Full rectangle reads as dark card | SVG base layer is doing too much sign-surface work | Reduce SVG base opacity, weaken shadow, increase local emissive glow |
 | Sign looks smoky/dim | Too much glass/wash, or SVG panel owns too much surface | Reduce glass/wash, lighten the stabilizer, increase local emissive glow |
-| SVG looks too clean | Readable layer too perfect, no local glow | Add emissive-only blur pass and tiny final grain |
+| SVG looks too clean | Missing environmental reflection or final grade | Add warm reflection/glare above content; do not add flat sign noise |
+| Sign text is muddy | Text opacity was reduced to fake integration | Raise readable text opacity and move integration into reflection/wash layers |
 | Data does not feel behind glass | Missing sign-face reflection | Add low-opacity reflection PNGs above content with `screen` blend |
 | Text gets blurry | Readable layer blur too high | Blur emissive layer, not primary readable layer |
 | Values change unexpectedly | Live mode used instead of static mode | Use `STATIC=1` for final art-locked output |
@@ -617,7 +617,7 @@ The platform should look lived-in but not filthy: lightly worn tile, minor scuff
 
 Place one large overhead dark digital transit-style sign surface near the upper-left / upper-center. This sign should be designed as a blank or lightly marked data board for a later overlay. Do not fill it with fake detailed text. It may have a subtle header-like glow and frame, but the final Repository Signals text will be added by code.
 
-Remove any second large top-right sign. On the right wall, include a smaller secondary dark panel intended for a later Toolchain Spectrum overlay. Keep this panel simple, dark, and readable as a surface.
+Remove any second large top-right sign. On the right wall, include a smaller secondary dark panel intended for a later Code Lines overlay. Keep this panel simple, dark, and readable as a surface.
 
 Keep supporting signage plausible and consistent with the approved blank: Shin-koenji, Tokyo Metro, Marunouchi Line, Safety First, Next: Minami-asagaya, Exit 1-4. Use Japanese station typography sparingly and naturally.
 
@@ -751,7 +751,7 @@ Adjust:
 Result:
 
 - Accurate text became possible.
-- Repository Signals and Toolchain Spectrum became reusable and script-driven.
+- Repository Signals and Code Lines became reusable and script-driven.
 - Some ghosting appeared when overlaying on a base image with baked-in text.
 - Toolchain panel required tighter coordinate tuning.
 
@@ -779,7 +779,7 @@ The ideal final image should feel like:
 The final production image should separate mood and data:
 
 - **Base image:** cinematic subway environment and sign surfaces.
-- **Overlay script:** accurate Repository Signals and Toolchain Spectrum content.
+- **Overlay script:** accurate Repository Signals and Code Lines content.
 
 That separation is what prevents AI text corruption while preserving the image’s atmosphere.
 
@@ -833,7 +833,7 @@ Before accepting a final render:
 
 - [ ] Subway platform composition is strong.
 - [ ] Only one large top sign surface remains.
-- [ ] Toolchain Spectrum area appears on the smaller right wall panel.
+- [ ] Code Lines area appears on the smaller right wall panel.
 - [ ] Scene is not too wet.
 - [ ] Scene is not too dirty.
 - [ ] Scene is not too clean.
@@ -857,10 +857,12 @@ Before accepting a final render:
 - [ ] No ghosting from previous generated overlays.
 - [ ] Repo names are correct.
 - [ ] Main sign shows the two most recently updated public owner repositories.
-- [ ] Toolchain percentages are correct for the chosen mode.
+- [ ] Code Lines percentages are correct for the chosen mode.
 - [ ] `JobSentinel` and `PyGuard` are visible in current static mode.
 - [ ] Update ages are visible in static mode, or dynamic latest activity is intentional.
-- [ ] Toolchain Spectrum text is readable and not competing with the main sign.
+- [ ] Code Lines text is readable and not competing with the main sign.
+- [ ] Sign overlays do not contain flat artificial noise or obvious scanline filters.
+- [ ] Sign surfaces show some warm station-light reflection.
 - [ ] Generated output passes PNG validation.
 - [ ] Final output is checked at GitHub display size.
 
@@ -871,7 +873,7 @@ Inspect `assets/generated/debug-full-small.png` at 640px width:
 - [ ] `REPOSITORY SIGNALS` reads.
 - [ ] Repo names read.
 - [ ] Key metrics read.
-- [ ] Toolchain title is recognizable.
+- [ ] Code Lines title is recognizable.
 - [ ] Supporting signs do not look like AI text mush.
 
 ---

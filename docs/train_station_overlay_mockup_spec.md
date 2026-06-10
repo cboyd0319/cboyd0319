@@ -48,24 +48,24 @@ ImageMagick 7.1.2-25 `magick` CLI is the required raster pipeline. JavaScript ma
 
 1. Render each SVG overlay to a transparent PNG canvas with `magick`.
 2. Add very faint screen-surface effects with `magick` alpha/compose operations.
-3. Apply slight raster softness with `magick -blur`.
+3. Do not apply extra text blur. Use normal raster anti-aliasing plus perspective resampling only.
 4. Perspective-warp the canvas into the screen quad with `magick +distort Perspective`.
 5. Composite with normal/source-over blending through `magick -compose Over -composite`.
 6. Add a final unified grain/noise pass with `magick` only if needed.
 
 ### Oversampling
 
-Render overlays at **4×** their design canvas size, then downsample before final warp.
+Render overlays at **2×** their design canvas size, then downsample before final warp. Higher oversampling made the station text look mushy after the perspective pass.
 
 ```txt
 Repository design canvas: 500 × 160 px
-Repository render canvas: 2000 × 640 px
+Repository render canvas: 1000 × 320 px
 
 Toolchain design canvas: 144 × 420 px
-Toolchain render canvas: 576 × 1680 px
+Toolchain render canvas: 288 × 840 px
 ```
 
-All coordinates below are given in **design-canvas pixels**, not 4× render pixels.
+All coordinates below are given in **design-canvas pixels**, not 2× render pixels.
 
 ---
 
@@ -77,10 +77,10 @@ Use these quads for final placement. These are inner-screen targets, not outer f
 
 ```txt
 Repository screen inner quad, full-image pixels:
-TL: (393, 56)
-TR: (893, 60)
-BR: (891, 214)
-BL: (393, 212)
+TL: (445, 55)
+TR: (945, 57)
+BR: (945, 212)
+BL: (445, 220)
 ```
 
 ### Repository fallback rectangle
@@ -88,10 +88,10 @@ BL: (393, 212)
 Use only if perspective warping is unavailable:
 
 ```txt
-x: 393
-y: 56
+x: 445
+y: 55
 width: 500
-height: 158
+height: 165
 ```
 
 The fallback is acceptable because this board is close to rectangular. Still, perspective warp is preferred.
@@ -102,10 +102,10 @@ The fallback is acceptable because this board is close to rectangular. Still, pe
 
 ```txt
 Toolchain screen inner quad, full-image pixels:
-TL: (1324, 217)
-TR: (1451, 191)
-BR: (1447, 606)
-BL: (1320, 582)
+TL: (1419, 203)
+TR: (1514, 184)
+BR: (1500, 604)
+BL: (1412, 583)
 ```
 
 ### Toolchain fallback rectangle
@@ -113,10 +113,10 @@ BL: (1320, 582)
 Use only if perspective warping is unavailable:
 
 ```txt
-x: 1320
-y: 191
-width: 131
-height: 415
+x: 1412
+y: 184
+width: 102
+height: 420
 ```
 
 The fallback will look less convincing on the right panel because the panel is visibly skewed. Use the quad if at all possible.
@@ -130,15 +130,15 @@ These colors are intentionally muted. Bright cyan and pure white are banned from
 ### Color tokens
 
 ```txt
---text-primary:      #D8CFB8   opacity 0.70–0.82
---text-secondary:    #B8AD92   opacity 0.55–0.70
---accent-amber:      #D69A3A   opacity 0.70–0.85
+--text-primary:      #D8BE8C   opacity 0.86–1.00
+--text-secondary:    #B99C76   opacity 0.84–0.98
+--accent-amber:      #E0A047   opacity 0.94–1.00
 --accent-cyan:       #6F817A   opacity 0.20–0.35, avoid on Repository board
 --accent-magenta:    #6F5E68   opacity 0.12–0.24, default off
 --marunouchi-red:    #78312E   opacity 0.18–0.28
 --rule-line:         #2B3432   opacity 0.15–0.25
---glass-haze:        #172327   opacity 0.025–0.050
---edge-darken:       #000000   opacity 0.08–0.16
+--glass-haze:        #172327   opacity 0.006–0.012
+--edge-darken:       #000000   opacity 0.08–0.22
 ```
 
 ### Absolute prohibitions
@@ -188,19 +188,19 @@ Use the first available option from this stack:
 font-family:
   "Noto Sans JP",
   "Source Han Sans JP",
-  "IBM Plex Sans Condensed",
-  "IBM Plex Sans",
-  "DIN Condensed",
-  "Arial Narrow",
+  "Hiragino Sans",
+  "Yu Gothic",
+  "Helvetica Neue",
+  Arial,
   sans-serif;
 ```
 
 ### Rendering behavior
 
 ```txt
-font smoothing:     slightly softened after rasterization
-letter spacing:     +0.04em to +0.09em
-weight:             500–650, depending on font
+font smoothing:     ImageMagick raster anti-aliasing, tiny text softening, and perspective resampling
+letter spacing:     0 to +0.045em
+weight:             500–600, depending on font
 line contrast:      low-to-medium
 ```
 
@@ -214,12 +214,13 @@ Apply this to both overlay canvases before warping.
 
 ### Surface layer
 
-Add a transparent full-canvas wash:
+Add a near-transparent full-canvas wash. Do not cover the baked-in black screen with a new opaque rectangle.
 
 ```txt
-fill:       #172327
-opacity:    0.025–0.050
-blend:      normal/source-over
+Repository powered wash:  #2F3C35 at 0.012, plus panel-life at 0.72
+Toolchain powered wash:   #2F3C35 at 0.018, plus panel-life at 0.62
+Toolchain glass haze:     #172327 at 0.006
+blend:                    normal/source-over
 ```
 
 This should barely lift the black display surface after compositing.
@@ -235,26 +236,22 @@ radius/feather:                       20–40 px on design canvas
 
 ### Softness
 
-After rendering the text and surface treatment:
+Use only a tiny readable-layer soften pass.
 
 ```txt
-Gaussian blur / softness: 0.22–0.30 px
+primary readable layer soften: 0.08 sigma
+emissive glow blur:           0.75 sigma
 ```
 
-Start at:
-
-```txt
-0.22 px
-```
+Do not blur the primary text enough to make it muddy. The intent is to remove vector-perfect edges, not hide the text.
 
 ### Noise / grain
 
-Add subtle monochrome screen noise:
+Do not add uniform sign-level noise. The base image already owns dark-glass texture and station grime. If more texture is needed, use a tiny text-layer ImageMagick noise pass only.
 
 ```txt
-opacity: 0.015–0.025
-blend:   overlay or soft-light
-scale:   fine, not chunky
+text-layer Gaussian noise attenuation: 0.012
+sign-level noise rectangles:          off
 ```
 
 ### Through-glass absorption
@@ -262,30 +259,44 @@ scale:   fine, not chunky
 After text is rendered, apply a very slight dark glass pass over the full display canvas:
 
 ```txt
-Repository opacity: 0.04–0.05
-Toolchain opacity:  0.055–0.065
+Repository opacity: off
+Toolchain opacity:  off
 blend:              normal/source-over
-content:            dark glass tint, top-edge shadow, faint uneven grime
+content:            reserved for future source-specific dark glass repair
 ```
 
-This pass should make the content feel behind display glass. It should not become glow, blur, or a visible decorative overlay.
+This pass is currently disabled because it made the panels muddy and added fake grain. Use reflected-light passes instead.
+
+### Environmental reflection
+
+Add a separate warm reflection pass to both signs. This must not reduce text opacity.
+
+```txt
+color:       warm fluorescent amber / off-white
+shape:       thin tube-like streaks plus soft spill
+placement:   near visible station fluorescent tubes and lit frame edges
+blend:       screen/lighten style only for the reflection layer
+purpose:     make the glass interact with station lighting
+```
 
 ### Scanline texture
 
-Optional. Use only if it is almost invisible.
+Use only a faint content-level scanline layer. It should read as display refresh texture, not as a visible graphic pattern.
 
 ```txt
 line height: 1 px
-gap:         3 px
-opacity:     0.025–0.04
+gap:         4 px
+Repository opacity: 0.018
+Toolchain opacity:  0.016
 ```
 
 ### Glow
 
-Glow should be close to zero.
+Glow should be present but close to zero.
 
 ```txt
-text glow opacity: 0.000–0.015
+Repository text glow opacity: 0.008
+Toolchain text glow opacity:  0.014
 accent glow:       0.000–0.020
 ```
 
@@ -309,31 +320,31 @@ The Repository board should feel like an **overhead station operations board**. 
 ## 7.2 Layout Grid
 
 ```txt
-left margin:       18 px
-right margin:      18 px
-top margin:        25 px
+left margin:       24 px visual edge
+right margin:      62 px visual edge
+top margin:        19 px
 bottom margin:     12 px
-usable width:      464 px
+usable width:      414 px
 ```
 
 ### Column positions
 
 ```txt
-time column x:      16 px
-repo name x:        72 px
-detail/status x:    72 px
-language x:         155 px
-right-aligned edge: 482 px
+time column x:      64 px, right-aligned
+repo name x:        88 px
+detail/status x:    88 px
+language x:         438 px, right-aligned
+star count x:       438 px, right-aligned
 ```
 
 ### Row baselines
 
 ```txt
-title baseline:     35 px
-row 1 repo:         78 px
-row 1 detail:       102 px
-row 2 repo:         129 px
-row 2 detail:       153 px
+title baseline:     29 px
+row 1 repo:         72 px
+row 1 detail:       96 px
+row 2 repo:         123 px
+row 2 detail:       147 px
 ```
 
 ### Divider lines
@@ -341,8 +352,8 @@ row 2 detail:       153 px
 Use one station-style red rule and faint row discipline:
 
 ```txt
-Marunouchi stripe y: 53 px
-row rule y:         113 px
+Marunouchi stripe y: 47 px
+row rule y:         107 px
 ```
 
 Both should be extremely faint. No visible table grid.
@@ -354,13 +365,13 @@ Both should be extremely faint. No visible table grid.
 Final text block:
 
 ```txt
-M03 REPOSITORY SIGNALS                         新高円寺
+M03 REPOSITORY SIGNALS
 
-32m   JobSentinel
-      ON        TypeScript
+32m   JobSentinel                         TypeScript
+      ACTIVE                              ★ 28
 
-2w    PyGuard
-      ON        Python
+2w    PyGuard                                 Python
+      STANDBY                             ★ 19
 ```
 
 Show the two most recently updated public owner repositories. This should read like a station/service board, not like repository analytics.
@@ -373,16 +384,15 @@ Show the two most recently updated public owner repositories. This should read l
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Route label | `M03` | 16 | 35 | left | 12.8 px | 0.055em | `--text-secondary` | 0.64 |
-| English title | `REPOSITORY SIGNALS` | 50 | 35 | left | 12.8 px | 0.06em | `--text-primary` | 0.78 |
-| Station label | `新高円寺` | 478 | 35 | right | 9.4 px | 0.045em | `--text-secondary` | 0.68 |
+| Route label | `M03` | 24 | 29 | left | 12.8 px | 0.045em | `--text-secondary` | 0.86 |
+| English title | `REPOSITORY SIGNALS` | 58 | 29 | left | 12.8 px | 0.045em | `--text-primary` | 0.78 |
 
 ### Header stripe
 
 ```txt
-x1: 16
-x2: 486
-y: 53
+x1: 24
+x2: 474
+y: 47
 stroke: --marunouchi-red
 opacity: 0.20
 width: 2 px
@@ -395,25 +405,27 @@ softness: 0.2–0.3 px
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `32m` | 16 | 78 | left | 17.2 px | 0.035em | `--accent-amber` | 0.80 |
-| Repo | `JobSentinel` | 72 | 78 | left | 23.2 px | 0.008em | `--text-primary` | 0.98 |
-| Status | `ON` | 72 | 102 | left | 15.6 px | 0.055em | `--text-secondary` | 0.74 |
-| Language | `TypeScript` | 155 | 102 | left | 14.4 px | 0.05em | `--text-secondary` | 0.58 |
+| Time | `32m` | 64 | 72 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
+| Repo | `JobSentinel` | 88 | 72 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
+| Language | `TypeScript` | 438 | 72 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
+| Status | `ACTIVE` | 88 | 96 | left | 15.2 px | 0.035em | `--text-secondary` | 0.94 |
+| Stars | `★ 28` | 438 | 96 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
 
 ### Row 2
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `2w` | 16 | 129 | left | 17.2 px | 0.035em | `--accent-amber` | 0.80 |
-| Repo | `PyGuard` | 72 | 129 | left | 23.2 px | 0.008em | `--text-primary` | 0.98 |
-| Status | `ON` | 72 | 153 | left | 15.6 px | 0.055em | `--text-secondary` | 0.74 |
-| Language | `Python` | 155 | 153 | left | 14.4 px | 0.05em | `--text-secondary` | 0.58 |
+| Time | `2w` | 64 | 123 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
+| Repo | `PyGuard` | 88 | 123 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
+| Language | `Python` | 438 | 123 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
+| Status | `STANDBY` | 88 | 147 | left | 15.2 px | 0.035em | `--text-secondary` | 0.90 |
+| Stars | `★ 19` | 438 | 147 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
 
 ---
 
 ### Footer
 
-Default recommendation: **off**. Do not render `ACTIVE` or `TOTAL` metrics on the Repository board unless a later pass proves the board needs them.
+Default recommendation: **off**. Do not render `ACTIVE REPOS` or `TOTAL` metrics on the Repository board unless a later pass proves the board needs them.
 
 ---
 
@@ -452,7 +464,7 @@ If lamps are used, reduce status-word opacity by about `0.08` or remove the stat
 ```txt
 simple rows
 large calm title
-small Japanese label
+M03 route label
 minimal status text
 one faint title divider
 faint row discipline
@@ -491,16 +503,17 @@ The Toolchain panel should feel like a **narrow station maintenance / subsystem 
 ## 8.2 Toolchain Layout Grid
 
 ```txt
-left margin:       22 px
-right margin:      22 px
+left margin:       18 px
+right margin:      12 px for value column
 top visual center: slightly above center
 ```
 
 ### Column positions
 
 ```txt
-code column x:      22 px
-value column x:     69 px
+line code x:        18 px
+line name x:        48 px
+share x:            132 px, right-aligned
 ```
 
 ### Baselines
@@ -510,9 +523,9 @@ header rule y:       44 px
 header baseline:    66 px
 title baseline:     91 px
 row 1 baseline:     118 px
-row 2 baseline:     154 px
-row 3 baseline:     190 px
-row 4 baseline:     226 px
+row 2 baseline:     156 px
+row 3 baseline:     194 px
+row 4 baseline:     232 px
 ```
 
 This top-anchors the text block like a service readout and leaves enough dark glass beneath it to preserve secondary-panel restraint.
@@ -525,12 +538,12 @@ Final text block:
 
 ```txt
 M03 SERVICE
-TOOLCHAIN
+CODE LINES
 
-TS     25%
-PY     35%
-SH     25%
-PS     15%
+PY   Python      35%
+TS   TypeScript  25%
+SH   Shell       25%
+PS   PowerShell  15%
 ```
 
 ---
@@ -541,8 +554,8 @@ PS     15%
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Header | `M03 SERVICE` | 22 | 66 | left | 11.8 px | 0.07em | `--accent-amber` | 0.78 |
-| Title | `TOOLCHAIN` | 22 | 91 | left | 16.8 px | 0.06em | `--text-primary` | 0.84 |
+| Header | `M03 SERVICE` | 18 | 66 | left | 11.8 px | 0.05em | `--accent-amber` | 0.86 |
+| Title | `CODE LINES` | 18 | 91 | left | 15.8 px | 0.04em | `--text-primary` | 0.94 |
 
 ### Header rule
 
@@ -565,29 +578,33 @@ Do not make the rule obvious. If it looks like UI furniture, dim it.
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `TS` | 22 | 118 | left | 23.4 px | 0.045em | `--text-secondary` | 0.84 |
-| Value | `25%` | 69 | 118 | left | 23.4 px | 0.035em | `--text-secondary` | 0.76 |
+| Code | `PY` | 18 | 118 | left | 17.2 px | 0.012em | `--text-primary` | 0.98 |
+| Name | `Python` | 48 | 118 | left | 7.4 px | 0 | `--text-secondary` | 0.88 |
+| Share | `35%` | 132 | 118 | right | 13.2 px | 0 | `--text-primary` | 0.98 |
 
 ### Row 2
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PY` | 22 | 154 | left | 23.4 px | 0.045em | `--text-secondary` | 0.82 |
-| Value | `35%` | 69 | 154 | left | 23.4 px | 0.035em | `--text-secondary` | 0.74 |
+| Code | `TS` | 18 | 156 | left | 17.2 px | 0.012em | `--text-primary` | 0.97 |
+| Name | `TypeScript` | 48 | 156 | left | 7.4 px | 0 | `--text-secondary` | 0.87 |
+| Share | `25%` | 132 | 156 | right | 13.2 px | 0 | `--text-primary` | 0.97 |
 
 ### Row 3
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `SH` | 22 | 190 | left | 23.4 px | 0.045em | `--text-secondary` | 0.78 |
-| Value | `25%` | 69 | 190 | left | 23.4 px | 0.035em | `--text-secondary` | 0.70 |
+| Code | `SH` | 18 | 194 | left | 17.2 px | 0.012em | `--text-primary` | 0.96 |
+| Name | `Shell` | 48 | 194 | left | 7.4 px | 0 | `--text-secondary` | 0.86 |
+| Share | `25%` | 132 | 194 | right | 13.2 px | 0 | `--text-primary` | 0.96 |
 
 ### Row 4
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PS` | 22 | 226 | left | 23.4 px | 0.045em | `--text-secondary` | 0.76 |
-| Value | `15%` | 69 | 226 | left | 23.4 px | 0.035em | `--text-secondary` | 0.68 |
+| Code | `PS` | 18 | 232 | left | 17.2 px | 0.012em | `--text-primary` | 0.94 |
+| Name | `PowerShell` | 48 | 232 | left | 7.4 px | 0 | `--text-secondary` | 0.84 |
+| Share | `15%` | 132 | 232 | right | 13.2 px | 0 | `--text-primary` | 0.94 |
 
 ---
 
@@ -667,15 +684,18 @@ footer unless absolutely necessary
 After all text and surface layers are rendered:
 
 ```txt
-overall layer opacity: 0.78–0.86
-recommended start:    0.86
+overall layer opacity: 0.98
+glass reflection:     0.12
+absorption/noise:     off
 ```
 
 ## Toolchain overlay opacity
 
 ```txt
-overall layer opacity: 0.68–0.78
-recommended start:    0.78
+overall layer opacity: 1.00
+text glow:            0.012
+glass reflection:     0.13
+absorption/noise:     off
 ```
 
 Toolchain should be quieter than Repository.
@@ -685,10 +705,10 @@ Toolchain should be quieter than Repository.
 Use normal/source-over for main content.
 
 ```txt
-main text:       normal/source-over
-surface haze:    normal/source-over
-noise/grain:     overlay or soft-light
-very faint glow: screen only if opacity <= 0.015
+main text:             normal/source-over
+surface haze:          normal/source-over
+reflection/glare:      screen
+uniform sign noise:    off
 ```
 
 Do not use heavy `screen`, `plus`, or additive blending for primary text.
@@ -702,10 +722,10 @@ Do not use heavy `screen`, `plus`, or additive blending for primary text.
 Map Repository canvas corners:
 
 ```txt
-canvas (0, 0)       -> image (393, 56)
-canvas (500, 0)     -> image (893, 60)
-canvas (500, 160)   -> image (891, 214)
-canvas (0, 160)     -> image (393, 212)
+canvas (0, 0)       -> image (445, 55)
+canvas (500, 0)     -> image (945, 57)
+canvas (500, 160)   -> image (945, 212)
+canvas (0, 160)     -> image (445, 220)
 ```
 
 ## Toolchain warp mapping
@@ -713,10 +733,10 @@ canvas (0, 160)     -> image (393, 212)
 Map Toolchain canvas corners:
 
 ```txt
-canvas (0, 0)       -> image (1324, 217)
-canvas (144, 0)     -> image (1451, 191)
-canvas (144, 420)   -> image (1447, 606)
-canvas (0, 420)     -> image (1320, 582)
+canvas (0, 0)       -> image (1419, 203)
+canvas (144, 0)     -> image (1514, 184)
+canvas (144, 420)   -> image (1500, 604)
+canvas (0, 420)     -> image (1412, 583)
 ```
 
 Use ImageMagick perspective distortion. The concept is:
@@ -771,9 +791,10 @@ Only after the full image works, inspect crops.
 Crops should show:
 
 ```txt
-softened text
-slight glass haze
+legible text
+warm fluorescent reflection
 not-perfect black levels
+no flat artificial noise
 no dashboard-card boundary
 no chart-like objects
 ```
@@ -809,13 +830,15 @@ Use these exact defaults first. Do not tune until you see the full-image result.
 
 ```txt
 canvas:              500 × 160
-primary text opacity: 0.84 title, 0.98 repo names
-secondary opacity:    0.58–0.74
-accent opacity:       0.74–0.86
-softness:             0.10 px
-surface haze:         0.035 plus powered wash 0.045
-noise:                0.018
-layer opacity:        0.90
+primary text opacity: 0.78 title, 0.95 repo names
+secondary opacity:    0.78–0.82
+accent opacity:       0.84
+softness:             0.08 sigma readable layer, 0.75 sigma glow layer
+surface haze:         off
+uniform noise:        off; text-layer noise attenuation 0.012
+reflection:           warm fluorescent streaks
+layer opacity:        0.98
+text glow:            0.008
 status lamps:         off
 footer:               off
 ```
@@ -824,15 +847,17 @@ footer:               off
 
 ```txt
 canvas:              144 × 420
-primary text opacity: 0.84 title, 0.76–0.84 rows
-secondary opacity:    0.68–0.76 values
-softness:             0.10 px
-surface haze:         0.040 plus powered wash 0.042
-noise:                0.020
-layer opacity:        0.82
+primary text opacity: 0.98 title, 0.97–1.00 code/value rows
+secondary opacity:    0.90–0.93 names
+softness:             0.08 sigma readable layer, 0.75 sigma glow layer
+surface haze:         glass haze 0.006 plus powered wash 0.018
+uniform noise:        off; text-layer noise attenuation 0.012
+reflection:           warm fluorescent reflection above text
+layer opacity:        1.00
+text glow:            0.014
 ticks:                off
 footer:               off
-divider:              off
+divider:              faint schedule rows
 ```
 
 ---

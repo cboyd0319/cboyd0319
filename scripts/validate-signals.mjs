@@ -119,19 +119,21 @@ export async function validateSignals({
   requireIncludes("repository SVG", repositorySvg || "", [
     "M03",
     "REPOSITORY SIGNALS",
-    "新高円寺",
   ]);
-  requireAny("repository SVG status", repositorySvg || "", ["ON", "CHECK", "IDLE"]);
+  requireAny("repository SVG status", repositorySvg || "", ["ACTIVE", "STANDBY", "QUIET"]);
   requireIncludes("toolchain SVG", toolchainSvg || "", [
     "M03 SERVICE",
-    "TOOLCHAIN",
+    "CODE LINES",
   ]);
   requireExcludes("generated SVG", `${repositorySvg || ""}\n${toolchainSvg || ""}`, [
     "#FFFFFF",
     "#ffffff",
     "SPECTRUM",
+    "TOOLCHAIN",
+    "新高円寺",
     "M03 LOCAL",
     "リポジトリ信号",
+    "ACTIVE REPOS",
     "M03-TS",
     "M03-PY",
     "M03-SH",
@@ -196,16 +198,16 @@ export async function validateSignals({
   requireDesignSize("repository board", layout.board, { width: 500, height: 160 });
   requireDesignSize("toolchain panel", layout.toolchain, { width: 144, height: 420 });
   requireQuad("repository board", layout.board, [
-    { x: 393, y: 56 },
-    { x: 893, y: 60 },
-    { x: 891, y: 214 },
-    { x: 393, y: 212 },
+    { x: 445, y: 55 },
+    { x: 945, y: 57 },
+    { x: 945, y: 212 },
+    { x: 445, y: 220 },
   ]);
   requireQuad("toolchain panel", layout.toolchain, [
-    { x: 1324, y: 217 },
-    { x: 1451, y: 191 },
-    { x: 1447, y: 606 },
-    { x: 1320, y: 582 },
+    { x: 1419, y: 203 },
+    { x: 1514, y: 184 },
+    { x: 1500, y: 604 },
+    { x: 1412, y: 583 },
   ]);
 
   if (output) {

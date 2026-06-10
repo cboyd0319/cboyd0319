@@ -256,7 +256,7 @@ assert("repository SVG uses requested dimensions", escapedRepoSvg.startsWith('<s
 assert("repository SVG clips overlay paint inside sign display", escapedRepoSvg.includes('clip-path="url(#display-clip)"'), true);
 assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
-assert("repository SVG keeps station target label", escapedRepoSvg.includes("新高円寺"), true);
+assert("repository SVG omits station target label", escapedRepoSvg.includes("新高円寺"), false);
 
 const toolchainSvg = renderToolchainSpectrumSvg({
   allRepos: [
@@ -273,7 +273,10 @@ const toolchainSvg = renderToolchainSpectrumSvg({
 assert("toolchain SVG uses requested primary dimensions", toolchainSvg.startsWith('<svg width="144" height="420" viewBox="0 0 144 420"'), true);
 assert("toolchain SVG clips overlay paint inside sign display", toolchainSvg.includes('clip-path="url(#display-clip)"'), true);
 assert("toolchain SVG uses abbreviated TypeScript label", toolchainSvg.includes(">TS<"), true);
-assert("toolchain SVG keeps full TypeScript name in metadata", toolchainSvg.includes('data-lang="TypeScript"'), true);
+assert("toolchain SVG keeps full TypeScript name visible", toolchainSvg.includes(">TypeScript<"), true);
+assert("toolchain SVG uses code lines title", toolchainSvg.includes(">CODE LINES<"), true);
+assert("toolchain SVG sorts largest share first", toolchainSvg.indexOf(">PY<") < toolchainSvg.indexOf(">TS<"), true);
+assert("toolchain SVG removes old toolchain title", toolchainSvg.includes(">TOOLCHAIN<"), false);
 
 // ImageMagick helper
 
@@ -287,12 +290,12 @@ assert(
 assert(
   "perspective control points map source corners to target quad",
   perspectiveControlPoints(500, 160, [
-    { x: 393, y: 56 },
-    { x: 893, y: 60 },
-    { x: 891, y: 214 },
-    { x: 393, y: 212 },
+    { x: 445, y: 55 },
+    { x: 945, y: 57 },
+    { x: 945, y: 212 },
+    { x: 445, y: 220 },
   ]),
-  "0,0 393,56 500,0 893,60 500,160 891,214 0,160 393,212",
+  "0,0 445,55 500,0 945,57 500,160 945,212 0,160 445,220",
 );
 
 // config validation
@@ -333,21 +336,27 @@ assert("scene service title not duplicated as item", sceneConfig.servicePanel.it
 assert("layout board inside source width", layoutConfig.board.left + layoutConfig.board.width <= layoutConfig.sourceWidth, true);
 assert("layout toolchain inside source height", layoutConfig.toolchain.top + layoutConfig.toolchain.height <= layoutConfig.sourceHeight, true);
 assert("static repository SVG uses plain station route label", staticRepoSvg.includes('data-station-code="M03"'), true);
-assert("static repository SVG uses station target label", staticRepoSvg.includes("新高円寺"), true);
+assert("static repository SVG omits top-right station label", staticRepoSvg.includes("新高円寺"), false);
 assert("static repository SVG uses time-first row", staticRepoSvg.includes(">32m<"), true);
 assert("static repository SVG keeps JobSentinel row", staticRepoSvg.includes("JobSentinel"), true);
 assert("static repository SVG keeps second most recently updated row", staticRepoSvg.includes("PyGuard"), true);
 assert("static repository SVG omits older Worms row", staticRepoSvg.includes("WormsWMD-macOS-Fix"), false);
 assert("static repository SVG omits older PoshGuard row", staticRepoSvg.includes("PoshGuard"), false);
 assert("static repository SVG rejects Norms typo", staticRepoSvg.includes("Norms macOS Fix"), false);
-assert("static repository SVG keeps station status", staticRepoSvg.includes(">ON<"), true);
+assert("static repository SVG keeps active station status", staticRepoSvg.includes(">ACTIVE<"), true);
+assert("static repository SVG keeps standby station status", staticRepoSvg.includes(">STANDBY<"), true);
+assert("static repository SVG keeps star counts", staticRepoSvg.includes(">★ 28<") && staticRepoSvg.includes(">★ 19<"), true);
 assert("static repository SVG removes language-code table column", staticRepoSvg.includes(">TS<"), false);
 assert("static repository SVG removes old route-code language badge", staticRepoSvg.includes("M03-TS"), false);
-assert("static repository SVG removes dashboard footer active metric", staticRepoSvg.includes("ACTIVE"), false);
+assert("static repository SVG removes dashboard footer active metric", staticRepoSvg.includes("ACTIVE REPOS"), false);
 assert("static repository SVG removes dashboard footer total metric", staticRepoSvg.includes("TOTAL"), false);
 assert("static toolchain SVG uses station service header", staticToolchainSvg.includes("M03 SERVICE"), true);
+assert("static toolchain SVG uses code lines title", staticToolchainSvg.includes(">CODE LINES<"), true);
+assert("static toolchain SVG shows full language names", staticToolchainSvg.includes(">Python<") && staticToolchainSvg.includes(">TypeScript<"), true);
+assert("static toolchain SVG sorts Python before TypeScript", staticToolchainSvg.indexOf(">PY<") < staticToolchainSvg.indexOf(">TS<"), true);
 assert("static toolchain SVG keeps compact percentage row", staticToolchainSvg.includes(">25%<"), true);
 assert("static toolchain SVG removes old local label", staticToolchainSvg.includes("M03 LOCAL"), false);
+assert("static toolchain SVG removes old toolchain title", staticToolchainSvg.includes(">TOOLCHAIN<"), false);
 
 try {
   await validateSignals({

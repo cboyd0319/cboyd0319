@@ -25,6 +25,7 @@ const SIGN_COLORS = {
 const DISPLAY_ROUTE_CODE = "M03";
 const STATUS_LED_GREEN = "#39FF14";
 const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
+const REPOSITORY_BOARD_NAME_MAX = 17;
 
 export function ownActiveRepos(allRepos) {
   return allRepos.filter((repo) => repo && !repo.fork && !repo.archived && repo.name !== USERNAME);
@@ -137,7 +138,7 @@ function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600,
 }
 
 function repoDisplayName(name, compact) {
-  return shortText(name, compact ? 21 : 24);
+  return shortText(name, compact ? REPOSITORY_BOARD_NAME_MAX : 24);
 }
 
 function statusForRepo(index) {

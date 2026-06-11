@@ -283,6 +283,27 @@ assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
 assert("repository SVG omits station target label", escapedRepoSvg.includes("新高円寺"), false);
 
+const longRepoSvg = renderRepositorySignSvg({
+  repos: [
+    makeRepo("WormsWMD-macOS-Fix", 1, {
+      language: "Shell",
+      stargazers_count: 47,
+    }),
+  ],
+  allRepos: [
+    makeRepo("WormsWMD-macOS-Fix", 1, {
+      language: "Shell",
+      stargazers_count: 47,
+    }),
+  ],
+  fontDataUrl: null,
+  width: 500,
+  height: 160,
+});
+
+assert("repository SVG truncates long visible repo names before language column", longRepoSvg.includes(">WormsWMD-macOS...<"), true);
+assert("repository SVG keeps long full repo name out of visible text", longRepoSvg.includes(">WormsWMD-macOS-Fix<"), false);
+
 const toolchainSvg = renderToolchainSpectrumSvg({
   allRepos: [
     makeRepo("ts", 1, { language: "TypeScript", language_pct: 25 }),

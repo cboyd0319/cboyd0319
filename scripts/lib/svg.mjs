@@ -157,10 +157,10 @@ function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
   const dotY = detailY - 4;
   return `${text(updated, { x: 92, y, size: 16.1, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.86 : 0.88, style: "letter-spacing:0.025em" })}
 ${text(repoDisplayName(repo.name, true), { x: 118, y, size: 20.4, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.9 : 0.96, style: "letter-spacing:0" })}
-${text(language, { x: 405, y, size: 13.6, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.025em" })}
+${text(language, { x: 430, y, size: 13.1, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.8 : 0.84, style: "letter-spacing:0.025em" })}
 ${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="4" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
 ${text(status, { x: 118, y: detailY, size: 14.7, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.82, statusOpacity + 0.04) : Math.max(0.68, statusOpacity - 0.03), style: "letter-spacing:0.035em" })}
-${text(`★ ${stars}`, { x: 405, y: detailY, size: 13.6, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.02em" })}`;
+${text(`★ ${stars}`, { x: 430, y: detailY, size: 13.1, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.8 : 0.84, style: "letter-spacing:0.02em" })}`;
 }
 
 function stationCodeLabel({ emissiveOnly = false } = {}) {

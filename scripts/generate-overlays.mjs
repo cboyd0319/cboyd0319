@@ -588,7 +588,7 @@ async function main() {
       width: boardDesign.width,
       height: boardDesign.height,
       emissiveOpacity: 0.005,
-      panelOpacity: 0.94,
+      panelOpacity: 0.92,
       glassOpacity: 0.10,
       throughGlassOpacity: 0,
     }),

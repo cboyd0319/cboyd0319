@@ -153,14 +153,14 @@ function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
   const statusOpacity = status === "IDLE" ? 0.64 : status === "CHECK" ? 0.86 : 0.74;
   const language = shortText(repo.language || "PUBLIC", 14);
   const stars = Math.max(0, Number(repo.stargazers_count) || 0);
-  const dotX = 98;
+  const dotX = 106;
   const dotY = detailY - 4;
-  return `${text(updated, { x: 82, y, size: 16.1, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.86 : 0.88, style: "letter-spacing:0.025em" })}
-${text(repoDisplayName(repo.name, true), { x: 110, y, size: 21.2, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.9 : 0.96, style: "letter-spacing:0" })}
-${text(language, { x: 402, y, size: 14.1, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.025em" })}
+  return `${text(updated, { x: 92, y, size: 16.1, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.86 : 0.88, style: "letter-spacing:0.025em" })}
+${text(repoDisplayName(repo.name, true), { x: 118, y, size: 20.4, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.9 : 0.96, style: "letter-spacing:0" })}
+${text(language, { x: 392, y, size: 14.1, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.025em" })}
 ${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="4" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
-${text(status, { x: 110, y: detailY, size: 14.7, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.82, statusOpacity + 0.04) : Math.max(0.68, statusOpacity - 0.03), style: "letter-spacing:0.035em" })}
-${text(`★ ${stars}`, { x: 402, y: detailY, size: 14.1, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.02em" })}`;
+${text(status, { x: 118, y: detailY, size: 14.7, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.82, statusOpacity + 0.04) : Math.max(0.68, statusOpacity - 0.03), style: "letter-spacing:0.035em" })}
+${text(`★ ${stars}`, { x: 392, y: detailY, size: 14.1, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.02em" })}`;
 }
 
 function stationCodeLabel({ emissiveOnly = false } = {}) {
@@ -170,8 +170,8 @@ ${text(DISPLAY_ROUTE_CODE, { x: 36, y: 35, size: 12.4, fill: SIGN_COLORS.textSec
 }
 
 export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
-  const rowBaselines = [86, 132];
-  const detailBaselines = [109, 154];
+  const rowBaselines = [92, 138];
+  const detailBaselines = [115, 160];
 
   const rows = repos.map((repo, index) => {
     const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
@@ -185,7 +185,7 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 <rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.72"/>
 <rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.08"/>`;
   const structure = emissiveOnly ? "" : `<line x1="36" y1="55" x2="456" y2="55" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.14" stroke-width="2" filter="url(#soft-glow)"/>
-<line x1="36" y1="114" x2="456" y2="114" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
+<line x1="36" y1="124" x2="456" y2="124" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
   const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.026"/>`;
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}

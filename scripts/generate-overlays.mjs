@@ -577,13 +577,13 @@ async function main() {
       width: boardDesign.width,
       height: boardDesign.height,
       emissiveOpacity: 0.008,
-      panelOpacity: 0.78,
+      panelOpacity: 0.72,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
       emissiveOpacity: 0.014,
-      panelOpacity: 0.82,
+      panelOpacity: 0.76,
     }),
     renderGlareCanvas("repository-glare", repositoryGlarePath, {
       width: boardDesign.width,

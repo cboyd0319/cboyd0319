@@ -547,14 +547,14 @@ async function main() {
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
       height: boardDesign.height,
-      emissiveOpacity: 0.07,
-      panelOpacity: 0.92,
+      emissiveOpacity: 0.35,
+      panelOpacity: 0.75,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
-      emissiveOpacity: 0.09,
-      panelOpacity: 0.9,
+      emissiveOpacity: 0.45,
+      panelOpacity: 0.65,
     }),
   ]);
 

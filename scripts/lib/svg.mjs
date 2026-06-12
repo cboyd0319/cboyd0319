@@ -149,8 +149,8 @@ ${text(DISPLAY_ROUTE_CODE, { x: 36, y: 39, size: 12.4, fill: SIGN_COLORS.textSec
 }
 
 export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
-  const rowBaselines = [92, 138];
-  const detailBaselines = [115, 160];
+  const rowBaselines = [82, 126];
+  const detailBaselines = [102, 146];
 
   const rows = repos.map((repo, index) => {
     const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
@@ -161,8 +161,8 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
   }).join("");
 
   const surface = "";
-  const structure = emissiveOnly ? "" : `<line x1="36" y1="55" x2="456" y2="55" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.14" stroke-width="2" filter="url(#soft-glow)"/>
-<line x1="36" y1="124" x2="456" y2="124" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
+  const structure = emissiveOnly ? "" : `<line x1="36" y1="50" x2="456" y2="50" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.14" stroke-width="2" filter="url(#soft-glow)"/>
+<line x1="36" y1="112" x2="456" y2="112" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
   const displayTexture = "";
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}

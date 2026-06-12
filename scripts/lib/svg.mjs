@@ -21,7 +21,7 @@ const SIGN_COLORS = {
 
 const DISPLAY_ROUTE_CODE = "M03";
 const STATUS_LED_GREEN = "#39FF14";
-const TEXT_FONT_FAMILY = "'VT323','Courier New',monospace";
+const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
 const REPOSITORY_BOARD_NAME_MAX = 17;
 
 export function ownActiveRepos(allRepos) {
@@ -88,7 +88,7 @@ function summarizeLanguageEntries(entries, { sort = true } = {}) {
 function svgFontFace({ fontCss, fontDataUrl }) {
   if (fontCss) return fontCss;
   if (!fontDataUrl) return "";
-  return `@font-face{font-family:"VT323";src:url("${fontDataUrl}") format("truetype");font-weight:400;font-display:block;}`;
+  return `@font-face{font-family:"Noto Sans JP";src:url("${fontDataUrl}") format("woff2");font-weight:500 700;font-display:block;}`;
 }
 
 function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl }) {

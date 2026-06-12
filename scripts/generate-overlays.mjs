@@ -41,7 +41,6 @@ const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
 const PANEL_GLOW_TINT_COLOR = "#FF9900";
 const PANEL_GLOW_TINT_STRENGTH = 25;
-const LED_ALPHA_GRID_SIZE = 3;
 const MACRO_GLOW_BLUR_SIGMA = 15;
 const MACRO_GLOW_OPACITY = 0.065;
 const GLARE_OPACITY = 0.035;
@@ -294,46 +293,6 @@ async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_S
   ]);
 }
 
-async function createLedAlphaMask(outputPath, { width, height }) {
-  await runMagick([
-    "-size",
-    `${LED_ALPHA_GRID_SIZE}x${LED_ALPHA_GRID_SIZE}`,
-    "xc:white",
-    "-fill",
-    "gray30",
-    "-draw",
-    "point 0,0 point 1,1",
-    "-write",
-    "mpr:led-alpha-grid",
-    "+delete",
-    "-size",
-    `${width}x${height}`,
-    "tile:mpr:led-alpha-grid",
-    pngOutput(outputPath),
-  ]);
-}
-
-async function applyLedAlphaTexture(inputPath, outputPath, maskPath) {
-  await runMagick([
-    inputPath,
-    "-alpha",
-    "on",
-    "(",
-    inputPath,
-    "-alpha",
-    "extract",
-    maskPath,
-    "-compose",
-    "Multiply",
-    "-composite",
-    ")",
-    "-compose",
-    "CopyAlpha",
-    "-composite",
-    pngOutput(outputPath),
-  ]);
-}
-
 async function renderMacroGlow(inputPath, outputPath, { glowTintColor, glowTintStrength }) {
   await runMagick([
     inputPath,
@@ -358,7 +317,6 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
 }) {
   const basePath = join(GENERATED_DIR, `${prefix}-base.png`);
   const softenedPath = join(GENERATED_DIR, `${prefix}-softened.png`);
-  const ledMaskPath = join(GENERATED_DIR, `${prefix}-led-alpha-mask.png`);
   const panelPath = join(GENERATED_DIR, `${prefix}.png`);
   const emissivePath = join(GENERATED_DIR, `${prefix}-emissive.png`);
   const emissiveTexturedPath = join(GENERATED_DIR, `${prefix}-emissive-textured.png`);
@@ -368,12 +326,11 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
   await Promise.all([
     rasterizeSvg(svgPath, basePath, { width, height }),
     rasterizeSvg(emissiveSvgPath, emissivePath, { width, height }),
-    createLedAlphaMask(ledMaskPath, { width, height }),
   ]);
   await softenReadablePanel(basePath, softenedPath, panelSoftenSigma);
   await Promise.all([
-    applyLedAlphaTexture(softenedPath, panelPath, ledMaskPath),
-    applyLedAlphaTexture(emissivePath, emissiveTexturedPath, ledMaskPath),
+    copyFile(softenedPath, panelPath),
+    copyFile(emissivePath, emissiveTexturedPath),
   ]);
   await Promise.all([
     runMagick([

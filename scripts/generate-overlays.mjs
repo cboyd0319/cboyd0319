@@ -36,8 +36,8 @@ const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].inclu
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_DENSITY = 144;
-const PANEL_SOFTEN_SIGMA = 0.14;
-const PANEL_TEXTURE_ATTENUATE = 0.012;
+const PANEL_SOFTEN_SIGMA = 0.46;
+const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
@@ -173,12 +173,15 @@ function designSize(box) {
   };
 }
 
-function fallbackQuad(box) {
-  return rectQuad(box);
+function requiredQuad(box, label) {
+  if (!Array.isArray(box.quad) || box.quad.length !== 4) {
+    throw new Error(`${label} layout must define a four-point quad.`);
+  }
+  return box.quad;
 }
 
-function scaledQuad(box, { scaleX, scaleY }) {
-  return (box.quad || fallbackQuad(box)).map((point) => ({
+function scaledQuad(box, { scaleX, scaleY }, label) {
+  return requiredQuad(box, label).map((point) => ({
     x: point.x * scaleX,
     y: point.y * scaleY,
   }));
@@ -465,8 +468,8 @@ async function main() {
   const { css: fontCss } = await loadFontAsDataUrl();
   const boardDesign = designSize(layout.board);
   const toolchainDesign = designSize(layout.toolchain);
-  const boardQuad = scaledQuad(layout.board, quadScale);
-  const toolchainQuad = scaledQuad(layout.toolchain, quadScale);
+  const boardQuad = scaledQuad(layout.board, quadScale, "board");
+  const toolchainQuad = scaledQuad(layout.toolchain, quadScale, "toolchain");
   const board = boxFromQuad(boardQuad);
   const toolchain = boxFromQuad(toolchainQuad);
   const repositorySvg = renderRepositorySignSvg({
@@ -532,13 +535,13 @@ async function main() {
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
       height: boardDesign.height,
-      emissiveOpacity: 0.006,
+      emissiveOpacity: 0.07,
       panelOpacity: 0.92,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
-      emissiveOpacity: 0.007,
+      emissiveOpacity: 0.09,
       panelOpacity: 0.9,
     }),
   ]);

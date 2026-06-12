@@ -157,10 +157,10 @@ function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
   const dotY = detailY - 4;
   return `${text(updated, { x: 92, y, size: 16.1, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.86 : 0.88, style: "letter-spacing:0.025em" })}
 ${text(repoDisplayName(repo.name, true), { x: 118, y, size: 20.4, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.9 : 0.96, style: "letter-spacing:0" })}
-${text(language, { x: 392, y, size: 14.1, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.025em" })}
+${text(language, { x: 405, y, size: 13.6, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.025em" })}
 ${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="4" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
 ${text(status, { x: 118, y: detailY, size: 14.7, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.82, statusOpacity + 0.04) : Math.max(0.68, statusOpacity - 0.03), style: "letter-spacing:0.035em" })}
-${text(`★ ${stars}`, { x: 392, y: detailY, size: 14.1, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.02em" })}`;
+${text(`★ ${stars}`, { x: 405, y: detailY, size: 13.6, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.02em" })}`;
 }
 
 function stationCodeLabel({ emissiveOnly = false } = {}) {
@@ -225,8 +225,8 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
       Other: "OT",
     }[lang.name] ?? lang.name;
     return `<g data-lang="${escapeHtml(lang.name)}">
-  ${text(compactName, { x: 25, y, size: 18, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.88 : codeOpacities[index], style: "letter-spacing:0.012em" })}
-  ${text(`${String(lang.pct)}%`, { x: 112, y, size: 13.8, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.88 : valueOpacities[index], style: "letter-spacing:0" })}
+  ${text(compactName, { x: 20, y, size: 17.3, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.88 : codeOpacities[index], style: "letter-spacing:0.012em" })}
+  ${text(`${String(lang.pct)}%`, { x: 107, y, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.88 : valueOpacities[index], style: "letter-spacing:0" })}
 </g>`;
   }).join("");
   const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.018"/>
@@ -240,12 +240,12 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
 <g clip-path="url(#display-clip)">
 ${surface}
 <g>
-${emissiveOnly ? "" : `<line x1="23" y1="58" x2="112" y2="58" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.17" stroke-width="2" filter="url(#soft-glow)"/>`}
-${text("M03 SERVICE", { x: 25, y: 84, size: 12.1, fill: SIGN_COLORS.accentAmber, weight: 600, opacity: emissiveOnly ? 0.84 : 0.88, style: "letter-spacing:0.05em" })}
-${text("CODE LINES", { x: 25, y: 111, size: 16.6, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.92 : 0.98, style: "letter-spacing:0.04em" })}
-${emissiveOnly ? "" : `<line x1="23" y1="146" x2="112" y2="146" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.085"/>
-<line x1="23" y1="180" x2="112" y2="180" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.075"/>
-<line x1="23" y1="214" x2="112" y2="214" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.065"/>`}
+${emissiveOnly ? "" : `<line x1="19" y1="58" x2="108" y2="58" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.17" stroke-width="2" filter="url(#soft-glow)"/>`}
+${text("M03 SERVICE", { x: 20, y: 84, size: 11.7, fill: SIGN_COLORS.accentAmber, weight: 600, opacity: emissiveOnly ? 0.84 : 0.88, style: "letter-spacing:0.05em" })}
+${text("CODE LINES", { x: 20, y: 111, size: 15.9, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.92 : 0.98, style: "letter-spacing:0.04em" })}
+${emissiveOnly ? "" : `<line x1="19" y1="146" x2="108" y2="146" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.085"/>
+<line x1="19" y1="180" x2="108" y2="180" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.075"/>
+<line x1="19" y1="214" x2="108" y2="214" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.065"/>`}
 ${signalRows}
 </g>
 ${displayTexture}

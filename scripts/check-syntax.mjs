@@ -11,6 +11,7 @@ const files = [
   "scripts/lib/utils.mjs",
   "scripts/lib/github.mjs",
   "scripts/lib/font.mjs",
+  "scripts/lib/final-grade.mjs",
   "scripts/lib/imagemagick.mjs",
   "scripts/lib/svg.mjs",
 ];

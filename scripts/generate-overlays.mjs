@@ -8,6 +8,7 @@ import {
 } from "./lib/config.mjs";
 import { github } from "./lib/github.mjs";
 import { loadFontAsDataUrl } from "./lib/font.mjs";
+import { applyFinalGrade } from "./lib/final-grade.mjs";
 import {
   alphaMultiplyArgs,
   ensureImageMagick,
@@ -48,8 +49,6 @@ const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+2+0";
 const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-2+0";
-const FINAL_WARM_WASH_ALPHA = 0;
-const FINAL_FILM_GRAIN_OPACITY = 0;
 
 function envNumber(name, fallback) {
   if (!process.env[name]?.trim()) return fallback;
@@ -379,11 +378,15 @@ async function applyChromaticAberration(inputPath, outputPath, {
     "R",
     "-roll",
     redShift,
+    "-blur",
+    "0x0.3",
     "+channel",
     "-channel",
     "B",
     "-roll",
     blueShift,
+    "-blur",
+    "0x0.3",
     "+channel",
     pngOutput(outputPath),
   ]);
@@ -419,7 +422,7 @@ function glareSvg(width, height, variant) {
     <stop offset="1" stop-color="#ffdba0" stop-opacity="0"/>
   </linearGradient>
   <filter id="glass-soften" x="-20%" y="-80%" width="140%" height="260%">
-    <feGaussianBlur stdDeviation="5"/>
+    <feGaussianBlur stdDeviation="25"/>
   </filter>
 </defs>
 <path d="${path}" fill="url(#glass-glare)" filter="url(#glass-soften)"/>
@@ -430,59 +433,6 @@ async function renderGlareCanvas(prefix, outputPath, { width, height, variant })
   const svgPath = join(GENERATED_DIR, `${prefix}.svg`);
   await writeFile(svgPath, glareSvg(width, height, variant));
   await rasterizeSvg(svgPath, outputPath, { width, height });
-}
-
-async function colorWash(path, { width, height, background }) {
-  await runMagick([
-    "-size",
-    `${width}x${height}`,
-    `xc:${background}`,
-    pngOutput(path),
-  ]);
-}
-
-function finalFilmGrainSvg(width, height) {
-  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-<filter id="final-grain">
-  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="31" result="noise"/>
-  <feColorMatrix in="noise" type="saturate" values="0"/>
-  <feComponentTransfer>
-    <feFuncA type="table" tableValues="0 0.05"/>
-  </feComponentTransfer>
-</filter>
-<rect width="${width}" height="${height}" filter="url(#final-grain)"/>
-</svg>`;
-}
-
-async function applyFinalGrade(inputPath, outputPath, { width, height }) {
-  if (FINAL_WARM_WASH_ALPHA <= 0 && FINAL_FILM_GRAIN_OPACITY <= 0) {
-    await copyFile(inputPath, outputPath);
-    return;
-  }
-
-  const warmWashPath = join(GENERATED_DIR, "final-warm-wash.png");
-  const grainSvgPath = join(GENERATED_DIR, "final-film-grain.svg");
-  const grainPath = join(GENERATED_DIR, "final-film-grain.png");
-  await Promise.all([
-    colorWash(warmWashPath, { width, height, background: `rgba(255,170,95,${FINAL_WARM_WASH_ALPHA})` }),
-    writeFile(grainSvgPath, finalFilmGrainSvg(width, height)),
-  ]);
-  await rasterizeSvg(grainSvgPath, grainPath, { width, height });
-
-  await runMagick([
-    inputPath,
-    "-modulate",
-    "101.8,98.5,100",
-    warmWashPath,
-    "-compose",
-    "SoftLight",
-    "-composite",
-    ...alphaMultiplyArgs(grainPath, FINAL_FILM_GRAIN_OPACITY),
-    "-compose",
-    "Overlay",
-    "-composite",
-    pngOutput(outputPath),
-  ]);
 }
 
 function expandedCrop(box, { width, height, pad = 16 }) {
@@ -726,6 +676,7 @@ async function main() {
   await applyFinalGrade(compositedPath, outputPath, {
     width: OUTPUT_WIDTH,
     height: outputHeight,
+    workDir: GENERATED_DIR,
   });
 
   await validateImage(outputPath, OUTPUT_WIDTH);

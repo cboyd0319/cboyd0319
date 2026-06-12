@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
+import { applyFinalGrade } from "./lib/final-grade.mjs";
 import { ensureImageMagick, identifyImage, pngOutput, runMagick } from "./lib/imagemagick.mjs";
 import { renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { selectRepos } from "./lib/utils.mjs";
@@ -158,6 +159,7 @@ async function overlayPixelMetrics({ output, background, layout, width, height }
   const tempDir = await mkdtemp(join(tmpdir(), "signals-validate-"));
   try {
     const resizedBackground = join(tempDir, "background.png");
+    const gradedBackground = join(tempDir, "background-graded.png");
     const diffPath = join(tempDir, "diff.png");
     const outsideMask = join(tempDir, "outside-mask.png");
     const insideMask = join(tempDir, "inside-mask.png");
@@ -165,7 +167,8 @@ async function overlayPixelMetrics({ output, background, layout, width, height }
     const draw = maskDraw(boxes);
 
     await runMagick([background, "-resize", `${width}x${height}!`, pngOutput(resizedBackground)]);
-    await runMagick([resizedBackground, output, "-compose", "difference", "-composite", pngOutput(diffPath)]);
+    await applyFinalGrade(resizedBackground, gradedBackground, { width, height, workDir: tempDir });
+    await runMagick([gradedBackground, output, "-compose", "difference", "-composite", pngOutput(diffPath)]);
     await Promise.all([
       runMagick(["-size", `${width}x${height}`, "xc:white", "-fill", "black", "-draw", draw, pngOutput(outsideMask)]),
       runMagick(["-size", `${width}x${height}`, "xc:black", "-fill", "white", "-draw", draw, pngOutput(insideMask)]),

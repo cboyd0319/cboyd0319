@@ -181,12 +181,12 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 </g>`;
   }).join("");
 
-  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.012"/>
-<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.72"/>
-<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.08"/>`;
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.003"/>
+<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.16"/>
+<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.025"/>`;
   const structure = emissiveOnly ? "" : `<line x1="36" y1="55" x2="456" y2="55" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.14" stroke-width="2" filter="url(#soft-glow)"/>
 <line x1="36" y1="124" x2="456" y2="124" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
-  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.026"/>`;
+  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.006"/>`;
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
@@ -229,11 +229,11 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   ${text(`${String(lang.pct)}%`, { x: 107, y, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.88 : valueOpacities[index], style: "letter-spacing:0" })}
 </g>`;
   }).join("");
-  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.018"/>
-<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.62"/>
-<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.006"/>
-<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.22"/>`;
-  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.016"/>`;
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.003"/>
+<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.12"/>
+<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.001"/>
+<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.045"/>`;
+  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.004"/>`;
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>

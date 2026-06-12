@@ -39,8 +39,8 @@ const PANEL_RASTER_DENSITY = 144;
 const PANEL_SOFTEN_SIGMA = 0.46;
 const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
-const PANEL_GLOW_TINT_COLOR = "#E0A047";
-const PANEL_GLOW_TINT_STRENGTH = 15;
+const PANEL_GLOW_TINT_COLOR = "#FF9900";
+const PANEL_GLOW_TINT_STRENGTH = 25;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 const FINAL_WARM_WASH_ALPHA = 0;
@@ -548,13 +548,13 @@ async function main() {
       width: boardDesign.width,
       height: boardDesign.height,
       emissiveOpacity: 0.008,
-      panelOpacity: 0.98,
+      panelOpacity: 0.85,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
       emissiveOpacity: 0.014,
-      panelOpacity: 1,
+      panelOpacity: 0.85,
     }),
   ]);
 

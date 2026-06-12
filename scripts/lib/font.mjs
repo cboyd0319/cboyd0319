@@ -5,11 +5,12 @@ import { readFile } from "node:fs/promises";
 const TIMEOUT_MS = 10_000;
 const FONT_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../fonts");
 const LOCAL_FONTS = [
-  { family: "Noto Sans JP", weight: 500, file: "NotoSansJP-Medium.woff2" },
-  { family: "Noto Sans JP", weight: 700, file: "NotoSansJP-Bold.woff2" },
+  { family: "VT323", weight: 400, file: "VT323-Regular.ttf", format: "truetype", mediaType: "font/ttf" },
+  { family: "Noto Sans JP", weight: 500, file: "NotoSansJP-Medium.woff2", format: "woff2", mediaType: "font/woff2" },
+  { family: "Noto Sans JP", weight: 700, file: "NotoSansJP-Bold.woff2", format: "woff2", mediaType: "font/woff2" },
 ];
 const FONT_SHEETS = [
-  `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700&text=${encodeURIComponent("リポジトリ・シグナル渋谷新宿出口安全第一都市地下鉄未来を接続")}`,
+  "https://fonts.googleapis.com/css2?family=VT323&display=swap",
 ];
 const FONT_URL_RE = /url\(\s*['"]?(https:\/\/fonts\.gstatic\.com\/[^'")\s]+)['"]?\s*\)/g;
 
@@ -45,7 +46,7 @@ async function loadLocalFonts() {
     const chunks = [];
     for (const font of LOCAL_FONTS) {
       const data = await readFile(join(FONT_DIR, font.file));
-      chunks.push(`@font-face{font-family:"${font.family}";src:url("data:font/woff2;base64,${data.toString("base64")}") format("woff2");font-weight:${font.weight};font-style:normal;font-display:block;}`);
+      chunks.push(`@font-face{font-family:"${font.family}";src:url("data:${font.mediaType};base64,${data.toString("base64")}") format("${font.format}");font-weight:${font.weight};font-style:normal;font-display:block;}`);
     }
     return chunks.join("\n");
   } catch (err) {

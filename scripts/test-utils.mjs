@@ -278,7 +278,7 @@ const escapedRepoSvg = renderRepositorySignSvg({
 
 assert("repository SVG uses requested dimensions", escapedRepoSvg.startsWith('<svg width="500" height="160" viewBox="0 0 500 160"'), true);
 assert("repository SVG clips overlay paint inside sign display", escapedRepoSvg.includes('clip-path="url(#display-clip)"'), true);
-assert("repository SVG sets font family on text nodes", escapedRepoSvg.includes("font-family=\"'Noto Sans JP'"), true);
+assert("repository SVG sets display font family on text nodes", escapedRepoSvg.includes("font-family=\"'VT323'"), true);
 assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
 assert("repository SVG omits station target label", escapedRepoSvg.includes("新高円寺"), false);

@@ -2,26 +2,26 @@ import { USERNAME, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./config.mjs";
 import { escapeHtml, relativeTime, shortText } from "./utils.mjs";
 
 export const PANEL_ACCENTS = {
-  TypeScript: "#B8AD92",
-  Python: "#B8AD92",
-  Shell: "#9C917A",
-  PowerShell: "#9C917A",
-  Other: "#8B887A",
+  TypeScript: "#CC8800",
+  Python: "#CC8800",
+  Shell: "#995C00",
+  PowerShell: "#995C00",
+  Other: "#7A5200",
 };
 
 const SIGN_COLORS = {
-  textPrimary: "#D8BE8C",
-  textSecondary: "#B99C76",
-  accentAmber: "#E0A047",
-  accentCyan: "#6F817A",
-  accentMagenta: "#6F5E68",
-  marunouchiRed: "#78312E",
-  ruleLine: "#2B3432",
+  textPrimary: "#FFB300",
+  textSecondary: "#CC8800",
+  accentAmber: "#FF3333",
+  accentCyan: "#00FFCC",
+  accentMagenta: "#FF00FF",
+  marunouchiRed: "#E60012",
+  ruleLine: "#222222",
 };
 
 const DISPLAY_ROUTE_CODE = "M03";
 const STATUS_LED_GREEN = "#39FF14";
-const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
+const TEXT_FONT_FAMILY = "'VT323','Courier New',monospace";
 const REPOSITORY_BOARD_NAME_MAX = 17;
 
 export function ownActiveRepos(allRepos) {
@@ -88,7 +88,7 @@ function summarizeLanguageEntries(entries, { sort = true } = {}) {
 function svgFontFace({ fontCss, fontDataUrl }) {
   if (fontCss) return fontCss;
   if (!fontDataUrl) return "";
-  return `@font-face{font-family:"Noto Sans JP";src:url("${fontDataUrl}") format("woff2");font-weight:500 700;font-display:block;}`;
+  return `@font-face{font-family:"VT323";src:url("${fontDataUrl}") format("truetype");font-weight:400;font-display:block;}`;
 }
 
 function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl }) {

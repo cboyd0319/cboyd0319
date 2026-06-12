@@ -319,7 +319,7 @@ const toolchainSvg = renderToolchainSpectrumSvg({
 assert("toolchain SVG uses requested primary dimensions", toolchainSvg.startsWith('<svg width="131" height="420" viewBox="0 0 131 420"'), true);
 assert("toolchain SVG clips overlay paint inside sign display", toolchainSvg.includes('clip-path="url(#display-clip)"'), true);
 assert("toolchain SVG uses abbreviated TypeScript label", toolchainSvg.includes(">TS<"), true);
-assert("toolchain SVG keeps full TypeScript name visible", toolchainSvg.includes(">TypeScript<"), true);
+assert("toolchain SVG omits muddy full TypeScript label", toolchainSvg.includes(">TypeScript<"), false);
 assert("toolchain SVG uses code lines title", toolchainSvg.includes(">CODE LINES<"), true);
 assert("toolchain SVG sorts largest share first", toolchainSvg.indexOf(">PY<") < toolchainSvg.indexOf(">TS<"), true);
 assert("toolchain SVG removes old toolchain title", toolchainSvg.includes(">TOOLCHAIN<"), false);
@@ -442,7 +442,7 @@ assert("static repository SVG removes dashboard footer active metric", staticRep
 assert("static repository SVG removes dashboard footer total metric", staticRepoSvg.includes("TOTAL"), false);
 assert("static toolchain SVG uses station service header", staticToolchainSvg.includes("M03 SERVICE"), true);
 assert("static toolchain SVG uses code lines title", staticToolchainSvg.includes(">CODE LINES<"), true);
-assert("static toolchain SVG shows full language names", staticToolchainSvg.includes(">Python<") && staticToolchainSvg.includes(">TypeScript<"), true);
+assert("static toolchain SVG omits tiny full language labels", staticToolchainSvg.includes(">Python<") || staticToolchainSvg.includes(">TypeScript<"), false);
 assert("static toolchain SVG sorts Python before TypeScript", staticToolchainSvg.indexOf(">PY<") < staticToolchainSvg.indexOf(">TS<"), true);
 assert("static toolchain SVG keeps compact percentage row", staticToolchainSvg.includes(">25%<"), true);
 assert("static toolchain SVG removes old local label", staticToolchainSvg.includes("M03 LOCAL"), false);

@@ -353,23 +353,22 @@ Notes:
 
 Since the main overhead right-side sign was removed, this smaller panel carries language-share data as train line service information.
 
-Final text should be applied through `generate-overlays.mjs`.
-
-Current preferred static split:
+Final text should be applied through `generate-overlays.mjs`; renderer code owns
+exact spacing and styling.
 
 ```text
 M03 SERVICE
 CODE LINES
 
-PY   Python      35%
-TS   TypeScript  25%
-SH   Shell       25%
-PS   PowerShell  15%
+PY        35%
+TS        25%
+SH        25%
+PS        15%
 ```
 
 Visual options:
 
-- Route-code column, full language line name, right-aligned share.
+- Route-code column and right-aligned share.
 - Faint schedule-board row separators.
 - Keep it secondary. It should not compete with the Repository Signals board.
 

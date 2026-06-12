@@ -36,8 +36,8 @@ const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].inclu
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_DENSITY = 144;
-const PANEL_SOFTEN_SIGMA = 0.08;
-const PANEL_TEXTURE_ATTENUATE = 0.012;
+const PANEL_SOFTEN_SIGMA = 0.1;
+const PANEL_TEXTURE_ATTENUATE = 0.016;
 const PANEL_TEXTURE_SEED = 31;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
@@ -587,17 +587,17 @@ async function main() {
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
       height: boardDesign.height,
-      emissiveOpacity: 0.008,
-      panelOpacity: 0.98,
-      glassOpacity: 0.12,
+      emissiveOpacity: 0.005,
+      panelOpacity: 0.94,
+      glassOpacity: 0.10,
       throughGlassOpacity: 0,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
-      emissiveOpacity: 0.014,
-      panelOpacity: 1,
-      glassOpacity: 0.13,
+      emissiveOpacity: 0.008,
+      panelOpacity: 0.98,
+      glassOpacity: 0.10,
       throughGlassOpacity: 0,
     }),
   ]);

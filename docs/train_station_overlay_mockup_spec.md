@@ -500,151 +500,27 @@ The Toolchain panel should feel like a **narrow station maintenance / subsystem 
 
 ---
 
-## 8.2 Toolchain Layout Grid
+## 8.2 Toolchain Layout
 
-```txt
-left margin:       18 px
-right margin:      17 px for value column
-top visual center: slightly above center
-```
-
-### Column positions
-
-```txt
-line code x:        16 px
-line name x:        39 px
-share x:            114 px, right-aligned
-```
-
-### Baselines
-
-```txt
-header rule y:       44 px
-header baseline:    66 px
-title baseline:     91 px
-row 1 baseline:     118 px
-row 2 baseline:     156 px
-row 3 baseline:     194 px
-row 4 baseline:     232 px
-```
-
-This top-anchors the text block like a service readout and leaves enough dark glass beneath it to preserve secondary-panel restraint.
-
----
-
-## 8.3 Toolchain Text Content
-
-Final text block:
+The right wall panel uses a compact station-service readout:
 
 ```txt
 M03 SERVICE
 CODE LINES
 
-PY   Python      35%
-TS   TypeScript  25%
-SH   Shell       25%
-PS   PowerShell  15%
+PY        35%
+TS        25%
+SH        25%
+PS        15%
 ```
 
----
+Keep `M03 SERVICE` exact. Keep the line-code column and percentage column
+aligned, with generous side padding inside the black panel. Omit full language
+names at this size; they become muddy after perspective warp and scene-matched
+softening.
 
-## 8.4 Toolchain Line-by-Line Element Spec
-
-### Header
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Header | `M03 SERVICE` | 16 | 66 | left | 11.8 px | 0.05em | `--accent-amber` | 0.86 |
-| Title | `CODE LINES` | 16 | 91 | left | 15.8 px | 0.04em | `--text-primary` | 0.94 |
-
-### Header rule
-
-Use a thin station-style red rule above the header.
-
-```txt
-x1: 16
-x2: 114
-y: 44
-stroke: --marunouchi-red
-opacity: 0.20
-width: 2 px
-```
-
-Do not make the rule obvious. If it looks like UI furniture, dim it.
-
----
-
-### Row 1
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PY` | 16 | 118 | left | 17.2 px | 0.012em | `--text-primary` | 0.98 |
-| Name | `Python` | 39 | 118 | left | 6.4 px | 0 | `--text-secondary` | 0.88 |
-| Share | `35%` | 114 | 118 | right | 13.2 px | 0 | `--text-primary` | 0.98 |
-
-### Row 2
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `TS` | 16 | 156 | left | 17.2 px | 0.012em | `--text-primary` | 0.97 |
-| Name | `TypeScript` | 39 | 156 | left | 6.4 px | 0 | `--text-secondary` | 0.87 |
-| Share | `25%` | 114 | 156 | right | 13.2 px | 0 | `--text-primary` | 0.97 |
-
-### Row 3
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `SH` | 16 | 194 | left | 17.2 px | 0.012em | `--text-primary` | 0.96 |
-| Name | `Shell` | 39 | 194 | left | 6.4 px | 0 | `--text-secondary` | 0.86 |
-| Share | `25%` | 114 | 194 | right | 13.2 px | 0 | `--text-primary` | 0.96 |
-
-### Row 4
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Code | `PS` | 16 | 232 | left | 17.2 px | 0.012em | `--text-primary` | 0.94 |
-| Name | `PowerShell` | 39 | 232 | left | 6.4 px | 0 | `--text-secondary` | 0.84 |
-| Share | `15%` | 114 | 232 | right | 13.2 px | 0 | `--text-primary` | 0.94 |
-
----
-
-### Optional footer
-
-Default recommendation: **off**.
-
-If the panel feels too empty after full-image review, use this:
-
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Footer | `LOCAL LINK` | 30 | 352 | left | 5.6 px | 0.08em | `--text-secondary` | 0.22 |
-
-If the footer makes the panel feel designed or dashboard-like, remove it. The footer is not important. The scene is.
-
----
-
-## 8.5 Optional Toolchain Tick Marks
-
-Default recommendation: **do not render ticks**.
-
-If the panel needs a tiny amount of subsystem identity, add one tiny tick before each code.
-
-```txt
-tick x:      22 px
-tick y:      row baseline - 5 px
-tick size:   3 × 5 px
-opacity:     0.18–0.26
-```
-
-Use muted colors:
-
-```txt
-TS: --accent-cyan
-PY: --accent-cyan at lower opacity
-SH: --accent-magenta at lower opacity
-PS: --accent-magenta
-```
-
-No nodes. No route line. No bar chart. No legend. Tiny ticks only.
+Exact positions, sizing, opacity, row spacing, and perspective fit live in the
+renderer and layout config. Do not duplicate those values here.
 
 ---
 

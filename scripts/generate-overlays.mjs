@@ -41,8 +41,14 @@ const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
 const PANEL_GLOW_TINT_COLOR = "#FF9900";
 const PANEL_GLOW_TINT_STRENGTH = 25;
+const LED_ALPHA_GRID_SIZE = 3;
+const MACRO_GLOW_BLUR_SIGMA = 15;
+const MACRO_GLOW_OPACITY = 0.065;
+const GLARE_OPACITY = 0.035;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
+const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+2+0";
+const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-2+0";
 const FINAL_WARM_WASH_ALPHA = 0;
 const FINAL_FILM_GRAIN_OPACITY = 0;
 
@@ -50,6 +56,22 @@ function envNumber(name, fallback) {
   if (!process.env[name]?.trim()) return fallback;
   const value = Number(process.env[name]);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function rgbaMultiplyArgs(path, opacity) {
+  return [
+    "(",
+    path,
+    "-alpha",
+    "on",
+    "-channel",
+    "RGBA",
+    "-evaluate",
+    "multiply",
+    String(opacity),
+    "+channel",
+    ")",
+  ];
 }
 
 function minutesAgo(minutes) {
@@ -272,6 +294,61 @@ async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_S
   ]);
 }
 
+async function createLedAlphaMask(outputPath, { width, height }) {
+  await runMagick([
+    "-size",
+    `${LED_ALPHA_GRID_SIZE}x${LED_ALPHA_GRID_SIZE}`,
+    "xc:white",
+    "-fill",
+    "gray30",
+    "-draw",
+    "point 0,0 point 1,1",
+    "-write",
+    "mpr:led-alpha-grid",
+    "+delete",
+    "-size",
+    `${width}x${height}`,
+    "tile:mpr:led-alpha-grid",
+    pngOutput(outputPath),
+  ]);
+}
+
+async function applyLedAlphaTexture(inputPath, outputPath, maskPath) {
+  await runMagick([
+    inputPath,
+    "-alpha",
+    "on",
+    "(",
+    inputPath,
+    "-alpha",
+    "extract",
+    maskPath,
+    "-compose",
+    "Multiply",
+    "-composite",
+    ")",
+    "-compose",
+    "CopyAlpha",
+    "-composite",
+    pngOutput(outputPath),
+  ]);
+}
+
+async function renderMacroGlow(inputPath, outputPath, { glowTintColor, glowTintStrength }) {
+  await runMagick([
+    inputPath,
+    "-blur",
+    `0x${MACRO_GLOW_BLUR_SIGMA}`,
+    "-modulate",
+    "100,90,100",
+    "-fill",
+    glowTintColor,
+    "-colorize",
+    String(glowTintStrength),
+    pngOutput(outputPath),
+  ]);
+}
+
 async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
   width,
   height,
@@ -280,18 +357,27 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
   glowTintStrength = PANEL_GLOW_TINT_STRENGTH,
 }) {
   const basePath = join(GENERATED_DIR, `${prefix}-base.png`);
+  const softenedPath = join(GENERATED_DIR, `${prefix}-softened.png`);
+  const ledMaskPath = join(GENERATED_DIR, `${prefix}-led-alpha-mask.png`);
   const panelPath = join(GENERATED_DIR, `${prefix}.png`);
   const emissivePath = join(GENERATED_DIR, `${prefix}-emissive.png`);
+  const emissiveTexturedPath = join(GENERATED_DIR, `${prefix}-emissive-textured.png`);
   const glowPath = join(GENERATED_DIR, `${prefix}-glow.png`);
+  const macroGlowPath = join(GENERATED_DIR, `${prefix}-macro-glow.png`);
 
   await Promise.all([
     rasterizeSvg(svgPath, basePath, { width, height }),
     rasterizeSvg(emissiveSvgPath, emissivePath, { width, height }),
+    createLedAlphaMask(ledMaskPath, { width, height }),
+  ]);
+  await softenReadablePanel(basePath, softenedPath, panelSoftenSigma);
+  await Promise.all([
+    applyLedAlphaTexture(softenedPath, panelPath, ledMaskPath),
+    applyLedAlphaTexture(emissivePath, emissiveTexturedPath, ledMaskPath),
   ]);
   await Promise.all([
-    softenReadablePanel(basePath, panelPath, panelSoftenSigma),
     runMagick([
-      emissivePath,
+      emissiveTexturedPath,
       "-blur",
       "0x0.75",
       "-modulate",
@@ -302,17 +388,22 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
       String(glowTintStrength),
       pngOutput(glowPath),
     ]),
+    renderMacroGlow(emissiveTexturedPath, macroGlowPath, { glowTintColor, glowTintStrength }),
   ]);
 
   return {
     panel: panelPath,
     glow: glowPath,
-    emissive: emissivePath,
+    macroGlow: macroGlowPath,
+    emissive: emissiveTexturedPath,
   };
 }
 
-async function renderOverlayCanvas(layers, outputPath, { width, height, emissiveOpacity, panelOpacity }) {
+async function renderOverlayCanvas(layers, outputPath, { width, height, emissiveOpacity, panelOpacity, macroGlowOpacity = MACRO_GLOW_OPACITY }) {
   const args = ["-size", `${width}x${height}`, "xc:none"];
+  if (macroGlowOpacity > 0) {
+    args.push(...alphaMultiplyArgs(layers.macroGlow, macroGlowOpacity), "-compose", "Screen", "-composite");
+  }
   if (emissiveOpacity > 0) {
     args.push(...alphaMultiplyArgs(layers.glow, emissiveOpacity), "-compose", "Screen", "-composite");
   }
@@ -321,18 +412,21 @@ async function renderOverlayCanvas(layers, outputPath, { width, height, emissive
   await runMagick(args);
 }
 
-async function applyChromaticAberration(inputPath, outputPath) {
+async function applyChromaticAberration(inputPath, outputPath, {
+  redShift = CHROMATIC_ABERRATION_RED_SHIFT,
+  blueShift = CHROMATIC_ABERRATION_BLUE_SHIFT,
+} = {}) {
   await runMagick([
     inputPath,
     "-channel",
     "R",
     "-roll",
-    CHROMATIC_ABERRATION_RED_SHIFT,
+    redShift,
     "+channel",
     "-channel",
     "B",
     "-roll",
-    CHROMATIC_ABERRATION_BLUE_SHIFT,
+    blueShift,
     "+channel",
     pngOutput(outputPath),
   ]);
@@ -354,6 +448,31 @@ async function perspectiveWarpPng(inputPath, outputPath, { width, height, quad, 
     perspectiveControlPoints(width, height, quad),
     pngOutput(outputPath),
   ]);
+}
+
+function glareSvg(width, height, variant) {
+  const topPath = `M ${-width * 0.08} ${height * 0.12} L ${width * 1.08} ${height * 0.03} L ${width * 1.04} ${height * 0.13} L ${-width * 0.04} ${height * 0.22} Z`;
+  const sidePath = `M ${width * 0.04} ${height * 0.07} L ${width * 1.18} ${height * 0.16} L ${width * 1.08} ${height * 0.25} L ${-width * 0.08} ${height * 0.16} Z`;
+  const path = variant === "side" ? sidePath : topPath;
+  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="glass-glare" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#ffdba0" stop-opacity="0"/>
+    <stop offset="0.5" stop-color="#ffdba0" stop-opacity="1"/>
+    <stop offset="1" stop-color="#ffdba0" stop-opacity="0"/>
+  </linearGradient>
+  <filter id="glass-soften" x="-20%" y="-80%" width="140%" height="260%">
+    <feGaussianBlur stdDeviation="5"/>
+  </filter>
+</defs>
+<path d="${path}" fill="url(#glass-glare)" filter="url(#glass-soften)"/>
+</svg>`;
+}
+
+async function renderGlareCanvas(prefix, outputPath, { width, height, variant }) {
+  const svgPath = join(GENERATED_DIR, `${prefix}.svg`);
+  await writeFile(svgPath, glareSvg(width, height, variant));
+  await rasterizeSvg(svgPath, outputPath, { width, height });
 }
 
 async function colorWash(path, { width, height, background }) {
@@ -543,6 +662,8 @@ async function main() {
 
   const repositoryOverlayPath = join(GENERATED_DIR, "repository-overlay.png");
   const toolchainOverlayPath = join(GENERATED_DIR, "toolchain-overlay.png");
+  const repositoryGlarePath = join(GENERATED_DIR, "repository-glare.png");
+  const toolchainGlarePath = join(GENERATED_DIR, "toolchain-glare.png");
   await Promise.all([
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
@@ -556,15 +677,30 @@ async function main() {
       emissiveOpacity: 0.014,
       panelOpacity: 0.85,
     }),
+    renderGlareCanvas("repository-glare", repositoryGlarePath, {
+      width: boardDesign.width,
+      height: boardDesign.height,
+      variant: "top",
+    }),
+    renderGlareCanvas("toolchain-glare", toolchainGlarePath, {
+      width: toolchainDesign.width,
+      height: toolchainDesign.height,
+      variant: "side",
+    }),
   ]);
 
   const repositoryWarpedPath = join(GENERATED_DIR, "repository-overlay-warped.png");
   const toolchainWarpedPath = join(GENERATED_DIR, "toolchain-overlay-warped.png");
+  const repositoryGlareWarpedPath = join(GENERATED_DIR, "repository-glare-warped.png");
+  const toolchainGlareWarpedPath = join(GENERATED_DIR, "toolchain-glare-warped.png");
   const repositoryAberratedPath = join(GENERATED_DIR, "repository-overlay-aberrated.png");
   const toolchainAberratedPath = join(GENERATED_DIR, "toolchain-overlay-aberrated.png");
   await Promise.all([
     applyChromaticAberration(repositoryOverlayPath, repositoryAberratedPath),
-    applyChromaticAberration(toolchainOverlayPath, toolchainAberratedPath),
+    applyChromaticAberration(toolchainOverlayPath, toolchainAberratedPath, {
+      redShift: TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT,
+      blueShift: TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT,
+    }),
   ]);
   await Promise.all([
     perspectiveWarpPng(repositoryAberratedPath, repositoryWarpedPath, {
@@ -574,6 +710,18 @@ async function main() {
       box: board,
     }),
     perspectiveWarpPng(toolchainAberratedPath, toolchainWarpedPath, {
+      width: toolchainDesign.width,
+      height: toolchainDesign.height,
+      quad: toolchainQuad,
+      box: toolchain,
+    }),
+    perspectiveWarpPng(repositoryGlarePath, repositoryGlareWarpedPath, {
+      width: boardDesign.width,
+      height: boardDesign.height,
+      quad: boardQuad,
+      box: board,
+    }),
+    perspectiveWarpPng(toolchainGlarePath, toolchainGlareWarpedPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
       quad: toolchainQuad,
@@ -603,6 +751,18 @@ async function main() {
     `+${toolchain.left}+${toolchain.top}`,
     "-compose",
     "Over",
+    "-composite",
+    ...rgbaMultiplyArgs(repositoryGlareWarpedPath, GLARE_OPACITY),
+    "-geometry",
+    `+${board.left}+${board.top}`,
+    "-compose",
+    "Screen",
+    "-composite",
+    ...rgbaMultiplyArgs(toolchainGlareWarpedPath, GLARE_OPACITY),
+    "-geometry",
+    `+${toolchain.left}+${toolchain.top}`,
+    "-compose",
+    "Screen",
     "-composite",
     pngOutput(compositedPath),
   ]);

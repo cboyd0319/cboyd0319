@@ -104,6 +104,9 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
       <feMergeNode in="SourceGraphic"/>
     </feMerge>
   </filter>
+  <pattern id="unlit-leds" width="4" height="4" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1.35" fill="#111111" opacity="0.22"/>
+  </pattern>
 </defs>
 <style>
 ${svgFontFace({ fontCss, fontDataUrl })}
@@ -160,7 +163,7 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 </g>`;
   }).join("");
 
-  const surface = "";
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#unlit-leds)" opacity="0.18"/>`;
   const structure = emissiveOnly ? "" : `<line x1="36" y1="50" x2="456" y2="50" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.14" stroke-width="2" filter="url(#soft-glow)"/>
 <line x1="36" y1="112" x2="456" y2="112" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
   const displayTexture = "";
@@ -206,7 +209,7 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   ${text(`${String(lang.pct)}%`, { x: 107, y, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.88 : valueOpacities[index], style: "letter-spacing:0" })}
 </g>`;
   }).join("");
-  const surface = "";
+  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#unlit-leds)" opacity="0.18"/>`;
   const displayTexture = "";
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}

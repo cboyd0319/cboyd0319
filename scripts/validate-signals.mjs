@@ -214,11 +214,13 @@ export async function validateSignals({
 
   requireIncludes("repository SVG", repositorySvg || "", [
     "M03",
+    "リポジトリ信号",
     "REPOSITORY SIGNALS",
   ]);
   requireAny("repository SVG status", repositorySvg || "", ["ON", "CHECK", "IDLE"]);
   requireIncludes("repository SVG status LEDs", repositorySvg || "", ['data-status-led="']);
   requireIncludes("toolchain SVG", toolchainSvg || "", [
+    "運行情報",
     "M03 SERVICE",
     "CODE LINES",
   ]);
@@ -229,7 +231,6 @@ export async function validateSignals({
     "TOOLCHAIN",
     "新高円寺",
     "M03 LOCAL",
-    "リポジトリ信号",
     "ACTIVE REPOS",
     "M03-TS",
     "M03-PY",

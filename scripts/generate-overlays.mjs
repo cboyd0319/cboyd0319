@@ -37,7 +37,7 @@ const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].inclu
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_DENSITY = 144;
-const PANEL_SOFTEN_SIGMA = 0.46;
+const PANEL_SOFTEN_SIGMA = 0.18;
 const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
 const PANEL_GLOW_TINT_COLOR = "#FF9900";
@@ -47,8 +47,8 @@ const MACRO_GLOW_OPACITY = 0.065;
 const GLARE_OPACITY = 0.035;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
-const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+2+0";
-const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-2+0";
+const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+2+1";
+const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-1-1";
 
 function envNumber(name, fallback) {
   if (!process.env[name]?.trim()) return fallback;

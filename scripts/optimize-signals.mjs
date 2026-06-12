@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { mkdir, rename, stat, unlink } from "node:fs/promises";
 
-import { ensureImageMagick, identifyImage, pngOutput, runMagick } from "./lib/imagemagick.mjs";
+import { ensureImageMagick, identifyImage, runMagick } from "./lib/imagemagick.mjs";
 
 const MIN_OPTIMIZED_BYTES = 10_000;
 const WEB = process.argv.includes("--web");
@@ -27,6 +27,8 @@ await ensureImageMagick();
 await mkdir(generatedDir, { recursive: true });
 const args = [
   outputPath,
+  "-alpha",
+  "off",
   "-strip",
   "-define",
   "png:compression-level=9",
@@ -38,7 +40,7 @@ const args = [
 if (WEB) {
   args.push("-colors", "256", `PNG8:${tempPath}`);
 } else {
-  args.push(pngOutput(tempPath));
+  args.push(`PNG24:${tempPath}`);
 }
 await runMagick(args);
 

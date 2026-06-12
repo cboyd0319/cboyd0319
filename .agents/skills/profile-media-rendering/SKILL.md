@@ -33,7 +33,7 @@ Use this skill first for broad work on the `cboyd0319` profile media repo.
 1. Identify whether work is docs-only, data logic, renderer/layout, image asset, or automation.
 2. Prefer static mode for deterministic review: `STATIC=1 npm run generate`.
 3. Use live mode only when checking public GitHub API behavior or preparing final live `assets/signals.png`.
-4. Preserve current visual priority: station/train first, Repository Signals second, Code Lines third.
+4. Preserve current visual priority: station/train first, Repository Signals second, Code Mix panel third.
 5. Reject outputs that look like dashboards, GitHub cards, terminal panes, bright HUDs, opaque sign cards, or overlays stronger than official station signage.
 
 ## Verification

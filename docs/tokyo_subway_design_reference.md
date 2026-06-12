@@ -3,7 +3,7 @@
 
 **Purpose:** Create a GitHub/profile header image for the `cboyd0319` profile that blends a cinematic Tokyo subway platform scene with readable, script-rendered live repository data.
 
-This guide consolidates the visual direction, reference influences, image-generation constraints, final layout decisions, and production workflow for generating the base image and applying the **Repository Signals** and **Code Lines** overlays.
+This guide consolidates the visual direction, reference influences, image-generation constraints, final layout decisions, and production workflow for generating the base image and applying the **Repository Signals** and **Code Mix** overlays.
 
 ---
 
@@ -24,7 +24,7 @@ The scene should feel like a real station that has been gradually upgraded with 
 - Long perspective down the platform.
 - Commuters as small silhouettes or quiet background figures.
 - One main overhead sign surface for **Repository Signals**.
-- One smaller right-side wall panel for **Code Lines**.
+- One smaller right-side wall panel for **Code Mix**.
 - Supporting station signage, including Shin-koenji / Tokyo Metro Marunouchi Line cues.
 - Mild floor sheen and subtle reflections, not a soaking-wet mirror surface.
 - Industrial ceiling structure, conduits, pipes, fluorescent fixtures, tiled walls, vending machines, and transit clutter.
@@ -43,7 +43,7 @@ The best current direction is:
 - Train placement created a strong right-side focal anchor.
 - One large overhead sign became the hero data surface.
 - Right-side top sign was removed, reducing visual clutter.
-- **Code Lines** moved to a smaller right-side wall panel.
+- **Code Mix** moved to a smaller right-side wall panel.
 - Mood moved closer to classic Japanese cyberpunk animation and cinematic sci-fi.
 - Image avoided flat synthwave poster art and excessive neon spectacle.
 
@@ -215,15 +215,12 @@ The palette should be controlled and cinematic, not carnival-neon. The final ima
 
 The overlay scripts should use the same palette family as the image:
 
-- Panel background: none by default. The base image owns dark glass; overlays
-  should be transparent text/mark plates.
-- Primary text: pale haze / warm white.
-- Secondary text: muted cool gray-blue.
-- TypeScript: cyan-blue.
-- Python: blue.
-- Shell: lavender/purple.
-- PowerShell: magenta/violet.
-- Alert or warm accents: restrained amber/orange.
+- Panel background: no opaque card. The base image owns dark glass; overlays
+  use transparent text/mark plates plus clipped low-opacity surface treatment.
+- Primary text: dim transit amber.
+- Secondary text: muted amber/brown.
+- Status colors: muted green for `ACTIVE`, controlled red for `DEPS CHECK`.
+- Toolchain language rows: one amber family, not per-language chart colors.
 
 ---
 
@@ -328,16 +325,15 @@ The main sign is the hero data surface.
 
 Final text should be applied through `generate-overlays.mjs`.
 
-Recommended static contents:
+Representative static contents:
 
 ```text
+リポジトリ状況
 M03 REPOSITORY SIGNALS
 
-32m   JobSentinel                         TypeScript
-      ● ON                                ★ 28
+32m  ● ACTIVE      JobSentinel             TypeScript  ★ 28
 
-2w    PyGuard                                 Python
-      ● CHECK                             ★ 19
+2w   ● DEPS CHECK  PyGuard                 Python      ★ 19
 ```
 
 Notes:
@@ -426,9 +422,9 @@ The image is decorative, but visible data should be internally consistent.
 - `PyGuard`
 - Update age, status, language, and star count for each displayed repository.
 - The two rows must be the two most recently updated public owner repositories, not a hard-coded pair in live mode.
-- Static Toolchain split:
-  - TypeScript: `25%`
+- Static Code Mix split, sorted by displayed share:
   - Python: `35%`
+  - TypeScript: `25%`
   - Shell: `25%`
   - PowerShell: `15%`
 
@@ -476,7 +472,7 @@ The base image should include physical sign surfaces, but should avoid final tex
 Best base image behavior:
 
 - Main overhead sign surface exists and is dark enough for overlay text.
-- Right-side Code Lines wall panel exists and is dark enough for overlay text.
+- Right-side Code Mix wall panel exists and is dark enough for overlay text.
 - Baked-in text on these two surfaces is minimal, faint, or absent.
 - The sign frames, lighting, and perspective are already part of the art.
 - The base image is not a previously generated `signals.png` with overlays already applied.
@@ -494,7 +490,7 @@ The overlay script should:
 - Scale coordinates from source-image pixels.
 - Generate SVG panels for the main sign and toolchain sign.
 - Rasterize transparent text/mark plates, soften, perspective-warp, composite, resize, optimize, and inspect those panels with ImageMagick 7.1.2-25 `magick`.
-- Keep full-panel dark, haze, scanline, and glass washes off unless they are separately masked and visually reviewed.
+- Keep full-panel black cards, heavy haze, and scanlines out of the renderer. The current low-opacity unlit LED pattern, glass wash, screen falloff, and glare are clipped to the display surfaces and owned by code.
 - Validate PNG output before writing.
 - Support static data mode for deterministic design output.
 - Support live GitHub data mode for automated profile updates.
@@ -529,8 +525,8 @@ ImageMagick 7.1.2-25 `magick` is the default and required raster pipeline. JavaS
 
 Default optimization should preserve truecolor PNG quality. Palette quantization belongs in the explicit web-size path:
 
-- `npm run optimize`: truecolor PNG optimization.
-- `npm run optimize:web`: palette/quantized PNG optimization when size matters more than gradient fidelity.
+- `npm run optimize`: truecolor PNG optimization for the committed profile image, including metadata stripping and removal of the unused opaque alpha channel.
+- `npm run optimize:web`: palette/quantized PNG optimization for experiments when size matters more than gradient fidelity.
 
 ### 11.4 Coordinate tuning
 
@@ -613,7 +609,7 @@ The platform should look lived-in but not filthy: lightly worn tile, minor scuff
 
 Place one large overhead dark digital transit-style sign surface near the upper-left / upper-center. This sign should be designed as a blank or lightly marked data board for a later overlay. Do not fill it with fake detailed text. It may have a subtle header-like glow and frame, but the final Repository Signals text will be added by code.
 
-Remove any second large top-right sign. On the right wall, include a smaller secondary dark panel intended for a later Code Lines overlay. Keep this panel simple, dark, and readable as a surface.
+Remove any second large top-right sign. On the right wall, include a smaller secondary dark panel intended for a later Code Mix overlay. Keep this panel simple, dark, and readable as a surface.
 
 Keep supporting signage plausible and consistent with the approved blank: Shin-koenji, Tokyo Metro, Marunouchi Line, Safety First, Next: Minami-asagaya, Exit 1-4. Use Japanese station typography sparingly and naturally.
 
@@ -747,14 +743,14 @@ Adjust:
 Result:
 
 - Accurate text became possible.
-- Repository Signals and Code Lines became reusable and script-driven.
+- Repository Signals and Code Mix became reusable and script-driven.
 - Some ghosting appeared when overlaying on a base image with baked-in text.
 - Toolchain panel required tighter coordinate tuning.
 
 Keep:
 
 - Script-rendered data.
-- Opaque sign panels.
+- Transparent text/mark plates with subtle clipped screen-surface layers.
 - Static mode for design-locked output.
 - Live mode for automated GitHub refresh.
 
@@ -775,7 +771,7 @@ The ideal final image should feel like:
 The final production image should separate mood and data:
 
 - **Base image:** cinematic subway environment and sign surfaces.
-- **Overlay script:** accurate Repository Signals and Code Lines content.
+- **Overlay script:** accurate Repository Signals and Code Mix content.
 
 That separation is what prevents AI text corruption while preserving the image’s atmosphere.
 
@@ -829,7 +825,7 @@ Before accepting a final render:
 
 - [ ] Subway platform composition is strong.
 - [ ] Only one large top sign surface remains.
-- [ ] Code Lines area appears on the smaller right wall panel.
+- [ ] Code Mix area appears on the smaller right wall panel.
 - [ ] Scene is not too wet.
 - [ ] Scene is not too dirty.
 - [ ] Scene is not too clean.
@@ -853,10 +849,10 @@ Before accepting a final render:
 - [ ] No ghosting from previous generated overlays.
 - [ ] Repo names are correct.
 - [ ] Main sign shows the two most recently updated public owner repositories.
-- [ ] Code Lines percentages are correct for the chosen mode.
+- [ ] Code Mix percentages are correct for the chosen mode.
 - [ ] `JobSentinel` and `PyGuard` are visible in current static mode.
 - [ ] Update ages are visible in static mode, or dynamic latest activity is intentional.
-- [ ] Code Lines text is readable and not competing with the main sign.
+- [ ] Code Mix text is readable and not competing with the main sign.
 - [ ] Sign overlays do not contain flat artificial noise or obvious scanline filters.
 - [ ] Sign surfaces show some warm station-light reflection.
 - [ ] Generated output passes PNG validation.
@@ -869,7 +865,7 @@ Inspect `assets/generated/debug-full-small.png` at 640px width:
 - [ ] `REPOSITORY SIGNALS` reads.
 - [ ] Repo names read.
 - [ ] Key metrics read.
-- [ ] Code Lines title is recognizable.
+- [ ] Code Mix title is recognizable.
 - [ ] Supporting signs do not look like AI text mush.
 
 ---

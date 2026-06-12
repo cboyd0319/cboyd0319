@@ -14,8 +14,9 @@ Core rules:
   GitHub data, checked-in fonts, config, and layout geometry.
 - Use ImageMagick 7.1.2-25 for all raster work. Do not reintroduce Sharp,
   resvg, browser screenshots, or custom JavaScript pixel compositing.
-- Keep sign overlays as transparent text/mark plates. The source photo owns the
-  dark sign glass, grime, frames, shadows, and ambient reflections.
+- Keep sign overlays as transparent text/mark plates with only subtle clipped
+  screen-surface layers. The source photo owns the dark sign glass, grime,
+  frames, shadows, and ambient reflections.
 - Use local validation for routine work. Do not manually dispatch GitHub
   Actions unless explicitly asked.
 - Preserve hard pinning for Node, npm, ImageMagick, GitHub Actions, runners, and

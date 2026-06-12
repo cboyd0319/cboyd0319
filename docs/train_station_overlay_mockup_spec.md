@@ -47,8 +47,8 @@ ImageMagick 7.1.2-25 `magick` CLI is the required raster pipeline. JavaScript ma
 ### Recommended render pipeline
 
 1. Render each SVG overlay to a transparent PNG canvas with `magick`.
-2. Keep the main overlay canvas alpha-bound to glyphs, status dots, and faint divider marks.
-3. Avoid full-canvas dark, haze, scanline, or glass rectangles. The source photo already owns the sign surface.
+2. Keep the main overlay canvas visually bound to glyphs, status dots, faint divider marks, and the intentionally subtle screen-surface layers defined in `scripts/lib/svg.mjs`.
+3. Avoid opaque full-canvas cards, heavy haze, scanlines, or new black panels. The source photo owns the sign surface.
 4. Perspective-warp the canvas into the screen quad with `magick +distort Perspective`.
 5. Composite with normal/source-over blending through `magick -compose Over -composite`.
 6. Add a final unified grain/noise pass with `magick` only if needed.
@@ -90,16 +90,17 @@ These colors are intentionally muted. Bright cyan and pure white are banned from
 ### Color tokens
 
 ```txt
---text-primary:      #D8BE8C   opacity 0.86–1.00
---text-secondary:    #B99C76   opacity 0.84–0.98
---accent-amber:      #E0A047   opacity 0.94–1.00
---accent-cyan:       #6F817A   opacity 0.20–0.35, avoid on Repository board
---accent-magenta:    #6F5E68   opacity 0.12–0.24, default off
---marunouchi-red:    #78312E   opacity 0.18–0.28
---rule-line:         #2B3432   opacity 0.15–0.25
---glass-haze:        #172327   opacity 0.006–0.012
---edge-darken:       #000000   opacity 0.08–0.22
+--text-primary:      #D6A33A
+--text-secondary:    #A56F22
+--alert-red:         #D94132
+--marunouchi-red:    #D91F2B
+--rule-line:         #242018
+--status-led-green:  #7FB95A
+--glow-tint:         #C98524
 ```
+
+Exact opacity and compositing values live in `scripts/lib/svg.mjs` and
+`scripts/generate-overlays.mjs`.
 
 ### Absolute prohibitions
 
@@ -174,9 +175,11 @@ Apply this to both overlay canvases before warping.
 
 ### Surface layer
 
-Default is off. Do not cover the baked-in black screen with a new rectangle,
-even a low-opacity one. If the base sign needs more material texture, repair the
-base image or add a masked reflection layer, not a full overlay plate.
+The renderer now uses a very low-opacity unlit LED pattern, glass wash, and
+screen falloff inside the sign clip. Keep these subtle and code-owned in
+`scripts/lib/svg.mjs`. Do not cover the baked-in black screen with an opaque
+rectangle or new black card. If the base sign needs more material texture,
+repair the base image or add a masked reflection layer.
 
 ### Edge falloff
 
@@ -209,17 +212,9 @@ sign-level noise rectangles:          off
 
 ### Through-glass absorption
 
-Default is off. Do not apply dark glass over the full display canvas:
-
-```txt
-Repository opacity: off
-Toolchain opacity:  off
-blend:              normal/source-over
-content:            reserved for future source-specific dark glass repair
-```
-
-This pass is disabled because it made the panels muddy and added fake grain.
-Only reintroduce it as a separate masked base-image repair.
+Use only the tiny clipped glass wash in the SVG renderer. Keep it below the
+threshold where the panel becomes muddy or reads as a black rectangle. Exact
+values are code-owned.
 
 ### Environmental reflection
 
@@ -242,11 +237,11 @@ so transparent areas stay transparent.
 
 ### Glow
 
-Glow should be present but close to zero.
+Glow should be present but restrained.
 
 ```txt
-Repository text glow opacity: 0.008
-Toolchain text glow opacity:  0.014
+Repository text glow: subtle, warmer than white
+Toolchain text glow:  subtle, with diagonal chromatic split on the steep sign
 accent glow:       0.000–0.020
 ```
 
@@ -270,31 +265,28 @@ The Repository board should feel like an **overhead station operations board**. 
 ## 7.2 Layout Grid
 
 ```txt
-left margin:       24 px visual edge
-right margin:      62 px visual edge
-top margin:        19 px
-bottom margin:     12 px
-usable width:      414 px
+exact margins:      code-owned in scripts/lib/svg.mjs
+screen geometry:    config/layouts/subway-default.json
 ```
 
 ### Column positions
 
 ```txt
-time column x:      82 px, right-aligned
-repo name x:        110 px
-detail/status x:    110 px
-language x:         420 px, right-aligned
-star count x:       420 px, right-aligned
+time:       64 px, right-aligned
+status dot: 88 px
+status:     98 px
+repo:       178 px
+language:   405 px, right-aligned
+stars:      455 px, right-aligned
 ```
 
 ### Row baselines
 
 ```txt
-title baseline:     29 px
-row 1 repo:         72 px
-row 1 detail:       96 px
-row 2 repo:         123 px
-row 2 detail:       147 px
+Japanese title:     27 px
+English title:      43 px
+row 1:              91 px
+row 2:              127 px
 ```
 
 ### Divider lines
@@ -312,16 +304,15 @@ Both should be extremely faint. No visible table grid.
 
 ## 7.3 Repository Text Content
 
-Final text block:
+Representative static text block:
 
 ```txt
+リポジトリ状況
 M03 REPOSITORY SIGNALS
 
-32m   JobSentinel                         TypeScript
-      ● ON                                ★ 28
+32m  ● ACTIVE      JobSentinel             TypeScript  ★ 28
 
-2w    PyGuard                                 Python
-      ● CHECK                             ★ 19
+2w   ● DEPS CHECK  PyGuard                 Python      ★ 19
 ```
 
 Show the two most recently updated public owner repositories. This should read like a station/service board, not like repository analytics.
@@ -334,8 +325,8 @@ Show the two most recently updated public owner repositories. This should read l
 
 | Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
 |---|---:|---:|---:|---|---:|---:|---|---:|
-| Route label | `M03` | 36 | 29 | left | 12.8 px | 0.045em | `--text-secondary` | 0.86 |
-| English title | `REPOSITORY SIGNALS` | 72 | 29 | left | 12.8 px | 0.045em | `--text-primary` | 0.78 |
+| Japanese title | `リポジトリ状況` | 58 | 27 | left | 10.7 px | 0.08em | `--text-secondary` | code-owned |
+| English title | `M03 REPOSITORY SIGNALS` | 58 | 43 | left | 12.8 px | 0.045em | `--text-primary` | code-owned |
 
 ### Header stripe
 
@@ -480,9 +471,10 @@ footer unless absolutely necessary
 
 ## Overlay opacity
 
-The readable plate is transparent except for text, status dots, and faint
-divider marks. Opacity, glow, and text-layer noise live in
-`scripts/generate-overlays.mjs`; exact values are code-owned.
+The readable plate is transparent except for text, status dots, faint divider
+marks, and subtle screen-surface layers. Opacity, glow, chromatic aberration,
+and text-layer noise live in `scripts/generate-overlays.mjs` and
+`scripts/lib/svg.mjs`; exact values are code-owned.
 
 Toolchain should remain quieter than Repository even when closer to camera.
 
@@ -493,7 +485,7 @@ Use normal/source-over for main content.
 ```txt
 main text:             normal/source-over
 text glow:             screen before warp
-surface haze:          off by default
+surface treatment:     clipped low-opacity SVG surface layers
 uniform sign noise:    off
 ```
 
@@ -593,22 +585,23 @@ Repository rows look like a spreadsheet
 
 # 12. Recommended First Implementation Pass
 
-Use these exact defaults first. Do not tune until you see the full-image result.
+Use these current defaults as guidance. Exact values live in code so the docs
+do not drift from the renderer.
 
 ## Repository defaults
 
 ```txt
 canvas:              500 × 160
-primary text opacity: 0.78 title, 0.95 repo names
-secondary opacity:    0.78–0.82
-accent opacity:       0.84
-softness:             0.08 sigma readable layer, 0.75 sigma glow layer
-surface haze:         off
-uniform noise:        off; text-layer noise attenuation 0.012
+primary text:         dim amber, repo names strongest
+secondary text:       muted amber/brown
+accent status:        muted green for ACTIVE, controlled red for DEPS CHECK
+softness:             tiny readable-layer soften, stronger glow blur
+surface treatment:    subtle unlit LEDs, glass wash, screen falloff
+uniform noise:        off; text-layer noise attenuation code-owned
 reflection:           handled by source image unless separately masked
-layer opacity:        0.98
-text glow:            0.008
-status lamps:         off
+layer opacity:        code-owned
+text glow:            code-owned
+status LEDs:          small paired dots only
 footer:               off
 ```
 
@@ -616,14 +609,15 @@ footer:               off
 
 ```txt
 canvas:              131 × 420
-primary text opacity: 0.98 title, 0.97–1.00 code/value rows
-secondary opacity:    0.90–0.93 names
-softness:             0.08 sigma readable layer, 0.75 sigma glow layer
-surface haze:         off
-uniform noise:        off; text-layer noise attenuation 0.012
+primary text:         dim amber, quieter than Repository board
+secondary opacity:    code-owned per row
+softness:             tiny readable-layer soften, stronger glow blur
+surface treatment:    subtle unlit LEDs, glass wash, screen falloff
+uniform noise:        off; text-layer noise attenuation code-owned
 reflection:           handled by source image unless separately masked
-layer opacity:        1.00
-text glow:            0.014
+layer opacity:        code-owned
+text glow:            code-owned
+chromatic split:      diagonal red `+2+1`, blue `-1-1`
 ticks:                off
 footer:               off
 divider:              faint schedule rows

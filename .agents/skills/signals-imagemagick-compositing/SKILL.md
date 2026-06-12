@@ -25,8 +25,8 @@ Use this skill for precise image-renderer, perspective, and compositing work in 
 
 ## Compositing Rules
 
-- Overlay canvases must be transparent except for text, status dots, faint divider marks, and local text glow.
-- Do not paint full-panel black, haze, glass, scanline, or noise rectangles over sign faces.
+- Overlay canvases are transparent apart from text, status dots, faint divider marks, local text glow, and subtle clipped surface layers from `scripts/lib/svg.mjs`.
+- Do not paint full-panel black cards, heavy haze, scanlines, or noise rectangles over sign faces.
 - Base photo owns sign glass, grime, frame, shadows, and ambient station reflections.
 - Warp overlays with ImageMagick perspective distortion using configured quads.
 - Composite warped overlays with source-over onto the resized background.
@@ -44,7 +44,9 @@ Use focused ImageMagick checks before judging the full image:
 /opt/homebrew/opt/imagemagick-full/bin/magick assets/signals.png -resize 1000x /tmp/cboyd-signals-preview.png
 ```
 
-High nonzero alpha across most of an overlay canvas means the matte-box bug is back.
+High nonzero alpha can be expected because the SVG includes low-opacity clipped
+screen-surface layers. Treat alpha checks as a matte-box diagnostic only when
+paired with visual crops that show an opaque rectangular panel.
 
 ## Verification
 

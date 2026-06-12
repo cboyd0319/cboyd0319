@@ -9,6 +9,7 @@ ImageMagick 7.1.2-25 `magick` CLI owns all raster image work: SVG rasterization,
 ## Project Structure
 
 - `README.md`: profile content, limited to the two image tags.
+- `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`: tool-specific entrypoints that point back to this file as the source of truth.
 - `.agents/skills/`: repo-local Codex skills for repeatable profile media, ImageMagick, and automation workflows.
 - `assets/`: source and generated profile images. `assets/generated/` is ignored debug output.
 - `config/`: scene data, static data, and layout geometry. Main layout: `config/layouts/subway-default.json`.

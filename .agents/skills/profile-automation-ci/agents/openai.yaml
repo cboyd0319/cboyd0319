@@ -1,0 +1,4 @@
+interface:
+  display_name: "Profile Automation CI"
+  short_description: "Profile automation and CI guardrails"
+  default_prompt: "Use $profile-automation-ci to change GitHub Actions or dependency pinning for this profile repo."

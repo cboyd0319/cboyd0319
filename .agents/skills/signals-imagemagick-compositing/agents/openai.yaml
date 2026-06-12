@@ -1,0 +1,4 @@
+interface:
+  display_name: "Signals ImageMagick Compositing"
+  short_description: "ImageMagick sign compositing workflow"
+  default_prompt: "Use $signals-imagemagick-compositing to adjust the subway sign overlays in assets/signals.png."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Profile Media Rendering"
+  short_description: "Profile image rendering workflow"
+  default_prompt: "Use $profile-media-rendering to update or verify the cboyd0319 profile image pipeline."

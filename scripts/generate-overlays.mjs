@@ -39,6 +39,8 @@ const PANEL_RASTER_DENSITY = 144;
 const PANEL_SOFTEN_SIGMA = 0.46;
 const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
+const PANEL_GLOW_TINT_COLOR = "#4CCBFF";
+const PANEL_GLOW_TINT_STRENGTH = 12;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 const FINAL_WARM_WASH_ALPHA = 0;
@@ -270,7 +272,13 @@ async function softenReadablePanel(inputPath, outputPath, sigma = PANEL_SOFTEN_S
   ]);
 }
 
-async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, { width, height, panelSoftenSigma = PANEL_SOFTEN_SIGMA }) {
+async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
+  width,
+  height,
+  panelSoftenSigma = PANEL_SOFTEN_SIGMA,
+  glowTintColor = PANEL_GLOW_TINT_COLOR,
+  glowTintStrength = PANEL_GLOW_TINT_STRENGTH,
+}) {
   const basePath = join(GENERATED_DIR, `${prefix}-base.png`);
   const panelPath = join(GENERATED_DIR, `${prefix}.png`);
   const emissivePath = join(GENERATED_DIR, `${prefix}-emissive.png`);
@@ -288,6 +296,10 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, { width, heig
       "0x0.75",
       "-modulate",
       "100,90,100",
+      "-fill",
+      glowTintColor,
+      "-colorize",
+      String(glowTintStrength),
       pngOutput(glowPath),
     ]),
   ]);

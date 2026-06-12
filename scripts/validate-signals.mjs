@@ -214,7 +214,7 @@ export async function validateSignals({
 
   requireIncludes("repository SVG", repositorySvg || "", [
     "M03",
-    "リポジトリ信号",
+    "リポジトリ状況",
     "REPOSITORY SIGNALS",
   ]);
   requireAny("repository SVG status", repositorySvg || "", ["ON", "CHECK", "IDLE"]);
@@ -231,6 +231,7 @@ export async function validateSignals({
     "TOOLCHAIN",
     "新高円寺",
     "M03 LOCAL",
+    "リポジトリ信号",
     "ACTIVE REPOS",
     "M03-TS",
     "M03-PY",

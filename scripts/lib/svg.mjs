@@ -144,6 +144,7 @@ function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
   return `${text(updated, { x: 92, y, size: 16.1, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.86 : 0.88, style: "letter-spacing:0.025em" })}
 ${text(repoDisplayName(repo.name, true), { x: 118, y, size: 20.4, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.9 : 0.96, style: "letter-spacing:0", shadow: !emissiveOnly })}
 ${text(language, { x: 430, y, size: 13.1, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.8 : 0.84, style: "letter-spacing:0.025em" })}
+${emissiveOnly ? "" : `<circle cx="${dotX + 1.5}" cy="${dotY + 1.5}" r="4" fill="#000000" opacity="0.6"/>`}
 ${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="4" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
 ${text(status, { x: 118, y: detailY, size: 14.7, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.82, statusOpacity + 0.04) : Math.max(0.68, statusOpacity - 0.03), style: "letter-spacing:0.035em" })}
 ${text(`★ ${stars}`, { x: 430, y: detailY, size: 13.1, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.8 : 0.84, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
@@ -168,7 +169,9 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
   }).join("");
 
   const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#unlit-leds)" opacity="0.08"/>`;
-  const structure = emissiveOnly ? "" : `<line x1="36" y1="50" x2="456" y2="50" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.14" stroke-width="2" filter="url(#soft-glow)"/>
+  const structure = emissiveOnly ? "" : `<line x1="37.5" y1="51.5" x2="457.5" y2="51.5" stroke="#000000" stroke-opacity="0.4" stroke-width="2"/>
+<line x1="36" y1="50" x2="456" y2="50" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.55" stroke-width="2" filter="url(#soft-glow)"/>
+<line x1="37.5" y1="113.5" x2="457.5" y2="113.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
 <line x1="36" y1="112" x2="456" y2="112" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
   const displayTexture = "";
 
@@ -178,7 +181,7 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 ${surface}
 <g>
 ${stationCodeLabel({ emissiveOnly })}
-${text("リポジトリ信号", { x: 72, y: 26, size: 10.5, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.7 : 0.6, style: "letter-spacing:0.08em" })}
+${text("リポジトリ状況", { x: 72, y: 26, size: 10.5, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.7 : 0.6, style: "letter-spacing:0.08em" })}
 ${text("REPOSITORY SIGNALS", { x: 72, y: 40, size: 12.4, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.78 : 0.72, style: "letter-spacing:0.045em" })}
 ${structure}
 ${rows}
@@ -222,12 +225,16 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
 <g clip-path="url(#display-clip)">
 ${surface}
 <g>
-${emissiveOnly ? "" : `<line x1="19" y1="58" x2="108" y2="58" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.55" stroke-width="2" filter="url(#soft-glow)"/>`}
+${emissiveOnly ? "" : `<line x1="20.5" y1="59.5" x2="109.5" y2="59.5" stroke="#000000" stroke-opacity="0.4" stroke-width="2"/>
+<line x1="19" y1="58" x2="108" y2="58" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.55" stroke-width="2" filter="url(#soft-glow)"/>`}
 ${text("運行情報", { x: 20, y: 70, size: 9.5, fill: SIGN_COLORS.accentAmber, weight: 600, opacity: emissiveOnly ? 0.7 : 0.6, style: "letter-spacing:0.1em" })}
 ${text("M03 SERVICE", { x: 20, y: 84, size: 11.7, fill: SIGN_COLORS.accentAmber, weight: 600, opacity: emissiveOnly ? 0.84 : 0.88, style: "letter-spacing:0.05em" })}
 ${text("CODE LINES", { x: 20, y: 111, size: 15.9, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.92 : 0.98, style: "letter-spacing:0.04em" })}
-${emissiveOnly ? "" : `<line x1="19" y1="146" x2="108" y2="146" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.085"/>
+${emissiveOnly ? "" : `<line x1="20.5" y1="147.5" x2="109.5" y2="147.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
+<line x1="19" y1="146" x2="108" y2="146" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.085"/>
+<line x1="20.5" y1="181.5" x2="109.5" y2="181.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
 <line x1="19" y1="180" x2="108" y2="180" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.075"/>
+<line x1="20.5" y1="215.5" x2="109.5" y2="215.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
 <line x1="19" y1="214" x2="108" y2="214" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.065"/>`}
 ${signalRows}
 </g>

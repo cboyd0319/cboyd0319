@@ -565,6 +565,7 @@ async function main() {
   const toolchainLayers = await renderPanelLayers("toolchain-spectrum", toolchainSvgPath, toolchainEmissiveSvgPath, {
     width: toolchainDesign.width,
     height: toolchainDesign.height,
+    panelSoftenSigma: 0.25,
   });
 
   const repositoryOverlayPath = join(GENERATED_DIR, "repository-overlay.png");

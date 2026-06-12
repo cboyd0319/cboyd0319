@@ -279,7 +279,7 @@ const escapedRepoSvg = renderRepositorySignSvg({
 assert("repository SVG uses requested dimensions", escapedRepoSvg.startsWith('<svg width="500" height="160" viewBox="0 0 500 160"'), true);
 assert("repository SVG clips overlay paint inside sign display", escapedRepoSvg.includes('clip-path="url(#display-clip)"'), true);
 assert("repository SVG sets display font family on text nodes", escapedRepoSvg.includes("font-family=\"'Noto Sans JP'"), true);
-assert("repository SVG includes Japanese hardware header", escapedRepoSvg.includes(">リポジトリ信号<"), true);
+assert("repository SVG includes Japanese status header", escapedRepoSvg.includes(">リポジトリ状況<"), true);
 assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
 assert("repository SVG omits station target label", escapedRepoSvg.includes("新高円寺"), false);
@@ -426,11 +426,14 @@ assertDeepEqual("validate default output size uses layout source", expectedOutpu
 assertDeepEqual("validate output size honors OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "800" }), { width: 800, height: 450 });
 assertDeepEqual("validate output size ignores invalid OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "bad" }), { width: 1672, height: 941 });
 assert("static repository SVG uses plain station route label", staticRepoSvg.includes('data-station-code="M03"'), true);
-assert("static repository SVG uses Japanese hardware header", staticRepoSvg.includes(">リポジトリ信号<"), true);
+assert("static repository SVG uses Japanese status header", staticRepoSvg.includes(">リポジトリ状況<"), true);
+assert("static repository SVG omits old Japanese signal header", staticRepoSvg.includes(">リポジトリ信号<"), false);
 assert("static repository SVG omits top-right station label", staticRepoSvg.includes("新高円寺"), false);
 assert("static repository SVG uses time-first row", staticRepoSvg.includes(">32m<"), true);
 assert("static repository SVG keeps JobSentinel row", staticRepoSvg.includes("JobSentinel"), true);
 assert("static repository SVG adds internal text shadow", staticRepoSvg.includes('fill="#000000" opacity="0.6"'), true);
+assert("static repository SVG adds status LED shadow", staticRepoSvg.includes('r="4" fill="#000000" opacity="0.6"'), true);
+assert("static repository SVG adds structure line shadow", staticRepoSvg.includes('x1="37.5" y1="51.5"'), true);
 assert("static repository SVG keeps second most recently updated row", staticRepoSvg.includes("PyGuard"), true);
 assert("static repository SVG omits older Worms row", staticRepoSvg.includes("WormsWMD-macOS-Fix"), false);
 assert("static repository SVG omits older PoshGuard row", staticRepoSvg.includes("PoshGuard"), false);
@@ -447,6 +450,7 @@ assert("static repository SVG removes dashboard footer total metric", staticRepo
 assert("static repository SVG avoids full-panel wash rectangles", staticRepoSvg.includes('fill="url(#panel-life)"') || staticRepoSvg.includes('fill="url(#ui-scanline)"'), false);
 assert("static toolchain SVG uses station service header", staticToolchainSvg.includes("M03 SERVICE"), true);
 assert("static toolchain SVG uses Japanese operation header", staticToolchainSvg.includes(">運行情報<"), true);
+assert("static toolchain SVG adds structure line shadow", staticToolchainSvg.includes('x1="20.5" y1="59.5"'), true);
 assert("static toolchain SVG uses code lines title", staticToolchainSvg.includes(">CODE LINES<"), true);
 assert("static toolchain SVG omits tiny full language labels", staticToolchainSvg.includes(">Python<") || staticToolchainSvg.includes(">TypeScript<"), false);
 assert("static toolchain SVG sorts Python before TypeScript", staticToolchainSvg.indexOf(">PY<") < staticToolchainSvg.indexOf(">TS<"), true);

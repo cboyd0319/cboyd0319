@@ -215,7 +215,8 @@ The palette should be controlled and cinematic, not carnival-neon. The final ima
 
 The overlay scripts should use the same palette family as the image:
 
-- Panel background: near-black/navy, opaque enough to cover baked-in sign content.
+- Panel background: none by default. The base image owns dark glass; overlays
+  should be transparent text/mark plates.
 - Primary text: pale haze / warm white.
 - Secondary text: muted cool gray-blue.
 - TypeScript: cyan-blue.
@@ -346,7 +347,8 @@ Notes:
 - Keep row icons simple and clean.
 - Keep language labels compact.
 - Do not overfill the board.
-- Use a mostly opaque panel background to prevent baked-in sign text from ghosting through.
+- Do not use an opaque panel background. If baked-in sign text ghosts through,
+  repair the base image or regenerate the blank sign surface.
 - Show the two most recently updated public owner repositories, selected dynamically from GitHub data or from the sorted static fixture.
 
 ### 9.2 Right-side wall panel: Code Lines
@@ -491,8 +493,8 @@ The overlay script should:
 - Read the real source image dimensions.
 - Scale coordinates from source-image pixels.
 - Generate SVG panels for the main sign and toolchain sign.
-- Rasterize, soften, perspective-warp, composite, resize, optimize, and inspect those panels with ImageMagick 7.1.2-25 `magick`.
-- Add readable content plus separate warm sign-face reflection through SVG and ImageMagick alpha/compose steps.
+- Rasterize transparent text/mark plates, soften, perspective-warp, composite, resize, optimize, and inspect those panels with ImageMagick 7.1.2-25 `magick`.
+- Keep full-panel dark, haze, scanline, and glass washes off unless they are separately masked and visually reviewed.
 - Validate PNG output before writing.
 - Support static data mode for deterministic design output.
 - Support live GitHub data mode for automated profile updates.
@@ -570,31 +572,28 @@ The blank image owns most of the physical sign material: frame, dark glass, refl
 
 Use multi-pass compositing:
 
-1. local shadow
-2. faint display stabilizer
-3. emissive-only glow layer
-4. readable content layer
-5. subtle glass reflection layer
-6. local environmental wash
-7. sign-face reflection pass
-8. final whole-image grade/grain
+1. emissive-only glow layer
+2. readable transparent content layer
+3. perspective warp to configured inner-screen quads
+4. source-over composite onto the blank sign face
+5. optional final whole-image grade/grain
 
-Avoid making the panel smoky or opaque. Integration should come from the native blank sign face, local content glow, subtle structure, environmental color, and final grading.
+Avoid making the panel smoky or opaque. Integration should come from the native blank sign face, local text glow, subtle structure, source-image lighting, and final grading.
 
-The primary sign should remain readable at GitHub display size. If integration reduces readability, prioritize readability. Do not fake integration by dropping text opacity until the sign becomes muddy; use glass reflections and source-image lighting instead.
+The primary sign should remain readable at GitHub display size. If integration reduces readability, prioritize readability. Do not fake integration by dropping text opacity until the sign becomes muddy; use source-image lighting and masked reflection repairs instead.
 
 ### 11.7 Common overlay problems and fixes
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Old sign text ghosts through overlay | Base image has baked-in text, or panel background is too transparent | Use cleaner base image and/or increase panel opacity |
+| Old sign text ghosts through overlay | Base image has baked-in text | Use cleaner base image or repair the blank sign surface |
 | Overlay is too large | Coordinates or scale are based on wrong image dimensions | Use source-image dimensions and reduce `BOARD_WIDTH` / `BOARD_HEIGHT` |
 | Overlay is shifted | Coordinate mismatch after resizing/cropping | Adjust `BOARD_LEFT`, `BOARD_TOP`, `TOOLCHAIN_LEFT`, `TOOLCHAIN_TOP` |
 | Toolchain panel floats off the wall sign | Toolchain coordinates too large or too far left/right | Shrink and align to wall panel frame |
 | Text is too small after export | Output width too small or panel too dense | Increase output width, simplify content, or enlarge text |
-| Main sign looks pasted on | No local shadow or environmental wash | Add contact shadow, subtle wash, and final unified grade |
-| Full rectangle reads as dark card | SVG base layer is doing too much sign-surface work | Reduce SVG base opacity, weaken shadow, increase local emissive glow |
-| Sign looks smoky/dim | Too much glass/wash, or SVG panel owns too much surface | Reduce glass/wash, lighten the stabilizer, increase local emissive glow |
+| Main sign looks pasted on | Perspective or text softness is too weak | Tune the configured quad and keep only local text glow |
+| Full rectangle reads as dark card | SVG or glass layer paints full-canvas alpha | Remove full-panel wash and keep transparent content alpha |
+| Sign looks smoky/dim | Too much glass/wash, or SVG panel owns too much surface | Disable glass/wash and let the source sign face show through |
 | SVG looks too clean | Missing environmental reflection or final grade | Add warm reflection/glare above content; do not add flat sign noise |
 | Sign text is muddy | Text opacity was reduced to fake integration | Raise readable text opacity and move integration into reflection/wash layers |
 | Data does not feel behind glass | Missing sign-face reflection | Add low-opacity reflection PNGs above content with `screen` blend |

@@ -10,9 +10,6 @@ export const PANEL_ACCENTS = {
 };
 
 const SIGN_COLORS = {
-  glassHaze: "#172327",
-  poweredWash: "#2F3C35",
-  edgeDarken: "#000000",
   textPrimary: "#D8BE8C",
   textSecondary: "#B99C76",
   accentAmber: "#E0A047",
@@ -100,24 +97,6 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
   <clipPath id="display-clip" clipPathUnits="userSpaceOnUse">
     <rect x="0" y="0" width="${viewWidth}" height="${viewHeight}"/>
   </clipPath>
-  <radialGradient id="edge-falloff" cx="50%" cy="46%" r="82%">
-    <stop offset="0%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0"/>
-    <stop offset="72%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0.02"/>
-    <stop offset="100%" stop-color="${SIGN_COLORS.edgeDarken}" stop-opacity="0.14"/>
-  </radialGradient>
-  <radialGradient id="panel-life" cx="44%" cy="48%" r="86%">
-    <stop offset="0%" stop-color="${SIGN_COLORS.poweredWash}" stop-opacity="0.075"/>
-    <stop offset="56%" stop-color="${SIGN_COLORS.poweredWash}" stop-opacity="0.028"/>
-    <stop offset="100%" stop-color="${SIGN_COLORS.poweredWash}" stop-opacity="0"/>
-  </radialGradient>
-  <linearGradient id="glass-sheen" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="${SIGN_COLORS.textPrimary}" stop-opacity="0.04"/>
-    <stop offset="30%" stop-color="${SIGN_COLORS.textPrimary}" stop-opacity="0.006"/>
-    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
-  </linearGradient>
-  <pattern id="ui-scanline" width="1" height="5" patternUnits="userSpaceOnUse">
-    <rect x="0" y="0" width="1" height="1" fill="${SIGN_COLORS.textPrimary}" opacity="0.11"/>
-  </pattern>
   <filter id="soft-glow" x="-20%" y="-40%" width="140%" height="180%">
     <feGaussianBlur stdDeviation="0.18" result="blur"/>
     <feMerge>
@@ -165,7 +144,7 @@ ${text(`★ ${stars}`, { x: 430, y: detailY, size: 13.1, fill: SIGN_COLORS.textS
 
 function stationCodeLabel({ emissiveOnly = false } = {}) {
   return `<g data-station-code="${DISPLAY_ROUTE_CODE}">
-${text(DISPLAY_ROUTE_CODE, { x: 36, y: 35, size: 12.4, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.8 : 0.76, style: "letter-spacing:0.045em" })}
+${text(DISPLAY_ROUTE_CODE, { x: 36, y: 39, size: 12.4, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.8 : 0.76, style: "letter-spacing:0.045em" })}
 </g>`;
 }
 
@@ -181,12 +160,10 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 </g>`;
   }).join("");
 
-  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.003"/>
-<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.16"/>
-<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.025"/>`;
+  const surface = "";
   const structure = emissiveOnly ? "" : `<line x1="36" y1="55" x2="456" y2="55" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.14" stroke-width="2" filter="url(#soft-glow)"/>
 <line x1="36" y1="124" x2="456" y2="124" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
-  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.006"/>`;
+  const displayTexture = "";
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
@@ -194,7 +171,7 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 ${surface}
 <g>
 ${stationCodeLabel({ emissiveOnly })}
-${text("REPOSITORY SIGNALS", { x: 72, y: 35, size: 12.4, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.78 : 0.72, style: "letter-spacing:0.045em" })}
+${text("REPOSITORY SIGNALS", { x: 72, y: 39, size: 12.4, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.78 : 0.72, style: "letter-spacing:0.045em" })}
 ${structure}
 ${rows}
 </g>
@@ -229,11 +206,8 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   ${text(`${String(lang.pct)}%`, { x: 107, y, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.88 : valueOpacities[index], style: "letter-spacing:0" })}
 </g>`;
   }).join("");
-  const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="${SIGN_COLORS.poweredWash}" opacity="0.003"/>
-<rect width="${width}" height="${height}" fill="url(#panel-life)" opacity="0.12"/>
-<rect width="${width}" height="${height}" fill="${SIGN_COLORS.glassHaze}" opacity="0.001"/>
-<rect width="${width}" height="${height}" fill="url(#edge-falloff)" opacity="0.045"/>`;
-  const displayTexture = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#ui-scanline)" opacity="0.004"/>`;
+  const surface = "";
+  const displayTexture = "";
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>

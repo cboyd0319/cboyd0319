@@ -47,8 +47,8 @@ ImageMagick 7.1.2-25 `magick` CLI is the required raster pipeline. JavaScript ma
 ### Recommended render pipeline
 
 1. Render each SVG overlay to a transparent PNG canvas with `magick`.
-2. Add very faint screen-surface effects with `magick` alpha/compose operations.
-3. Do not apply extra text blur. Use normal raster anti-aliasing plus perspective resampling only.
+2. Keep the main overlay canvas alpha-bound to glyphs, status dots, and faint divider marks.
+3. Avoid full-canvas dark, haze, scanline, or glass rectangles. The source photo already owns the sign surface.
 4. Perspective-warp the canvas into the screen quad with `magick +distort Perspective`.
 5. Composite with normal/source-over blending through `magick -compose Over -composite`.
 6. Add a final unified grain/noise pass with `magick` only if needed.
@@ -71,55 +71,15 @@ All coordinates below are given in **design-canvas pixels**, not 2× render pixe
 
 ## 3. Physical Screen Geometry
 
-Use these quads for final placement. These are inner-screen targets, not outer frame targets.
+`config/layouts/subway-default.json` is the authoritative geometry source. Its
+`board.quad` and `toolchain.quad` values are inner-screen targets, not outer
+frame targets. Update that file when tuning perspective; do not copy those
+numbers into scripts or prose.
 
-### Repository board target quad
-
-```txt
-Repository screen inner quad, full-image pixels:
-TL: (445, 55)
-TR: (945, 64)
-BR: (945, 207)
-BL: (445, 220)
-```
-
-### Repository fallback rectangle
-
-Use only if perspective warping is unavailable:
-
-```txt
-x: 445
-y: 55
-width: 500
-height: 165
-```
-
-The fallback is acceptable because this board is close to rectangular. Still, perspective warp is preferred.
-
----
-
-### Toolchain panel target quad
-
-```txt
-Toolchain screen inner quad, full-image pixels:
-TL: (1416, 203)
-TR: (1518, 184)
-BR: (1500, 604)
-BL: (1412, 583)
-```
-
-### Toolchain fallback rectangle
-
-Use only if perspective warping is unavailable:
-
-```txt
-x: 1412
-y: 184
-width: 106
-height: 420
-```
-
-The fallback will look less convincing on the right panel because the panel is visibly skewed. Use the quad if at all possible.
+The Repository board uses a mild homography. The Toolchain panel uses a stronger
+side-view homography, with the left edge treated as the edge receding away from
+the viewer. Rectangle fallback is only for emergency debugging because it makes
+the right panel read as a flat HUD.
 
 ---
 
@@ -214,16 +174,9 @@ Apply this to both overlay canvases before warping.
 
 ### Surface layer
 
-Add a near-transparent full-canvas wash. Do not cover the baked-in black screen with a new opaque rectangle.
-
-```txt
-Repository powered wash:  #2F3C35 at 0.012, plus panel-life at 0.72
-Toolchain powered wash:   #2F3C35 at 0.018, plus panel-life at 0.62
-Toolchain glass haze:     #172327 at 0.006
-blend:                    normal/source-over
-```
-
-This should barely lift the black display surface after compositing.
+Default is off. Do not cover the baked-in black screen with a new rectangle,
+even a low-opacity one. If the base sign needs more material texture, repair the
+base image or add a masked reflection layer, not a full overlay plate.
 
 ### Edge falloff
 
@@ -256,7 +209,7 @@ sign-level noise rectangles:          off
 
 ### Through-glass absorption
 
-After text is rendered, apply a very slight dark glass pass over the full display canvas:
+Default is off. Do not apply dark glass over the full display canvas:
 
 ```txt
 Repository opacity: off
@@ -265,11 +218,14 @@ blend:              normal/source-over
 content:            reserved for future source-specific dark glass repair
 ```
 
-This pass is currently disabled because it made the panels muddy and added fake grain. Use reflected-light passes instead.
+This pass is disabled because it made the panels muddy and added fake grain.
+Only reintroduce it as a separate masked base-image repair.
 
 ### Environmental reflection
 
-Add a separate warm reflection pass to both signs. This must not reduce text opacity.
+Use the source-image reflections by default. Add a separate warm reflection pass
+only if it is masked to real reflected-light shapes and does not reduce text
+opacity.
 
 ```txt
 color:       warm fluorescent amber / off-white
@@ -281,14 +237,8 @@ purpose:     make the glass interact with station lighting
 
 ### Scanline texture
 
-Use only a faint content-level scanline layer. It should read as display refresh texture, not as a visible graphic pattern.
-
-```txt
-line height: 1 px
-gap:         4 px
-Repository opacity: 0.018
-Toolchain opacity:  0.016
-```
+Default is off for full panels. If needed, apply texture only to text/mark alpha
+so transparent areas stay transparent.
 
 ### Glow
 
@@ -555,26 +505,13 @@ footer unless absolutely necessary
 
 # 9. Full Compositing Values
 
-## Repository overlay opacity
+## Overlay opacity
 
-After all text and surface layers are rendered:
+The readable plate is transparent except for text, status dots, and faint
+divider marks. Opacity, glow, and text-layer noise live in
+`scripts/generate-overlays.mjs`; exact values are code-owned.
 
-```txt
-overall layer opacity: 0.98
-glass reflection:     0.12
-absorption/noise:     off
-```
-
-## Toolchain overlay opacity
-
-```txt
-overall layer opacity: 1.00
-text glow:            0.012
-glass reflection:     0.13
-absorption/noise:     off
-```
-
-Toolchain should be quieter than Repository.
+Toolchain should remain quieter than Repository even when closer to camera.
 
 ## Blend mode
 
@@ -582,8 +519,8 @@ Use normal/source-over for main content.
 
 ```txt
 main text:             normal/source-over
-surface haze:          normal/source-over
-reflection/glare:      screen
+text glow:             screen before warp
+surface haze:          off by default
 uniform sign noise:    off
 ```
 
@@ -593,27 +530,10 @@ Do not use heavy `screen`, `plus`, or additive blending for primary text.
 
 # 10. Perspective Warp Instructions
 
-## Repository warp mapping
+## Warp mapping
 
-Map Repository canvas corners:
-
-```txt
-canvas (0, 0)       -> image (445, 55)
-canvas (500, 0)     -> image (945, 64)
-canvas (500, 160)   -> image (945, 207)
-canvas (0, 160)     -> image (445, 220)
-```
-
-## Toolchain warp mapping
-
-Map Toolchain canvas corners:
-
-```txt
-canvas (0, 0)       -> image (1416, 203)
-canvas (131, 0)     -> image (1518, 184)
-canvas (131, 420)   -> image (1500, 604)
-canvas (0, 420)     -> image (1412, 583)
-```
+Map each canvas corner to the matching `quad` corner from
+`config/layouts/subway-default.json`.
 
 Use ImageMagick perspective distortion. The concept is:
 
@@ -712,7 +632,7 @@ accent opacity:       0.84
 softness:             0.08 sigma readable layer, 0.75 sigma glow layer
 surface haze:         off
 uniform noise:        off; text-layer noise attenuation 0.012
-reflection:           warm fluorescent streaks
+reflection:           handled by source image unless separately masked
 layer opacity:        0.98
 text glow:            0.008
 status lamps:         off
@@ -726,9 +646,9 @@ canvas:              131 × 420
 primary text opacity: 0.98 title, 0.97–1.00 code/value rows
 secondary opacity:    0.90–0.93 names
 softness:             0.08 sigma readable layer, 0.75 sigma glow layer
-surface haze:         glass haze 0.006 plus powered wash 0.018
+surface haze:         off
 uniform noise:        off; text-layer noise attenuation 0.012
-reflection:           warm fluorescent reflection above text
+reflection:           handled by source image unless separately masked
 layer opacity:        1.00
 text glow:            0.014
 ticks:                off

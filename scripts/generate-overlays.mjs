@@ -36,8 +36,8 @@ const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].inclu
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_DENSITY = 144;
-const PANEL_SOFTEN_SIGMA = 0.1;
-const PANEL_TEXTURE_ATTENUATE = 0.016;
+const PANEL_SOFTEN_SIGMA = 0.14;
+const PANEL_TEXTURE_ATTENUATE = 0.012;
 const PANEL_TEXTURE_SEED = 31;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
@@ -207,45 +207,6 @@ async function validateImage(path, expectedWidth) {
   }
 }
 
-function panelGlassSvg(width, height) {
-  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-<defs>
-  <linearGradient id="panel-glass" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#E8B46A" stop-opacity="0.16"/>
-    <stop offset="18%" stop-color="#D8CFB8" stop-opacity="0.032"/>
-    <stop offset="64%" stop-color="#78312E" stop-opacity="0.012"/>
-    <stop offset="100%" stop-color="#000000" stop-opacity="0.055"/>
-  </linearGradient>
-  <linearGradient id="panel-reflection" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%" stop-color="#D8CFB8" stop-opacity="0"/>
-    <stop offset="16%" stop-color="#E8B46A" stop-opacity="0.20"/>
-    <stop offset="28%" stop-color="#D8CFB8" stop-opacity="0.045"/>
-    <stop offset="100%" stop-color="#D8CFB8" stop-opacity="0"/>
-  </linearGradient>
-  <filter id="soft-reflection" x="-8%" y="-160%" width="116%" height="420%">
-    <feGaussianBlur stdDeviation="0.9"/>
-  </filter>
-</defs>
-<rect width="${width}" height="${height}" fill="url(#panel-glass)" opacity="0.86"/>
-<rect x="${Math.round(width * 0.04)}" y="${Math.max(1, Math.round(height * 0.065))}" width="${Math.round(width * 0.76)}" height="${Math.max(1, Math.round(height * 0.018))}" fill="url(#panel-reflection)" opacity="0.34" filter="url(#soft-reflection)"/>
-</svg>`;
-}
-
-function panelAbsorptionSvg(width, height) {
-  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-<defs>
-  <linearGradient id="top-shadow" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#000000" stop-opacity="0.46"/>
-    <stop offset="16%" stop-color="#000000" stop-opacity="0.22"/>
-    <stop offset="62%" stop-color="#06100f" stop-opacity="0.12"/>
-    <stop offset="100%" stop-color="#000000" stop-opacity="0.26"/>
-  </linearGradient>
-</defs>
-<rect width="${width}" height="${height}" fill="#06100f" opacity="0.24"/>
-<rect width="${width}" height="${height}" fill="url(#top-shadow)" opacity="0.34"/>
-</svg>`;
-}
-
 async function rasterizeSvg(svgPath, outputPath, { width, height }) {
   await runMagick([
     "-background",
@@ -311,21 +272,13 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, { width, heig
   const panelPath = join(GENERATED_DIR, `${prefix}.png`);
   const emissivePath = join(GENERATED_DIR, `${prefix}-emissive.png`);
   const glowPath = join(GENERATED_DIR, `${prefix}-glow.png`);
-  const glassSvgPath = join(GENERATED_DIR, `${prefix}-glass.svg`);
-  const glassPath = join(GENERATED_DIR, `${prefix}-glass.png`);
-  const absorptionSvgPath = join(GENERATED_DIR, `${prefix}-absorption.svg`);
-  const absorptionPath = join(GENERATED_DIR, `${prefix}-absorption.png`);
 
   await Promise.all([
     rasterizeSvg(svgPath, basePath, { width, height }),
     rasterizeSvg(emissiveSvgPath, emissivePath, { width, height }),
-    writeFile(glassSvgPath, panelGlassSvg(width, height)),
-    writeFile(absorptionSvgPath, panelAbsorptionSvg(width, height)),
   ]);
   await Promise.all([
     softenReadablePanel(basePath, panelPath, panelSoftenSigma),
-    rasterizeSvg(glassSvgPath, glassPath, { width, height }),
-    rasterizeSvg(absorptionSvgPath, absorptionPath, { width, height }),
     runMagick([
       emissivePath,
       "-blur",
@@ -339,24 +292,16 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, { width, heig
   return {
     panel: panelPath,
     glow: glowPath,
-    glass: glassPath,
-    absorption: absorptionPath,
     emissive: emissivePath,
   };
 }
 
-async function renderOverlayCanvas(layers, outputPath, { width, height, emissiveOpacity, panelOpacity, glassOpacity, throughGlassOpacity = 0 }) {
+async function renderOverlayCanvas(layers, outputPath, { width, height, emissiveOpacity, panelOpacity }) {
   const args = ["-size", `${width}x${height}`, "xc:none"];
   if (emissiveOpacity > 0) {
     args.push(...alphaMultiplyArgs(layers.glow, emissiveOpacity), "-compose", "Screen", "-composite");
   }
   args.push(...alphaMultiplyArgs(layers.panel, panelOpacity), "-compose", "Over", "-composite");
-  if (throughGlassOpacity > 0) {
-    args.push(...alphaMultiplyArgs(layers.absorption, throughGlassOpacity), "-compose", "Over", "-composite");
-  }
-  if (glassOpacity > 0) {
-    args.push(...alphaMultiplyArgs(layers.glass, glassOpacity), "-compose", "Screen", "-composite");
-  }
   args.push(pngOutput(outputPath));
   await runMagick(args);
 }
@@ -587,18 +532,14 @@ async function main() {
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
       height: boardDesign.height,
-      emissiveOpacity: 0.005,
-      panelOpacity: 0.9,
-      glassOpacity: 0.04,
-      throughGlassOpacity: 0,
+      emissiveOpacity: 0.006,
+      panelOpacity: 0.92,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
-      emissiveOpacity: 0.005,
-      panelOpacity: 0.88,
-      glassOpacity: 0.035,
-      throughGlassOpacity: 0,
+      emissiveOpacity: 0.007,
+      panelOpacity: 0.9,
     }),
   ]);
 

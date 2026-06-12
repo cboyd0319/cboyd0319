@@ -440,6 +440,7 @@ assert("static repository SVG removes language-code table column", staticRepoSvg
 assert("static repository SVG removes old route-code language badge", staticRepoSvg.includes("M03-TS"), false);
 assert("static repository SVG removes dashboard footer active metric", staticRepoSvg.includes("ACTIVE REPOS"), false);
 assert("static repository SVG removes dashboard footer total metric", staticRepoSvg.includes("TOTAL"), false);
+assert("static repository SVG avoids full-panel wash rectangles", staticRepoSvg.includes('fill="url(#panel-life)"') || staticRepoSvg.includes('fill="url(#ui-scanline)"'), false);
 assert("static toolchain SVG uses station service header", staticToolchainSvg.includes("M03 SERVICE"), true);
 assert("static toolchain SVG uses code lines title", staticToolchainSvg.includes(">CODE LINES<"), true);
 assert("static toolchain SVG omits tiny full language labels", staticToolchainSvg.includes(">Python<") || staticToolchainSvg.includes(">TypeScript<"), false);
@@ -447,6 +448,7 @@ assert("static toolchain SVG sorts Python before TypeScript", staticToolchainSvg
 assert("static toolchain SVG keeps compact percentage row", staticToolchainSvg.includes(">25%<"), true);
 assert("static toolchain SVG removes old local label", staticToolchainSvg.includes("M03 LOCAL"), false);
 assert("static toolchain SVG removes old toolchain title", staticToolchainSvg.includes(">TOOLCHAIN<"), false);
+assert("static toolchain SVG avoids full-panel wash rectangles", staticToolchainSvg.includes('fill="url(#panel-life)"') || staticToolchainSvg.includes('fill="url(#ui-scanline)"'), false);
 
 try {
   await validateSignals({

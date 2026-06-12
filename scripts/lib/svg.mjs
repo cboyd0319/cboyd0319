@@ -10,19 +10,25 @@ export const PANEL_ACCENTS = {
 };
 
 const SIGN_COLORS = {
-  textPrimary: "#FFB300",
-  textSecondary: "#CC8800",
-  accentAmber: "#FF3333",
-  accentCyan: "#00FFCC",
-  accentMagenta: "#FF00FF",
-  marunouchiRed: "#E60012",
-  ruleLine: "#222222",
+  textPrimary: "#D6A33A",
+  textSecondary: "#A56F22",
+  alertRed: "#D94132",
+  marunouchiRed: "#D91F2B",
+  ruleLine: "#242018",
 };
 
 const DISPLAY_ROUTE_CODE = "M03";
-const STATUS_LED_GREEN = "#39FF14";
+const STATUS_LED_GREEN = "#7FB95A";
 const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
-const REPOSITORY_BOARD_NAME_MAX = 17;
+const REPOSITORY_BOARD_NAME_MAX = 18;
+const BOARD_COLS = {
+  time: 68,
+  statusDot: 92,
+  status: 102,
+  repo: 205,
+  language: 425,
+  stars: 465,
+};
 
 export function ownActiveRepos(allRepos) {
   return allRepos.filter((repo) => repo && !repo.fork && !repo.archived && repo.name !== USERNAME);
@@ -107,6 +113,10 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
   <pattern id="unlit-leds" width="4" height="4" patternUnits="userSpaceOnUse">
     <circle cx="2" cy="2" r="1.35" fill="#111111" opacity="0.22"/>
   </pattern>
+  <radialGradient id="screen-falloff" cx="50%" cy="45%" r="75%">
+    <stop offset="0%" stop-color="white" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
+  </radialGradient>
 </defs>
 <style>
 ${svgFontFace({ fontCss, fontDataUrl })}
@@ -124,51 +134,51 @@ ${mainText}`;
 }
 
 function repoDisplayName(name, compact) {
-  return shortText(name, compact ? REPOSITORY_BOARD_NAME_MAX : 24);
+  const displayName = String(name ?? "").replace(/-fix$/i, "");
+  return shortText(displayName, compact ? REPOSITORY_BOARD_NAME_MAX : 24);
 }
 
-function statusForRepo(index) {
-  return ["ON", "CHECK", "IDLE"][index] ?? "IDLE";
+function statusForRepo(repo, index) {
+  const configured = String(repo?.security_status || repo?.status || "").trim();
+  if (configured) return configured.toUpperCase();
+  const alerts = Number(repo?.dependabot_alerts ?? repo?.security_alerts ?? repo?.vulnerability_alerts ?? 0);
+  if (Number.isFinite(alerts) && alerts > 0) return "DEPS CHECK";
+  if (repo?.archived) return "ARCHIVED";
+  return index === 0 ? "ACTIVE" : "DEPS CHECK";
 }
 
-function repoRowText(repo, { y, detailY, index, emissiveOnly = false }) {
+function repoRowText(repo, { y, index, emissiveOnly = false }) {
   const updated = (repo.updated_label || relativeTime(repo.pushed_at)).replace(/\s+ago$/i, "");
-  const status = statusForRepo(index);
-  const statusFill = status === "CHECK" ? SIGN_COLORS.accentAmber : SIGN_COLORS.textSecondary;
-  const dotColor = status === "ON" ? STATUS_LED_GREEN : statusFill;
-  const statusOpacity = status === "IDLE" ? 0.64 : status === "CHECK" ? 0.86 : 0.74;
+  const status = statusForRepo(repo, index);
+  const alertStatus = /CHECK|WARN|REVIEW|FAIL|ARCHIVED/.test(status);
+  const statusFill = alertStatus ? SIGN_COLORS.alertRed : SIGN_COLORS.textSecondary;
+  const dotColor = status === "ACTIVE" ? STATUS_LED_GREEN : statusFill;
+  const statusOpacity = status === "IDLE" ? 0.58 : alertStatus ? 0.72 : 0.68;
   const language = shortText(repo.language || "PUBLIC", 14);
   const stars = Math.max(0, Number(repo.stargazers_count) || 0);
-  const dotX = 106;
-  const dotY = detailY - 4;
-  return `${text(updated, { x: 92, y, size: 16.1, fill: SIGN_COLORS.accentAmber, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.86 : 0.88, style: "letter-spacing:0.025em" })}
-${text(repoDisplayName(repo.name, true), { x: 118, y, size: 20.4, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.9 : 0.96, style: "letter-spacing:0", shadow: !emissiveOnly })}
-${text(language, { x: 430, y, size: 13.1, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.8 : 0.84, style: "letter-spacing:0.025em" })}
-${emissiveOnly ? "" : `<circle cx="${dotX + 1.5}" cy="${dotY + 1.5}" r="4" fill="#000000" opacity="0.6"/>`}
-${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="4" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
-${text(status, { x: 118, y: detailY, size: 14.7, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.82, statusOpacity + 0.04) : Math.max(0.68, statusOpacity - 0.03), style: "letter-spacing:0.035em" })}
-${text(`★ ${stars}`, { x: 430, y: detailY, size: 13.1, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.8 : 0.84, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
-}
-
-function stationCodeLabel({ emissiveOnly = false } = {}) {
-  return `<g data-station-code="${DISPLAY_ROUTE_CODE}">
-${text(DISPLAY_ROUTE_CODE, { x: 36, y: 39, size: 12.4, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.8 : 0.76, style: "letter-spacing:0.045em" })}
-</g>`;
+  const dotX = BOARD_COLS.statusDot;
+  const dotY = y - 5;
+  return `${text(updated, { x: BOARD_COLS.time, y, size: 12.5, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.68 : 0.64, style: "letter-spacing:0.025em" })}
+${emissiveOnly ? "" : `<circle cx="${dotX + 1.5}" cy="${dotY + 1.5}" r="3" fill="#000000" opacity="0.55"/>`}
+${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="3" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
+${text(status, { x: BOARD_COLS.status, y, size: 10.6, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.78, statusOpacity + 0.04) : Math.max(0.62, statusOpacity), style: "letter-spacing:0.025em" })}
+${text(repoDisplayName(repo.name, true), { x: BOARD_COLS.repo, y, size: 16.8, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.86 : 0.94, style: "letter-spacing:0", shadow: !emissiveOnly })}
+${text(language, { x: BOARD_COLS.language, y, size: 10.6, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.72 : 0.78, style: "letter-spacing:0.018em" })}
+${text(`★ ${stars}`, { x: BOARD_COLS.stars, y, size: 10.8, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.72 : 0.78, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
 }
 
 export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
-  const rowBaselines = [82, 126];
-  const detailBaselines = [102, 146];
+  const rowBaselines = [87, 121];
 
   const rows = repos.map((repo, index) => {
     const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
-    const detailBaseline = detailBaselines[index] ?? detailBaselines[detailBaselines.length - 1];
     return `<g data-repo="${escapeHtml(repo.name)}">
-  ${repoRowText(repo, { y: baseline, detailY: detailBaseline, index, emissiveOnly })}
+  ${repoRowText(repo, { y: baseline, index, emissiveOnly })}
 </g>`;
   }).join("");
 
   const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#unlit-leds)" opacity="0.08"/>`;
+  const screenFalloff = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#screen-falloff)" opacity="0.1"/>`;
   const structure = emissiveOnly ? "" : `<line x1="37.5" y1="51.5" x2="457.5" y2="51.5" stroke="#000000" stroke-opacity="0.4" stroke-width="2"/>
 <line x1="36" y1="50" x2="456" y2="50" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.55" stroke-width="2" filter="url(#soft-glow)"/>
 <line x1="37.5" y1="113.5" x2="457.5" y2="113.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
@@ -179,10 +189,13 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 <rect width="${width}" height="${height}" fill="transparent"/>
 <g clip-path="url(#display-clip)">
 ${surface}
+${screenFalloff}
 <g>
-${stationCodeLabel({ emissiveOnly })}
-${text("リポジトリ状況", { x: 72, y: 26, size: 10.5, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.7 : 0.6, style: "letter-spacing:0.08em" })}
-${text("REPOSITORY SIGNALS", { x: 72, y: 40, size: 12.4, fill: SIGN_COLORS.textPrimary, weight: 500, opacity: emissiveOnly ? 0.78 : 0.72, style: "letter-spacing:0.045em" })}
+<g data-station-code="${DISPLAY_ROUTE_CODE}">
+${text("リポジトリ状況", { x: 72, y: 27, size: 10.7, fill: SIGN_COLORS.textSecondary, weight: 600, opacity: emissiveOnly ? 0.72 : 0.68, style: "letter-spacing:0.08em" })}
+${text(`${DISPLAY_ROUTE_CODE} REPOSITORY SIGNALS`, { x: 72, y: 43, size: 12.8, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.76 : 0.74, style: "letter-spacing:0.045em" })}
+</g>
+${text("LANG  ★", { x: BOARD_COLS.stars, y: 67, size: 7.8, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.42 : 0.4, style: "letter-spacing:0.08em" })}
 ${structure}
 ${rows}
 </g>
@@ -195,47 +208,48 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   const langs = languageSummary(allRepos)
     .map((lang, index) => ({ ...lang, index }))
     .sort((a, b) => b.pct - a.pct || a.index - b.index);
-  const rowBaselines = [132, 166, 200, 234];
-  const codeOpacities = [0.98, 0.96, 0.94, 0.92];
-  const valueOpacities = [0.98, 0.96, 0.94, 0.92];
+  const rowBaselines = [118, 152, 186, 220];
+  const codeOpacities = [0.96, 0.94, 0.92, 0.9];
+  const valueOpacities = [0.96, 0.94, 0.92, 0.9];
   const signalRows = langs.map((lang, index) => {
     const y = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
-    const compactName = {
-      TypeScript: "TS",
-      JavaScript: "JS",
-      Python: "PY",
-      Shell: "SH",
-      PowerShell: "PS",
-      Rust: "RS",
-      Ruby: "RB",
-      Dockerfile: "DK",
-      Makefile: "MK",
-      Other: "OT",
+    const displayName = {
+      TypeScript: "TYPESCRIPT",
+      JavaScript: "JAVASCRIPT",
+      Python: "PYTHON",
+      Shell: "SHELL",
+      PowerShell: "POWERSHELL",
+      Rust: "RUST",
+      Ruby: "RUBY",
+      Dockerfile: "DOCKER",
+      Makefile: "MAKE",
+      Other: "OTHER",
     }[lang.name] ?? lang.name;
     return `<g data-lang="${escapeHtml(lang.name)}">
-  ${text(compactName, { x: 20, y, size: 17.3, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.88 : codeOpacities[index], style: "letter-spacing:0.012em" })}
-  ${text(`${String(lang.pct)}%`, { x: 107, y, size: 13.2, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.88 : valueOpacities[index], style: "letter-spacing:0", shadow: !emissiveOnly })}
+  ${text(displayName, { x: 20, y, size: 8.2, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.86 : codeOpacities[index], style: "letter-spacing:0.035em" })}
+  ${text(`${String(lang.pct)}%`, { x: 113, y, size: 10.4, fill: SIGN_COLORS.textPrimary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.86 : valueOpacities[index], style: "letter-spacing:0", shadow: !emissiveOnly })}
 </g>`;
   }).join("");
   const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#unlit-leds)" opacity="0.08"/>`;
+  const screenFalloff = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#screen-falloff)" opacity="0.12"/>`;
   const displayTexture = "";
 
   return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
 <rect width="${width}" height="${height}" fill="transparent"/>
 <g clip-path="url(#display-clip)">
 ${surface}
+${screenFalloff}
 <g>
 ${emissiveOnly ? "" : `<line x1="20.5" y1="59.5" x2="109.5" y2="59.5" stroke="#000000" stroke-opacity="0.4" stroke-width="2"/>
 <line x1="19" y1="58" x2="108" y2="58" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.55" stroke-width="2" filter="url(#soft-glow)"/>`}
-${text("運行情報", { x: 20, y: 70, size: 9.5, fill: SIGN_COLORS.accentAmber, weight: 600, opacity: emissiveOnly ? 0.7 : 0.6, style: "letter-spacing:0.1em" })}
-${text("M03 SERVICE", { x: 20, y: 84, size: 11.7, fill: SIGN_COLORS.accentAmber, weight: 600, opacity: emissiveOnly ? 0.84 : 0.88, style: "letter-spacing:0.05em" })}
-${text("CODE LINES", { x: 20, y: 111, size: 15.9, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.92 : 0.98, style: "letter-spacing:0.04em" })}
-${emissiveOnly ? "" : `<line x1="20.5" y1="147.5" x2="109.5" y2="147.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
-<line x1="19" y1="146" x2="108" y2="146" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.085"/>
-<line x1="20.5" y1="181.5" x2="109.5" y2="181.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
-<line x1="19" y1="180" x2="108" y2="180" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.075"/>
-<line x1="20.5" y1="215.5" x2="109.5" y2="215.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
-<line x1="19" y1="214" x2="108" y2="214" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.065"/>`}
+${text("コード構成", { x: 20, y: 70, size: 10.4, fill: SIGN_COLORS.marunouchiRed, weight: 600, opacity: emissiveOnly ? 0.82 : 0.86, style: "letter-spacing:0.08em" })}
+${text(`${DISPLAY_ROUTE_CODE} CODE MIX`, { x: 20, y: 84, size: 11.7, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.86 : 0.92, style: "letter-spacing:0.045em" })}
+${emissiveOnly ? "" : `<line x1="20.5" y1="106.5" x2="109.5" y2="106.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
+<line x1="19" y1="105" x2="108" y2="105" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.085"/>
+<line x1="20.5" y1="135.5" x2="109.5" y2="135.5" stroke="#000000" stroke-opacity="0.26" stroke-width="1"/>
+<line x1="19" y1="134" x2="108" y2="134" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.065"/>
+<line x1="20.5" y1="203.5" x2="109.5" y2="203.5" stroke="#000000" stroke-opacity="0.24" stroke-width="1"/>
+<line x1="19" y1="202" x2="108" y2="202" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.055"/>`}
 ${signalRows}
 </g>
 ${displayTexture}

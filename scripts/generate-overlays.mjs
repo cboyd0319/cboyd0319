@@ -37,18 +37,18 @@ const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].inclu
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
 const PANEL_RASTER_DENSITY = 144;
-const PANEL_SOFTEN_SIGMA = 0.18;
+const PANEL_SOFTEN_SIGMA = 0.10;
 const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
-const PANEL_GLOW_TINT_COLOR = "#FF9900";
-const PANEL_GLOW_TINT_STRENGTH = 25;
-const MACRO_GLOW_BLUR_SIGMA = 15;
-const MACRO_GLOW_OPACITY = 0.065;
+const PANEL_GLOW_TINT_COLOR = "#C98524";
+const PANEL_GLOW_TINT_STRENGTH = 12;
+const MACRO_GLOW_BLUR_SIGMA = 9;
+const MACRO_GLOW_OPACITY = 0.035;
 const GLARE_OPACITY = 0.035;
 const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
-const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+2+1";
-const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-1-1";
+const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
+const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 
 function envNumber(name, fallback) {
   if (!process.env[name]?.trim()) return fallback;
@@ -565,7 +565,7 @@ async function main() {
   const toolchainLayers = await renderPanelLayers("toolchain-spectrum", toolchainSvgPath, toolchainEmissiveSvgPath, {
     width: toolchainDesign.width,
     height: toolchainDesign.height,
-    panelSoftenSigma: 0.25,
+    panelSoftenSigma: 0.12,
   });
 
   const repositoryOverlayPath = join(GENERATED_DIR, "repository-overlay.png");
@@ -577,13 +577,13 @@ async function main() {
       width: boardDesign.width,
       height: boardDesign.height,
       emissiveOpacity: 0.008,
-      panelOpacity: 0.85,
+      panelOpacity: 0.78,
     }),
     renderOverlayCanvas(toolchainLayers, toolchainOverlayPath, {
       width: toolchainDesign.width,
       height: toolchainDesign.height,
       emissiveOpacity: 0.014,
-      panelOpacity: 0.85,
+      panelOpacity: 0.82,
     }),
     renderGlareCanvas("repository-glare", repositoryGlarePath, {
       width: boardDesign.width,

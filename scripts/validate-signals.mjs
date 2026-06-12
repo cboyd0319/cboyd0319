@@ -217,18 +217,20 @@ export async function validateSignals({
     "リポジトリ状況",
     "REPOSITORY SIGNALS",
   ]);
-  requireAny("repository SVG status", repositorySvg || "", ["ON", "CHECK", "IDLE"]);
+  requireAny("repository SVG status", repositorySvg || "", ["ACTIVE", "DEPS CHECK", "IDLE"]);
   requireIncludes("repository SVG status LEDs", repositorySvg || "", ['data-status-led="']);
   requireIncludes("toolchain SVG", toolchainSvg || "", [
-    "運行情報",
-    "M03 SERVICE",
-    "CODE LINES",
+    "コード構成",
+    "M03 CODE MIX",
   ]);
   requireExcludes("generated SVG", `${repositorySvg || ""}\n${toolchainSvg || ""}`, [
     "#FFFFFF",
     "#ffffff",
     "SPECTRUM",
     "TOOLCHAIN",
+    "M03 SERVICE",
+    "CODE LINES",
+    "運行情報",
     "新高円寺",
     "M03 LOCAL",
     "リポジトリ信号",

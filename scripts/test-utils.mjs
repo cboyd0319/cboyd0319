@@ -302,7 +302,7 @@ const longRepoSvg = renderRepositorySignSvg({
   height: 160,
 });
 
-assert("repository SVG truncates long visible repo names before language column", longRepoSvg.includes(">WormsWMD-macOS...<"), true);
+assert("repository SVG trims maintenance suffix before language column", longRepoSvg.includes(">WormsWMD-macOS<"), true);
 assert("repository SVG keeps long full repo name out of visible text", longRepoSvg.includes(">WormsWMD-macOS-Fix<"), false);
 
 const toolchainSvg = renderToolchainSpectrumSvg({
@@ -319,11 +319,11 @@ const toolchainSvg = renderToolchainSpectrumSvg({
 
 assert("toolchain SVG uses requested primary dimensions", toolchainSvg.startsWith('<svg width="131" height="420" viewBox="0 0 131 420"'), true);
 assert("toolchain SVG clips overlay paint inside sign display", toolchainSvg.includes('clip-path="url(#display-clip)"'), true);
-assert("toolchain SVG includes Japanese operation header", toolchainSvg.includes(">運行情報<"), true);
-assert("toolchain SVG uses abbreviated TypeScript label", toolchainSvg.includes(">TS<"), true);
-assert("toolchain SVG omits muddy full TypeScript label", toolchainSvg.includes(">TypeScript<"), false);
-assert("toolchain SVG uses code lines title", toolchainSvg.includes(">CODE LINES<"), true);
-assert("toolchain SVG sorts largest share first", toolchainSvg.indexOf(">PY<") < toolchainSvg.indexOf(">TS<"), true);
+assert("toolchain SVG includes Japanese code mix header", toolchainSvg.includes(">コード構成<"), true);
+assert("toolchain SVG uses code mix title", toolchainSvg.includes(">M03 CODE MIX<"), true);
+assert("toolchain SVG uses full TypeScript label", toolchainSvg.includes(">TYPESCRIPT<"), true);
+assert("toolchain SVG removes old code lines title", toolchainSvg.includes(">CODE LINES<"), false);
+assert("toolchain SVG sorts largest share first", toolchainSvg.indexOf(">PYTHON<") < toolchainSvg.indexOf(">TYPESCRIPT<"), true);
 assert("toolchain SVG removes old toolchain title", toolchainSvg.includes(">TOOLCHAIN<"), false);
 
 const liveLanguageToolchainSvg = renderToolchainSpectrumSvg({
@@ -336,8 +336,8 @@ const liveLanguageToolchainSvg = renderToolchainSpectrumSvg({
   width: 131,
   height: 420,
 });
-assert("toolchain SVG abbreviates Rust route code", liveLanguageToolchainSvg.includes(">RS<"), true);
-assert("toolchain SVG abbreviates Other route code", liveLanguageToolchainSvg.includes(">OT<"), true);
+assert("toolchain SVG uses full Rust label", liveLanguageToolchainSvg.includes(">RUST<"), true);
+assert("toolchain SVG uses full Other label", liveLanguageToolchainSvg.includes(">OTHER<"), true);
 
 // ImageMagick helper
 
@@ -432,28 +432,31 @@ assert("static repository SVG omits top-right station label", staticRepoSvg.incl
 assert("static repository SVG uses time-first row", staticRepoSvg.includes(">32m<"), true);
 assert("static repository SVG keeps JobSentinel row", staticRepoSvg.includes("JobSentinel"), true);
 assert("static repository SVG adds internal text shadow", staticRepoSvg.includes('fill="#000000" opacity="0.6"'), true);
-assert("static repository SVG adds status LED shadow", staticRepoSvg.includes('r="4" fill="#000000" opacity="0.6"'), true);
+assert("static repository SVG adds status LED shadow", staticRepoSvg.includes('r="3" fill="#000000" opacity="0.55"'), true);
 assert("static repository SVG adds structure line shadow", staticRepoSvg.includes('x1="37.5" y1="51.5"'), true);
+assert("static repository SVG adds screen falloff", staticRepoSvg.includes('fill="url(#screen-falloff)"'), true);
 assert("static repository SVG keeps second most recently updated row", staticRepoSvg.includes("PyGuard"), true);
 assert("static repository SVG omits older Worms row", staticRepoSvg.includes("WormsWMD-macOS-Fix"), false);
 assert("static repository SVG omits older PoshGuard row", staticRepoSvg.includes("PoshGuard"), false);
 assert("static repository SVG rejects Norms typo", staticRepoSvg.includes("Norms macOS Fix"), false);
-assert("static repository SVG keeps on station status", staticRepoSvg.includes(">ON<"), true);
-assert("static repository SVG keeps check station status", staticRepoSvg.includes(">CHECK<"), true);
-assert("static repository SVG renders status LEDs", staticRepoSvg.includes('data-status-led="ON"') && staticRepoSvg.includes('data-status-led="CHECK"'), true);
-assert("static repository SVG uses neon green active LED", staticRepoSvg.includes('fill="#39FF14"'), true);
+assert("static repository SVG keeps active station status", staticRepoSvg.includes(">ACTIVE<"), true);
+assert("static repository SVG keeps dependency check station status", staticRepoSvg.includes(">DEPS CHECK<"), true);
+assert("static repository SVG renders status LEDs", staticRepoSvg.includes('data-status-led="ACTIVE"') && staticRepoSvg.includes('data-status-led="DEPS CHECK"'), true);
+assert("static repository SVG uses muted green active LED", staticRepoSvg.includes('fill="#7FB95A"'), true);
 assert("static repository SVG keeps star counts", staticRepoSvg.includes(">★ 28<") && staticRepoSvg.includes(">★ 19<"), true);
 assert("static repository SVG removes language-code table column", staticRepoSvg.includes(">TS<"), false);
 assert("static repository SVG removes old route-code language badge", staticRepoSvg.includes("M03-TS"), false);
 assert("static repository SVG removes dashboard footer active metric", staticRepoSvg.includes("ACTIVE REPOS"), false);
 assert("static repository SVG removes dashboard footer total metric", staticRepoSvg.includes("TOTAL"), false);
 assert("static repository SVG avoids full-panel wash rectangles", staticRepoSvg.includes('fill="url(#panel-life)"') || staticRepoSvg.includes('fill="url(#ui-scanline)"'), false);
-assert("static toolchain SVG uses station service header", staticToolchainSvg.includes("M03 SERVICE"), true);
-assert("static toolchain SVG uses Japanese operation header", staticToolchainSvg.includes(">運行情報<"), true);
+assert("static toolchain SVG removes station service header", staticToolchainSvg.includes("M03 SERVICE"), false);
+assert("static toolchain SVG uses Japanese code mix header", staticToolchainSvg.includes(">コード構成<"), true);
 assert("static toolchain SVG adds structure line shadow", staticToolchainSvg.includes('x1="20.5" y1="59.5"'), true);
-assert("static toolchain SVG uses code lines title", staticToolchainSvg.includes(">CODE LINES<"), true);
-assert("static toolchain SVG omits tiny full language labels", staticToolchainSvg.includes(">Python<") || staticToolchainSvg.includes(">TypeScript<"), false);
-assert("static toolchain SVG sorts Python before TypeScript", staticToolchainSvg.indexOf(">PY<") < staticToolchainSvg.indexOf(">TS<"), true);
+assert("static toolchain SVG adds screen falloff", staticToolchainSvg.includes('fill="url(#screen-falloff)"'), true);
+assert("static toolchain SVG uses code mix title", staticToolchainSvg.includes(">M03 CODE MIX<"), true);
+assert("static toolchain SVG removes old code lines title", staticToolchainSvg.includes(">CODE LINES<"), false);
+assert("static toolchain SVG uses full language labels", staticToolchainSvg.includes(">PYTHON<") && staticToolchainSvg.includes(">TYPESCRIPT<"), true);
+assert("static toolchain SVG sorts Python before TypeScript", staticToolchainSvg.indexOf(">PYTHON<") < staticToolchainSvg.indexOf(">TYPESCRIPT<"), true);
 assert("static toolchain SVG keeps compact percentage row", staticToolchainSvg.includes(">25%<"), true);
 assert("static toolchain SVG removes old local label", staticToolchainSvg.includes("M03 LOCAL"), false);
 assert("static toolchain SVG removes old toolchain title", staticToolchainSvg.includes(">TOOLCHAIN<"), false);

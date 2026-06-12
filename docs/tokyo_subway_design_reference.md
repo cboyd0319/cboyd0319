@@ -351,21 +351,21 @@ Notes:
   repair the base image or regenerate the blank sign surface.
 - Show the two most recently updated public owner repositories, selected dynamically from GitHub data or from the sorted static fixture.
 
-### 9.2 Right-side wall panel: Code Lines
+### 9.2 Right-side wall panel: Code Mix
 
-Since the main overhead right-side sign was removed, this smaller panel carries language-share data as train line service information.
+Since the main overhead right-side sign was removed, this smaller panel carries language-share data as a code-mix readout.
 
 Final text should be applied through `generate-overlays.mjs`; renderer code owns
 exact spacing and styling.
 
 ```text
-M03 SERVICE
-CODE LINES
+コード構成
+M03 CODE MIX
 
-PY        35%
-TS        25%
-SH        25%
-PS        15%
+PYTHON       35%
+TYPESCRIPT   25%
+SHELL        25%
+POWERSHELL   15%
 ```
 
 Visual options:

@@ -351,27 +351,18 @@ softness: 0.2–0.3 px
 
 ---
 
-### Row 1
+### Repository Rows
 
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `32m` | 82 | 72 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
-| Repo | `JobSentinel` | 110 | 72 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
-| Language | `TypeScript` | 420 | 72 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
-| LED | `●` | 98 | 92 | center | 4 px radius | n/a | `#39FF14` | 0.74 |
-| Status | `ON` | 110 | 96 | left | 15.2 px | 0.035em | `--text-secondary` | 0.74 |
-| Stars | `★ 28` | 420 | 96 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
+Render the two most recent public owner repositories as one row each:
 
-### Row 2
+```txt
+time | status LED + status | repository | language | stars
+```
 
-| Element | Text | x | y baseline | Align | Size | Tracking | Color | Opacity |
-|---|---:|---:|---:|---|---:|---:|---|---:|
-| Time | `2w` | 82 | 123 | right | 16.6 px | 0.025em | `--accent-amber` | 0.96 |
-| Repo | `PyGuard` | 110 | 123 | left | 22.2 px | 0 | `--text-primary` | 0.99 |
-| Language | `Python` | 420 | 123 | right | 14.8 px | 0.025em | `--text-secondary` | 0.94 |
-| LED | `●` | 98 | 143 | center | 4 px radius | n/a | `--accent-amber` | 0.86 |
-| Status | `CHECK` | 110 | 147 | left | 15.2 px | 0.035em | `--accent-amber` | 0.86 |
-| Stars | `★ 19` | 420 | 147 | right | 14.8 px | 0.02em | `--text-secondary` | 0.94 |
+Preferred statuses are `ACTIVE` for the freshest repo and `DEPS CHECK` when the
+row needs review. Status can also come from repository metadata when provided.
+Keep recency and status subordinate to the repository name. Keep the language
+and star metadata in a strict right-side column.
 
 ---
 
@@ -383,27 +374,10 @@ Default recommendation: **off**. Do not render `ACTIVE REPOS` or `TOTAL` metrics
 
 ## 7.5 Repository Status LEDs
 
-Default recommendation: render only the two small status LEDs beside status text.
-
-These are physical indicator dots paired with the status word, not chart marks or row bullets.
-
-### LED geometry
-
-```txt
-dot radius:     4 px
-dot x:          98 px
-row 1 dot y:    92 px
-row 2 dot y:    143 px
-filter:         soft-glow
-```
-
-### Status mapping
-
-```txt
-ON:     #39FF14 at 0.74
-CHECK:  --accent-amber at 0.86
-IDLE:   --text-secondary at 0.64
-```
+Render only the small status LEDs beside status text. These are physical
+indicator dots paired with the status word, not chart marks or row bullets.
+Use muted green for healthy active rows and controlled red only for review or
+dependency-check states. Exact geometry and opacity live in the renderer.
 
 ---
 
@@ -452,22 +426,21 @@ The Toolchain panel should feel like a **narrow station maintenance / subsystem 
 
 ## 8.2 Toolchain Layout
 
-The right wall panel uses a compact station-service readout:
+The right wall panel uses a compact code-mix readout:
 
 ```txt
-M03 SERVICE
-CODE LINES
+コード構成
+M03 CODE MIX
 
-PY        35%
-TS        25%
-SH        25%
-PS        15%
+PYTHON       35%
+TYPESCRIPT   25%
+SHELL        25%
+POWERSHELL   15%
 ```
 
-Keep `M03 SERVICE` exact. Keep the line-code column and percentage column
-aligned, with generous side padding inside the black panel. Omit full language
-names at this size; they become muddy after perspective warp and scene-matched
-softening.
+Keep `M03 CODE MIX` exact. Keep the language-name column and percentage column
+aligned, with generous side padding inside the black panel. Use full language
+names when they fit; the renderer owns any necessary compacting.
 
 Exact positions, sizing, opacity, row spacing, and perspective fit live in the
 renderer and layout config. Do not duplicate those values here.

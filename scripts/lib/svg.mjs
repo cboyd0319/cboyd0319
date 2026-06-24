@@ -38,7 +38,10 @@ export function languageSummary(allRepos) {
   const activeRepos = ownActiveRepos(allRepos);
   const languageMaps = activeRepos.map((repo) => repo.languages).filter(isLanguageMap);
 
-  if (languageMaps.length && languageMaps.length === activeRepos.length) {
+  // Use whatever byte-level maps we have. Requiring full coverage meant a single
+  // failed /languages fetch silently discarded all byte data and fell back to the
+  // crude per-repo count path, shifting the published mix on one transient 5xx.
+  if (languageMaps.length) {
     const totals = new Map();
     for (const languages of languageMaps) {
       for (const [language, bytes] of Object.entries(languages)) {
@@ -161,7 +164,7 @@ function repoRowText(repo, { y, index, emissiveOnly = false }) {
   const statusSize = status.length > 7 ? 9.4 : 10.8;
   return `${text(updated, { x: BOARD_COLS.time, y, size: 12.5, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.68 : 0.64, style: "letter-spacing:0.025em" })}
 ${emissiveOnly ? "" : `<circle cx="${dotX + 1.5}" cy="${dotY + 1.5}" r="3" fill="#000000" opacity="0.55"/>`}
-${emissiveOnly ? "" : `<circle data-status-led="${status}" cx="${dotX}" cy="${dotY}" r="3" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
+${emissiveOnly ? "" : `<circle data-status-led="${escapeHtml(status)}" cx="${dotX}" cy="${dotY}" r="3" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
 ${text(status, { x: BOARD_COLS.status, y, size: statusSize, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.78, statusOpacity + 0.04) : Math.max(0.7, statusOpacity), style: "letter-spacing:0.01em" })}
 ${text(repoDisplayName(repo.name, true), { x: BOARD_COLS.repo, y, size: 15.6, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.88 : 0.96, style: "letter-spacing:0", shadow: !emissiveOnly })}
 ${text(language, { x: BOARD_COLS.language, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.018em" })}

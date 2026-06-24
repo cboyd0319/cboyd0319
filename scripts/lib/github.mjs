@@ -50,4 +50,6 @@ export async function github(path, { maxRetries = MAX_RETRIES, retryDelayMs = RE
 
     throw new Error(`GitHub API ${response.status}: ${await response.text()}`);
   }
+
+  throw new Error(`GitHub API request to ${path} exhausted retries`);
 }

@@ -258,6 +258,23 @@ assertDeepEqual(
   ],
 );
 
+const partialByteLanguageSummary = languageSummary([
+  makeRepo("frontend", 1, {
+    language: "Python",
+    languages: { Python: 150, Shell: 50 },
+  }),
+  makeRepo("backend", 2, { language: "Go" }),
+]).map(({ name, pct }) => ({ name, pct }));
+
+assertDeepEqual(
+  "partial language-map coverage still uses byte totals, not the count fallback",
+  partialByteLanguageSummary,
+  [
+    { name: "Python", pct: 75 },
+    { name: "Shell", pct: 25 },
+  ],
+);
+
 const escapedRepoSvg = renderRepositorySignSvg({
   repos: [
     makeRepo("<bad & repo>", 1, {

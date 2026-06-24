@@ -74,7 +74,6 @@ jobs:
       actions: write
       checks: read
       contents: write
-      statuses: write
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -136,16 +135,9 @@ jobs:
 
             case "$conclusion" in
               success)
-                check_url="$(gh api \
-                  "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/check-runs?check_name=validate" \
-                  --jq '.check_runs[0].html_url // ""')"
-                gh api \
-                  --method POST \
-                  "repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}" \
-                  -f state=success \
-                  -f context=validate \
-                  -f description="CI validate passed for generated profile update" \
-                  -f target_url="$check_url"
+                # The real CI "validate" check-run is attached to commit_sha and
+                # satisfies the branch ruleset's required status check directly, so
+                # we push the validated commit without minting our own status.
                 git push origin "HEAD:main"
                 echo "Updated main with validated signals panel: $commit_sha"
                 exit 0

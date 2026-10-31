@@ -148,3 +148,17 @@ export function perspectiveControlPoints(width, height, quad) {
     .map(([x, y], index) => `${x},${y} ${quad[index].x},${quad[index].y}`)
     .join(" ");
 }
+
+export async function waitForWriters(writers) {
+  const results = await Promise.allSettled(writers);
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
+  return results.map((result) => result.value);
+}
+
+export async function rasterizeSvg(svgPath, outputPath, { width, height }) {
+  await runMagick([
+    "-background", "none", "-density", "192", svgPath,
+    "-resize", `${width}x${height}!`, "-alpha", "on", pngOutput(outputPath),
+  ]);
+}

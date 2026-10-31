@@ -1,3 +1,7 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { rasterizeSvg, runMagick } from "./imagemagick.mjs";
 import { DISPLAY_ROUTE_CODE, USERNAME } from "./config.mjs";
 import { escapeHtml, relativeTime, shortText } from "./utils.mjs";
 
@@ -12,6 +16,10 @@ const SIGN_COLORS = {
 const STATUS_LED_GREEN = "#7FB95A";
 const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
 const REPOSITORY_BOARD_NAME_MAX = 18;
+const REPOSITORY_NAME_WIDTH = 142;
+const REPOSITORY_LANGUAGE_WIDTH = 75;
+const REPOSITORY_NAME_TEXT = { size: 15.6, weight: 600, style: "letter-spacing:0", shadow: true };
+const REPOSITORY_LANGUAGE_TEXT = { size: 10.4, weight: 500, style: "letter-spacing:0.018em" };
 const BOARD_COLS = {
   time: 64,
   statusDot: 88,
@@ -111,18 +119,56 @@ text{font-family:${TEXT_FONT_FAMILY};text-rendering:geometricPrecision}
 </style>`;
 }
 
-function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600, anchor = "start", opacity = 1, style = "", extra = "", shadow = false }) {
+function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600, anchor = "start", opacity = 1, style = "", extra = "", shadow = false, clipWidth }) {
   const styleAttr = style ? `style="${escapeHtml(style)}"` : "";
   const mainText = `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" font-family="${TEXT_FONT_FAMILY}" text-anchor="${anchor}" fill="${fill}" opacity="${opacity}" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
-  if (!shadow) return mainText;
   const shadowText = `<text x="${x + 1.5}" y="${y + 1.5}" font-size="${size}" font-weight="${weight}" font-family="${TEXT_FONT_FAMILY}" text-anchor="${anchor}" fill="#000000" opacity="0.6" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
-  return `${shadowText}
-${mainText}`;
+  const glyphs = shadow ? `${shadowText}\n${mainText}` : mainText;
+  if (!clipWidth) return glyphs;
+  const left = anchor === "end" ? x - clipWidth : x;
+  return `<svg x="${left}" y="${y - 22}" width="${clipWidth}" height="32" viewBox="${left} ${y - 22} ${clipWidth} 32" overflow="hidden">${glyphs}</svg>`;
 }
 
 function repoDisplayName(name, compact) {
   const displayName = String(name ?? "").replace(/-fix$/i, "");
   return shortText(displayName, compact ? REPOSITORY_BOARD_NAME_MAX : 24);
+}
+
+export async function fitRepositoryRows(repos) {
+  const directory = await mkdtemp(join(tmpdir(), "signals-text-"));
+  const svgPath = join(directory, "text.svg");
+  const rasterPath = join(directory, "text.png");
+  const fit = async (value, maxWidth, options) => {
+    const measure = async (label) => {
+      await writeFile(svgPath, `${svgHeader({ width: 500, height: 40, viewWidth: 500, viewHeight: 40 })}${text(label, { x: 0, y: 24, ...options })}</svg>`);
+      await rasterizeSvg(svgPath, rasterPath, { width: 500, height: 40 });
+      const { stdout } = await runMagick([rasterPath, "-trim", "-format", "%w %X", "info:"]);
+      const [width, left] = stdout.trim().split(" ").map(Number);
+      if (!Number.isFinite(width + left) || width <= 0) throw new Error("Invalid repository text width.");
+      return width + left;
+    };
+    if (await measure(value) <= maxWidth - 4) return value;
+    const full = value.replace(/\.\.\.$/, "");
+    let low = 0;
+    let high = full.length;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (await measure(`${full.slice(0, middle)}...`) <= maxWidth - 4) low = middle;
+      else high = middle - 1;
+    }
+    return `${full.slice(0, low)}...`;
+  };
+  try {
+    const fitted = [];
+    for (const repo of repos) {
+      const displayName = await fit(repoDisplayName(repo.name, true), REPOSITORY_NAME_WIDTH, REPOSITORY_NAME_TEXT);
+      const displayLanguage = await fit(shortText(repo.language || "PUBLIC", 14), REPOSITORY_LANGUAGE_WIDTH, REPOSITORY_LANGUAGE_TEXT);
+      fitted.push({ ...repo, display_name: displayName, display_language: displayLanguage });
+    }
+    return fitted;
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 }
 
 function statusForRepo(repo) {
@@ -136,7 +182,7 @@ function repoRowText(repo, { y, emissiveOnly = false }) {
   const statusFill = alertStatus ? SIGN_COLORS.alertRed : SIGN_COLORS.textSecondary;
   const dotColor = status === "ACTIVE" ? STATUS_LED_GREEN : statusFill;
   const statusOpacity = status === "IDLE" ? 0.58 : alertStatus ? 0.8 : 0.7;
-  const language = shortText(repo.language || "PUBLIC", 14);
+  const language = repo.display_language ?? shortText(repo.language || "PUBLIC", 14);
   const stars = Math.max(0, Number(repo.stargazers_count) || 0);
   const dotX = BOARD_COLS.statusDot;
   const dotY = y - 5;
@@ -145,8 +191,8 @@ function repoRowText(repo, { y, emissiveOnly = false }) {
 ${emissiveOnly ? "" : `<circle cx="${dotX + 1.5}" cy="${dotY + 1.5}" r="3" fill="#000000" opacity="0.55"/>`}
 ${emissiveOnly ? "" : `<circle data-status-led="${escapeHtml(status)}" cx="${dotX}" cy="${dotY}" r="3" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
 ${text(status, { x: BOARD_COLS.status, y, size: statusSize, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.78, statusOpacity + 0.04) : Math.max(0.7, statusOpacity), style: "letter-spacing:0.01em" })}
-${text(repoDisplayName(repo.name, true), { x: BOARD_COLS.repo, y, size: 15.6, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.88 : 0.96, style: "letter-spacing:0", shadow: !emissiveOnly })}
-${text(language, { x: BOARD_COLS.language, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.018em" })}
+${text(repo.display_name ?? repoDisplayName(repo.name, true), { ...REPOSITORY_NAME_TEXT, x: BOARD_COLS.repo, y, fill: SIGN_COLORS.textPrimary, opacity: emissiveOnly ? 0.88 : 0.96, shadow: !emissiveOnly, clipWidth: REPOSITORY_NAME_WIDTH })}
+${text(language, { ...REPOSITORY_LANGUAGE_TEXT, x: BOARD_COLS.language, y, fill: SIGN_COLORS.textSecondary, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, clipWidth: REPOSITORY_LANGUAGE_WIDTH })}
 ${text(`★ ${stars}`, { x: BOARD_COLS.stars, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
 }
 

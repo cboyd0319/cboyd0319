@@ -6,11 +6,11 @@ import { join } from "node:path";
 
 import { staticRepos } from "./lib/config.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
-import { applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, publishSignals, withLanguageBreakdowns } from "./generate-overlays.mjs";
+import { applyChromaticAberration, applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, publishSignals, withLanguageBreakdowns } from "./generate-overlays.mjs";
 import { verifyDisplayFont } from "./lib/font.mjs";
 import { github } from "./lib/github.mjs";
-import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick, withImageLock } from "./lib/imagemagick.mjs";
-import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick, rasterizeSvg, waitForWriters, withImageLock } from "./lib/imagemagick.mjs";
+import { fitRepositoryRows, languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
 import { assertOverlayPixelMetrics, expectedOutputSize, renderStaticSvgs, validateSignals } from "./validate-signals.mjs";
 
@@ -905,6 +905,89 @@ esac
   }
 } finally {
   await rm(publicationDir, { recursive: true, force: true });
+}
+
+console.log("\nrenderer regressions");
+const rendererTmp = await mkdtemp(join(tmpdir(), "signals-renderer-"));
+try {
+  let siblingFinished = false;
+  await assertRejects("nested writer failure propagates after siblings finish", () => withImageLock(join(rendererTmp, "locked.png"), () => waitForWriters([
+    waitForWriters([
+      Promise.reject(new Error("writer failed")),
+      (async () => {
+        await new Promise(setImmediate);
+        await assertRejects("pending sibling excludes another image writer", () => withImageLock(join(rendererTmp, "locked.png"), () => 1), /Image writer lock exists/);
+        siblingFinished = true;
+      })(),
+    ]),
+  ])).catch((error) => {
+    assert("failed nested writer batch waits for sibling completion", siblingFinished, true);
+    throw error;
+  }), /writer failed/);
+  assert("failed batch releases lock after all writers settle", await withImageLock(join(rendererTmp, "locked.png"), () => 42), 42);
+
+  const impulse = join(rendererTmp, "impulse.png");
+  const split = join(rendererTmp, "split.png");
+  await runMagick(["-size", "9x9", "xc:rgba(0,0,0,0.5)", "-fill", "white", "-draw", "point 4,4", "-fill", "black", "-draw", "point 0,0", pngOutput(impulse)]);
+  await applyChromaticAberration(impulse, split);
+  const { stdout: channels } = await runMagick([split, "-format", "%[fx:p{5,4}.r] %[fx:p{4,4}.g] %[fx:p{3,4}.b] %[fx:p{4,4}.r] %[fx:p{4,4}.b]", "info:"]);
+  const [red, green, blue, centerRed, centerBlue] = channels.split(" ").map(Number);
+  assert("chromatic aberration shifts only red and blue in opposite directions", red > 0.8 && green > 0.9 && blue > 0.8 && centerRed < 0.1 && centerBlue < 0.1, true);
+  const { stdout: alphaDifference } = await runMagick(["(", impulse, "-alpha", "extract", ")", "(", split, "-alpha", "extract", ")", "-compose", "Difference", "-composite", "-format", "%[fx:maxima]", "info:"]);
+  assert("chromatic aberration preserves original alpha", Number(alphaDifference), 0);
+
+  await applyChromaticAberration(impulse, split, { redShift: "+2+1", blueShift: "-1-1" });
+  const { stdout: diagonalChannels } = await runMagick([split, "-format", "%[fx:p{6,5}.r] %[fx:p{4,4}.g] %[fx:p{3,3}.b]", "info:"]);
+  assert("toolchain chromatic split follows its diagonal offsets", diagonalChannels.split(" ").map(Number).every((value) => value > 0.8), true);
+  await runMagick(["-size", "9x9", "xc:rgba(100,150,200,0.5)", pngOutput(impulse)]);
+  await applyChromaticAberration(impulse, split);
+  const { stdout: flatDifference } = await runMagick([impulse, split, "-compose", "Difference", "-composite", "-format", "%[fx:maxima]", "info:"]);
+  assert("channel recombination preserves flat RGB color", Number(flatDifference), 0);
+
+  const detailSvg = join(rendererTmp, "detail.svg");
+  const raster = join(rendererTmp, "raster.png");
+  const reference = join(rendererTmp, "reference.png");
+  await writeFile(detailSvg, '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><path d="M0 0L40 20M0 20L40 0" stroke="white" stroke-width="0.7"/></svg>');
+  const { stdout: oversampledSize } = await runMagick(["-background", "none", "-density", "192", detailSvg, "-format", "%wx%h", "info:"]);
+  assert("rsvg density192 produces two design pixels per axis", oversampledSize, "80x40");
+  await rasterizeSvg(detailSvg, raster, { width: 40, height: 20 });
+  await runMagick(["-background", "none", "-density", "192", detailSvg, "-resize", "40x20!", "-alpha", "on", pngOutput(reference)]);
+  const { stdout: rasterDifference } = await runMagick([raster, reference, "-compose", "Difference", "-composite", "-format", "%[fx:maxima]", "info:"]);
+  assert("shared SVG rasterizer uses actual 2x rsvg oversampling", Number(rasterDifference), 0);
+
+  assert("text measurement treats ImageMagick percent syntax as literal SVG text", (await fitRepositoryRows([makeRepo("%[fx:1]", 1)]))[0].display_name, "%[fx:1]");
+  const fittedRepos = await fitRepositoryRows([makeRepo("W".repeat(18), 1, { language: "Common Workflow Language" }), makeRepo("JobSentinel", 1, { language: "Python" })]);
+  assert("short repository names retain their readable spelling", fittedRepos[1].display_name, "JobSentinel");
+  assert("short language labels retain their readable spelling", fittedRepos[1].display_language, "Python");
+  const wideSvg = renderRepositorySignSvg({ repos: fittedRepos.slice(0, 1), width: 500, height: 160 });
+  const isolateColumn = (svg, pattern) => svg.replace(/<text\b[^>]*>[\s\S]*?<\/text>/g, (node) => pattern.test(node) ? node : "")
+    .replace(/<(?:rect|circle|line)\b[^>]*\/>/g, (node) => node.includes('width="500" height="160"/>') ? node : "");
+  const nameOnly = isolateColumn(wideSvg, /x="17[89](?:\.5)?"/);
+  const nameSvgPath = join(rendererTmp, "name.svg");
+  const namePng = join(rendererTmp, "name.png");
+  await writeFile(nameSvgPath, nameOnly);
+  await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+  const { stdout: overflow } = await runMagick([namePng, "-crop", "170x35+330+65", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+  assert("wide valid repository name cannot paint over metadata columns", Number(overflow), 0);
+  assert("wide repository name uses readable ellipsis", /[.]{3}<\/text>/.test(wideSvg), true);
+  const { stdout: visibleName } = await runMagick([namePng, "-crop", "142x25+178+71", "-alpha", "extract", "-trim", "-format", "%w", "info:"]);
+  assert("width fitting keeps visible name and ellipsis inside its viewport", Number(visibleName) > 75 && Number(visibleName) < 142, true);
+  const languageOnly = isolateColumn(wideSvg, /x="405"/);
+  await writeFile(nameSvgPath, languageOnly);
+  await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+  const { stdout: languageOverflow } = await runMagick([namePng, "-crop", "330x35+0+65", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+  assert("long GitHub language cannot paint over the repository column", Number(languageOverflow), 0);
+  const { stdout: visibleLanguage } = await runMagick([namePng, "-crop", "75x32+330+69", "-alpha", "extract", "-trim", "-format", "%w", "info:"]);
+  assert("long GitHub language remains visible with an ellipsis", Number(visibleLanguage) > 40 && Number(visibleLanguage) < 75 && fittedRepos[0].display_language.endsWith("..."), true);
+  const unfittedSvg = renderRepositorySignSvg({ repos: [makeRepo("W".repeat(18), 1, { language: "Common Workflow Language" })], width: 500, height: 160 });
+  for (const [column, pattern, crop] of [["name", /x="17[89](?:\.5)?"/, "170x35+330+65"], ["language", /x="405"/, "330x35+0+65"]]) {
+    await writeFile(nameSvgPath, isolateColumn(unfittedSvg, pattern));
+    await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+    const { stdout } = await runMagick([namePng, "-crop", crop, "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+    assert(`column viewport clips unfitted ${column} text`, Number(stdout), 0);
+  }
+} finally {
+  await rm(rendererTmp, { recursive: true, force: true });
 }
 
 // Summary

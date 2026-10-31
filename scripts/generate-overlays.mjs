@@ -16,10 +16,12 @@ import {
   identifyImage,
   perspectiveControlPoints,
   pngOutput,
+  rasterizeSvg,
+  waitForWriters,
   runMagick,
   withImageLock,
 } from "./lib/imagemagick.mjs";
-import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+import { fitRepositoryRows, ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, selectRepos } from "./lib/utils.mjs";
 import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
 
@@ -39,7 +41,6 @@ const STATIC = ["1", "true", "yes"].includes(String(process.env.STATIC ?? "").to
 const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].includes(String(process.env.LIVE_SMOKE ?? "").toLowerCase());
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
-const PANEL_RASTER_DENSITY = 144;
 const PANEL_SOFTEN_SIGMA = 0.10;
 const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
@@ -179,21 +180,6 @@ export async function publishSignals(candidatePath, outputPath, validation) {
   await rename(candidatePath, outputPath);
 }
 
-async function rasterizeSvg(svgPath, outputPath, { width, height }) {
-  await runMagick([
-    "-background",
-    "none",
-    "-density",
-    String(PANEL_RASTER_DENSITY),
-    svgPath,
-    "-resize",
-    `${width}x${height}!`,
-    "-alpha",
-    "on",
-    pngOutput(outputPath),
-  ]);
-}
-
 export function panelTextureArgs(attenuate = PANEL_TEXTURE_ATTENUATE) {
   return attenuate > 0
     ? ["-seed", String(PANEL_TEXTURE_SEED), "-attenuate", String(attenuate), "+noise", "Gaussian"]
@@ -262,25 +248,19 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
   glowTintStrength = PANEL_GLOW_TINT_STRENGTH,
 }) {
   const basePath = join(GENERATED_DIR, `${prefix}-base.png`);
-  const softenedPath = join(GENERATED_DIR, `${prefix}-softened.png`);
   const panelPath = join(GENERATED_DIR, `${prefix}.png`);
   const emissivePath = join(GENERATED_DIR, `${prefix}-emissive.png`);
-  const emissiveTexturedPath = join(GENERATED_DIR, `${prefix}-emissive-textured.png`);
   const glowPath = join(GENERATED_DIR, `${prefix}-glow.png`);
   const macroGlowPath = join(GENERATED_DIR, `${prefix}-macro-glow.png`);
 
-  await Promise.all([
+  await waitForWriters([
     rasterizeSvg(svgPath, basePath, { width, height }),
     rasterizeSvg(emissiveSvgPath, emissivePath, { width, height }),
   ]);
-  await softenReadablePanel(basePath, softenedPath, panelSoftenSigma);
-  await Promise.all([
-    copyFile(softenedPath, panelPath),
-    copyFile(emissivePath, emissiveTexturedPath),
-  ]);
-  await Promise.all([
+  await softenReadablePanel(basePath, panelPath, panelSoftenSigma);
+  await waitForWriters([
     runMagick([
-      emissiveTexturedPath,
+      emissivePath,
       "-blur",
       "0x0.75",
       "-modulate",
@@ -291,14 +271,13 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
       String(glowTintStrength),
       pngOutput(glowPath),
     ]),
-    renderMacroGlow(emissiveTexturedPath, macroGlowPath, { glowTintColor, glowTintStrength }),
+    renderMacroGlow(emissivePath, macroGlowPath, { glowTintColor, glowTintStrength }),
   ]);
 
   return {
     panel: panelPath,
     glow: glowPath,
     macroGlow: macroGlowPath,
-    emissive: emissiveTexturedPath,
   };
 }
 
@@ -315,27 +294,16 @@ async function renderOverlayCanvas(layers, outputPath, { width, height, emissive
   await runMagick(args);
 }
 
-async function applyChromaticAberration(inputPath, outputPath, {
+export async function applyChromaticAberration(inputPath, outputPath, {
   redShift = CHROMATIC_ABERRATION_RED_SHIFT,
   blueShift = CHROMATIC_ABERRATION_BLUE_SHIFT,
 } = {}) {
   await runMagick([
-    inputPath,
-    "-channel",
-    "R",
-    "-roll",
-    redShift,
-    "-blur",
-    "0x0.3",
-    "+channel",
-    "-channel",
-    "B",
-    "-roll",
-    blueShift,
-    "-blur",
-    "0x0.3",
-    "+channel",
-    pngOutput(outputPath),
+    "(", inputPath, "-channel", "R", "-separate", "-roll", redShift, "-blur", "0x0.3", ")",
+    "(", inputPath, "-channel", "G", "-separate", ")",
+    "(", inputPath, "-channel", "B", "-separate", "-roll", blueShift, "-blur", "0x0.3", ")",
+    "(", inputPath, "-alpha", "extract", ")",
+    "-channel", "RGBA", "-combine", "+channel", "-colorspace", "sRGB", pngOutput(outputPath),
   ]);
 }
 
@@ -410,22 +378,22 @@ async function writeDebugCrops(outputPath, { board, toolchain, width, height }) 
   const toolSign = expandedCrop(toolchain, { width, height, pad: 12 });
   const mainCropPath = join(GENERATED_DIR, "debug-main-sign.png");
   const toolCropPath = join(GENERATED_DIR, "debug-toolchain.png");
-  await Promise.all([
+  await waitForWriters([
     copyFile(outputPath, join(GENERATED_DIR, "debug-full.png")),
     cropImage(outputPath, mainCropPath, mainSign),
     cropImage(outputPath, toolCropPath, toolSign),
-    runMagick([outputPath, "-resize", "640x", pngOutput(join(GENERATED_DIR, "debug-full-small.png"))]),
+    runMagick([outputPath, "-resize", "1070x", pngOutput(join(GENERATED_DIR, "debug-full-small.png"))]),
     runMagick([outputPath, "-colorspace", "Gray", pngOutput(join(GENERATED_DIR, "debug-full-gray.png"))]),
     runMagick([outputPath, "-blur", "0x2", pngOutput(join(GENERATED_DIR, "debug-full-blur2.png"))]),
   ]);
-  await Promise.all([
+  await waitForWriters([
     runMagick([mainCropPath, "-resize", `${mainSign.width * 2}x`, pngOutput(join(GENERATED_DIR, "debug-main-sign-2x.png"))]),
     runMagick([toolCropPath, "-resize", `${toolSign.width * 2}x`, pngOutput(join(GENERATED_DIR, "debug-toolchain-2x.png"))]),
   ]);
 }
 
 async function main() {
-  const [{ version }] = await Promise.all([
+  const [{ version }] = await waitForWriters([
     ensureImageMagick(),
     mkdir(OUT_DIR, { recursive: true }),
     mkdir(GENERATED_DIR, { recursive: true }),
@@ -455,8 +423,9 @@ async function main() {
   const toolchainQuad = scaledQuad(layout.toolchain, quadScale, "toolchain");
   const board = boxFromQuad(boardQuad);
   const toolchain = boxFromQuad(toolchainQuad);
+  const fittedRepos = await fitRepositoryRows(repos);
   const repositorySvg = renderRepositorySignSvg({
-    repos,
+    repos: fittedRepos,
     allRepos,
     width: boardDesign.width,
     height: boardDesign.height,
@@ -464,7 +433,7 @@ async function main() {
     outputHeight: boardDesign.height,
   });
   const repositoryEmissiveSvg = renderRepositorySignSvg({
-    repos,
+    repos: fittedRepos,
     allRepos,
     width: boardDesign.width,
     height: boardDesign.height,
@@ -493,7 +462,7 @@ async function main() {
   const toolchainSvgPath = join(GENERATED_DIR, "toolchain-spectrum.svg");
   const toolchainEmissiveSvgPath = join(GENERATED_DIR, "toolchain-spectrum-emissive.svg");
   await validateSignals({ scene, staticData, layout, repositorySvg, toolchainSvg });
-  await Promise.all([
+  await waitForWriters([
     writeFile(repositorySvgPath, repositorySvg),
     writeFile(repositoryEmissiveSvgPath, repositoryEmissiveSvg),
     writeFile(toolchainSvgPath, toolchainSvg),
@@ -514,7 +483,7 @@ async function main() {
   const toolchainOverlayPath = join(GENERATED_DIR, "toolchain-overlay.png");
   const repositoryGlarePath = join(GENERATED_DIR, "repository-glare.png");
   const toolchainGlarePath = join(GENERATED_DIR, "toolchain-glare.png");
-  await Promise.all([
+  await waitForWriters([
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
       height: boardDesign.height,
@@ -545,14 +514,14 @@ async function main() {
   const toolchainGlareWarpedPath = join(GENERATED_DIR, "toolchain-glare-warped.png");
   const repositoryAberratedPath = join(GENERATED_DIR, "repository-overlay-aberrated.png");
   const toolchainAberratedPath = join(GENERATED_DIR, "toolchain-overlay-aberrated.png");
-  await Promise.all([
+  await waitForWriters([
     applyChromaticAberration(repositoryOverlayPath, repositoryAberratedPath),
     applyChromaticAberration(toolchainOverlayPath, toolchainAberratedPath, {
       redShift: TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT,
       blueShift: TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT,
     }),
   ]);
-  await Promise.all([
+  await waitForWriters([
     perspectiveWarpPng(repositoryAberratedPath, repositoryWarpedPath, {
       width: boardDesign.width,
       height: boardDesign.height,

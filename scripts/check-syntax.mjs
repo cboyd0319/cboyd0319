@@ -16,16 +16,22 @@ const files = [
   "scripts/lib/svg.mjs",
 ];
 
-for (const file of files) {
-  const result = spawnSync(process.execPath, ["--check", file], {
+const checks = [
+  ...files.map((file) => [process.execPath, "--check", file]),
+  ...["scripts/install-imagemagick-ci.sh", "scripts/publish-signals.sh"].map((file) => ["bash", "-n", file]),
+  ...[".githooks/pre-commit", ".githooks/pre-push"].map((file) => ["sh", "-n", file]),
+];
+for (const [command, ...args] of checks) {
+  const result = spawnSync(command, args, {
     encoding: "utf8",
     stdio: "pipe",
   });
   if (result.status !== 0) {
+    if (result.error) console.error(result.error.message);
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);
     process.exit(result.status ?? 1);
   }
 }
 
-console.log(`Syntax OK - ${files.length} files checked`);
+console.log(`Syntax OK - ${checks.length} files checked`);

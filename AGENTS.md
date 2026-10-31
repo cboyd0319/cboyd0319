@@ -22,20 +22,23 @@ ImageMagick 7.1.2-25 `magick` CLI owns all raster image work: SVG rasterization,
 ## Build and Test Commands
 
 Use Node from `.node-version` and install with `npm ci`.
+Use npm from `package.json#packageManager`; publisher regression tests require jq 1.8.2.
 Use ImageMagick 7.1.2-25. Locally, `imagemagick-full` is expected at `/opt/homebrew/opt/imagemagick-full/`; set `MAGICK_BIN` only if `magick` lives elsewhere.
 
 - `npm run generate`: render `assets/signals.png` from live public GitHub data.
 - `STATIC=1 npm run generate`: deterministic render using `config/static-data.json`.
 - `npm run optimize`: alias for `npm run optimize-signals`.
 - `npm run optimize-signals`: compress `assets/signals.png`.
-- `npm run optimize:web`: palette/quantized PNG optimization for web-size output.
+- `npm run optimize:web`: write a quantized experiment to ignored `assets/generated/signals-web.png`.
 - `npm run smoke`: run a static generator smoke check.
 - `npm run smoke -- --live`: smoke-check live GitHub API access.
 - `npm run validate`: validate config, generated SVG semantics, layout, and PNG dimensions.
 - `npm test`: run focused custom tests in `scripts/test-utils.mjs`.
-- `npm run check`: syntax-check scripts listed in `scripts/check-syntax.mjs`.
+- `npm run check`: syntax-check JavaScript, shell scripts, and local hooks.
 - `npm run audit`: run `npm audit --audit-level=moderate`.
 - `npm run render-magick-panels`: rasterize generated SVG panels with ImageMagick for inspection.
+
+Generation and optimization share `assets/signals.png.lock`; concurrent writers fail before modifying output. If a killed process leaves the lock, confirm no generator or optimizer is running before removing that exact file.
 
 ## Code Style Guidelines
 
@@ -61,7 +64,7 @@ Do not replace `assets/tokyo-neon-city.png` unless the profile art direction int
 
 ## Deployment and Automation
 
-`.github/workflows/update-profile.yml` refreshes `assets/signals.png` once per day at `23:00 UTC` and supports manual `workflow_dispatch`. It renders, optimizes, uploads the image artifact, publishes the change to `automation/update-signals-panel`, waits for the `validate` check, and pushes that validated asset to `main` only when the image changes. Keep automation scoped to this profile image workflow.
+`.github/workflows/update-profile.yml` refreshes `assets/signals.png` once per day at `23:00 UTC` and supports manual `workflow_dispatch`. It renders, optimizes, and uploads the image artifact. `scripts/publish-signals.sh` publishes changes to `automation/update-signals-panel`, verifies the exact `ci.yml` run, commit, branch and successful `validate` job, then pushes to `main` if its base is unchanged. Keep automation scoped to this profile image workflow.
 
 `.github/workflows/ci.yml` exists only to provide the `validate` check expected by the profile update publisher. It runs for `automation/update-signals-panel` and manual dispatch, not for every push or pull request. Do not restore broad CI without a concrete reason.
 

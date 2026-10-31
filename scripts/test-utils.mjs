@@ -4,12 +4,12 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { LANGUAGE_COLORS, staticRepos, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
+import { staticRepos } from "./lib/config.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
 import { applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, publishSignals, withLanguageBreakdowns } from "./generate-overlays.mjs";
 import { verifyDisplayFont } from "./lib/font.mjs";
 import { github } from "./lib/github.mjs";
-import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick } from "./lib/imagemagick.mjs";
+import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick, withImageLock } from "./lib/imagemagick.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
 import { assertOverlayPixelMetrics, expectedOutputSize, validateSignals } from "./validate-signals.mjs";
@@ -257,6 +257,14 @@ assertDeepEqual(
     { name: "PowerShell", pct: 15 },
   ],
 );
+
+assertDeepEqual("weighted overflow keeps the largest language visible", languageSummary(
+  ["A", "B", "C", "D", "Rust"].map((language, index) => makeRepo(language, 1, {
+    language, language_pct: index === 4 ? 96 : 1,
+  })),
+).map(({ name, pct }) => ({ name, pct })), [
+  { name: "Rust", pct: 96 }, { name: "A", pct: 1 }, { name: "B", pct: 1 }, { name: "Other", pct: 2 },
+]);
 
 const byteLanguageSummary = languageSummary([
   makeRepo("frontend", 1, {
@@ -515,6 +523,7 @@ for (const [label, mutate] of [
   ["missing dimensions", (layout) => { delete layout.board.width; }],
   ["nonnumeric quad", (layout) => { layout.board.quad[0].x = null; }],
   ["invalid source size", (layout) => { layout.sourceWidth = NaN; }],
+  ["nonnumeric design size", (layout) => { layout.board.designWidth = "500"; }],
   ["concave quad", (layout) => { layout.board.quad[2] = { x: 500, y: 100 }; }],
 ]) {
   const layout = structuredClone(layoutConfig);
@@ -532,6 +541,18 @@ invalidStaticData.repos[1].language_pct += 35;
 await assertRejects("validator rejects negative percentages even when total is 100", () => validateSignals({
   ...semanticInput, staticData: invalidStaticData,
 }), /invalid static language percentage/);
+for (const language of [null, "", " "]) {
+  const staticData = structuredClone(staticDataConfig);
+  staticData.repos[0].language = language;
+  await assertRejects("positive static language weights require a language", () => validateSignals({
+    ...semanticInput, staticData,
+  }), /static language missing/);
+}
+const fractionalStaticData = structuredClone(staticDataConfig);
+fractionalStaticData.repos.forEach((repo, index) => { repo.language_pct = [33.3, 33.3, 33.3, 0.1][index]; });
+await assertResolvesDeepEqual("static percentages tolerate floating-point addition", () => validateSignals({
+  ...semanticInput, staticData: fractionalStaticData,
+}), true);
 await assertResolvesDeepEqual("historical label substrings remain valid public repo names", () => validateSignals({
   ...semanticInput, repositorySvg: staticRepoSvg.replaceAll("JobSentinel", "toolchain-spectrum"),
 }), true);
@@ -540,6 +561,8 @@ const originalBoardLeft = process.env.BOARD_LEFT;
 const originalBoardTop = process.env.BOARD_TOP;
 const originalBoardWidth = process.env.BOARD_WIDTH;
 const originalBoardHeight = process.env.BOARD_HEIGHT;
+process.env.BOARD_LEFT = "bad";
+await assertRejects("invalid layout overrides fail closed", () => applyLayoutEnv(layoutConfig), /BOARD_LEFT must be a finite number/);
 process.env.BOARD_LEFT = "10";
 process.env.BOARD_TOP = "20";
 process.env.BOARD_WIDTH = "30";
@@ -577,12 +600,32 @@ console.log("\nimage validation");
 const validationTmp = await mkdtemp(join(tmpdir(), "signals-validation-"));
 try {
   await mkdir(join(validationTmp, "scripts/lib"), { recursive: true });
+  await mkdir(join(validationTmp, "assets"));
   for (const file of ["optimize-signals.mjs", "lib/imagemagick.mjs", "lib/font.mjs"]) {
     await copyFile(join("scripts", file), join(validationTmp, "scripts", file));
   }
   const missingOptimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs")], { encoding: "utf8" });
   assert("optimizer fails when signals.png is missing", missingOptimization.status, 1);
   assert("optimizer explains missing input", missingOptimization.stderr.includes("run the generator before optimizing"), true);
+  await Promise.all(["fonts", "config"].map((directory) => mkdir(join(validationTmp, directory))));
+  await copyFile("fonts/NotoSansJP-VF.ttf", join(validationTmp, "fonts/NotoSansJP-VF.ttf"));
+  await copyFile("config/fonts.conf", join(validationTmp, "config/fonts.conf"));
+  const optimizedImage = join(validationTmp, "assets/signals.png");
+  await copyFile("assets/subway_blank_original.png", optimizedImage);
+  const optimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs")], { encoding: "utf8" });
+  assert("optimizer accepts valid image", optimization.status, 0);
+  const { stdout: pngTime } = await runMagick(["identify", "-quiet", "-format", "%[png:tIME]", optimizedImage]);
+  assert("optimized PNG excludes nondeterministic time chunk", pngTime, "");
+  const optimizedBytes = await readFile(optimizedImage);
+  const webOptimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs"), "--web"], { encoding: "utf8" });
+  assert("web optimization succeeds", webOptimization.status, 0);
+  assert("web experiment preserves production image", (await readFile(optimizedImage)).equals(optimizedBytes), true);
+  assert("web experiment writes separate PNG", (await readFile(join(validationTmp, "assets/generated/signals-web.png"))).length > 10_000, true);
+  await withImageLock(optimizedImage, () => assertRejects("concurrent image writers fail before entering work", () => withImageLock(optimizedImage, () => {
+    throw new Error("second writer entered");
+  }), /Image writer lock exists/));
+  await assertRejects("image writer propagates failure", () => withImageLock(optimizedImage, () => { throw new Error("render failed"); }), /render failed/);
+  assert("image writer releases lock after success and failure", await withImageLock(optimizedImage, () => 42), 42);
   const candidate = join(validationTmp, "candidate.png");
   const published = join(validationTmp, "signals.png");
   await writeFile(candidate, "invalid candidate");
@@ -624,18 +667,6 @@ try {
 } finally {
   await rm(validationTmp, { recursive: true, force: true });
 }
-
-// palette
-
-console.log("\npalette");
-
-const tokyoColors = new Set(Object.values(TOKYO_NEON_PALETTE));
-
-assert(
-  "language colors stay inside Tokyo neon palette",
-  [...LANGUAGE_COLORS.values()].every((color) => tokyoColors.has(color)),
-  true,
-);
 
 // github helpers
 

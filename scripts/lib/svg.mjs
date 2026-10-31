@@ -1,13 +1,5 @@
-import { USERNAME, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./config.mjs";
+import { USERNAME } from "./config.mjs";
 import { escapeHtml, relativeTime, shortText } from "./utils.mjs";
-
-export const PANEL_ACCENTS = {
-  TypeScript: "#CC8800",
-  Python: "#CC8800",
-  Shell: "#995C00",
-  PowerShell: "#995C00",
-  Other: "#7A5200",
-};
 
 const SIGN_COLORS = {
   textPrimary: "#D6A33A",
@@ -40,9 +32,7 @@ export function languageSummary(allRepos) {
   const activeRepos = ownActiveRepos(allRepos);
   const languageMaps = activeRepos.map((repo) => repo.languages).filter(isLanguageMap);
 
-  // Use whatever byte-level maps we have. Requiring full coverage meant a single
-  // failed /languages fetch silently discarded all byte data and fell back to the
-  // crude per-repo count path, shifting the published mix on one transient 5xx.
+  // Live collection requires every active repository's byte map.
   if (languageMaps.length) {
     const totals = new Map();
     for (const languages of languageMaps) {
@@ -81,7 +71,7 @@ function isLanguageMap(value) {
 }
 
 function summarizeLanguageEntries(entries, { sort = true } = {}) {
-  const sorted = sort ? entries.sort((a, b) => b[1] - a[1]) : entries;
+  const sorted = sort || entries.length > 4 ? entries.sort((a, b) => b[1] - a[1]) : entries;
   const total = sorted.reduce((sum, [, count]) => sum + count, 0) || 1;
   const summarized = sorted.length > 4
     ? [
@@ -99,7 +89,6 @@ function summarizeLanguageEntries(entries, { sort = true } = {}) {
   return summarized.map(([name], index) => ({
     name,
     pct: percentages[index],
-    color: PANEL_ACCENTS[name] || LANGUAGE_COLORS.get(name) || TOKYO_NEON_PALETTE.lavender,
   }));
 }
 

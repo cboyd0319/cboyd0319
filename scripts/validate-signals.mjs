@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
+import { applyLayoutEnv, staticRepos } from "./lib/config.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
 import { ensureImageMagick, identifyImage, pngOutput, runMagick } from "./lib/imagemagick.mjs";
 import { renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
@@ -63,23 +64,9 @@ function polygonArea(points) {
 }
 
 function requireDesignSize(label, box, expected) {
-  if (Number(box.designWidth) !== expected.width || Number(box.designHeight) !== expected.height) {
+  if (box.designWidth !== expected.width || box.designHeight !== expected.height) {
     fail(`${label} design size ${box.designWidth}x${box.designHeight}, expected ${expected.width}x${expected.height}`);
   }
-}
-
-function staticRepos(staticData) {
-  const baseTime = Date.UTC(2026, 0, 1, 0, 0, 0);
-  return staticData.repos.map((repo, index) => ({
-    name: repo.name,
-    language: repo.language,
-    language_pct: repo.language_pct,
-    updated_label: repo.updated,
-    pushed_at: new Date(baseTime - index * 1000).toISOString(),
-    stargazers_count: repo.stars,
-    fork: false,
-    archived: false,
-  }));
 }
 
 function renderStaticSvgs(staticData, layout) {
@@ -236,9 +223,12 @@ export async function validateSignals({
     if (!Number.isFinite(repo.language_pct) || repo.language_pct < 0 || repo.language_pct > 100) {
       fail(`invalid static language percentage for ${repo.name}`);
     }
+    if (repo.language_pct > 0 && (typeof repo.language !== "string" || !repo.language.trim())) {
+      fail(`static language missing for ${repo.name}`);
+    }
   }
   const languagePct = sum(staticData.repos.map((repo) => repo.language_pct));
-  if (languagePct !== 100) fail(`toolchain percentages sum to ${languagePct}, expected 100`);
+  if (Math.abs(languagePct - 100) > 1e-9) fail(`toolchain percentages sum to ${languagePct}, expected 100`);
 
   const stars = sum(staticData.repos.map((repo) => repo.stars));
   if (stars !== Number(staticData.summary?.starsTotal)) {
@@ -325,7 +315,7 @@ async function main() {
   const [scene, staticData, layout] = await Promise.all([
     readFile(join(ROOT_DIR, "config/scene.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/static-data.json"), "utf8").then(JSON.parse),
-    readFile(join(ROOT_DIR, "config/layouts/subway-default.json"), "utf8").then(JSON.parse),
+    readFile(join(ROOT_DIR, "config/layouts/subway-default.json"), "utf8").then(JSON.parse).then(applyLayoutEnv),
   ]);
   const { repositorySvg, toolchainSvg } = await readGeneratedSvgs(staticData, layout);
   const { width, height } = expectedOutputSize(layout);
@@ -343,6 +333,6 @@ async function main() {
   console.log("Signals validation OK");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   await main();
 }

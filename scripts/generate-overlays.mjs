@@ -16,9 +16,10 @@ import {
   perspectiveControlPoints,
   pngOutput,
   runMagick,
+  withImageLock,
 } from "./lib/imagemagick.mjs";
 import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
-import { selectRepos } from "./lib/utils.mjs";
+import { relativeTime, selectRepos } from "./lib/utils.mjs";
 import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
 
 export { applyLayoutEnv } from "./lib/config.mjs";
@@ -123,6 +124,8 @@ export async function withLanguageBreakdowns(repos) {
 async function collectData(staticData) {
   const allRepos = USE_STATIC_DATA ? staticRepos(staticData) : await withLanguageBreakdowns(await fetchOwnerRepos());
   const repos = selectRepos(ownActiveRepos(allRepos), REPO_LIMIT);
+  const now = Date.now();
+  for (const repo of repos) repo.updated_label ??= relativeTime(repo.pushed_at, now);
   return { allRepos, repos };
 }
 
@@ -639,6 +642,6 @@ async function main() {
   console.log(`assets/signals.png written with ImageMagick ${version} and ${repos.length} repo rows`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  await main();
+if (import.meta.main) {
+  await withImageLock(join(OUT_DIR, "signals.png"), main);
 }

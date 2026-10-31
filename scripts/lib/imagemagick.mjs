@@ -1,6 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { access } from "node:fs/promises";
-import { constants } from "node:fs";
+import { open, unlink } from "node:fs/promises";
 import { FONTCONFIG_FILE, verifyDisplayFont } from "./font.mjs";
 
 export const REQUIRED_MAGICK_VERSION = "7.1.2-25";
@@ -103,8 +102,19 @@ export async function identifyImage(path) {
   };
 }
 
-export async function assertReadableFile(path) {
-  await access(path, constants.R_OK);
+export async function withImageLock(outputPath, work) {
+  const lockPath = `${outputPath}.lock`;
+  const lock = await open(lockPath, "wx").catch((err) => {
+    if (err.code === "EEXIST") throw new Error(`Image writer lock exists: ${lockPath}. Remove it only after confirming no generator or optimizer is running.`);
+    throw err;
+  });
+  try {
+    await lock.writeFile(`${process.pid}\n`);
+    return await work();
+  } finally {
+    await lock.close();
+    await unlink(lockPath);
+  }
 }
 
 export function pngOutput(path) {

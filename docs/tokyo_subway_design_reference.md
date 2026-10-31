@@ -418,8 +418,7 @@ The image is decorative, but visible data should be internally consistent.
 
 - `Repository Signals`
 - `M03`
-- `JobSentinel`
-- `PyGuard`
+- `JobSentinel` and `PyGuard` in static mode.
 - Update age, status, language, and star count for each displayed repository.
 - The two rows must be the two most recently updated public owner repositories, not a hard-coded pair in live mode.
 - Static Code Mix split, sorted by displayed share:
@@ -514,7 +513,7 @@ Current canon:
 
 The production path should be deterministic:
 
-- Local font files in `fonts/` are used before network font fetching.
+- The pinned [display font](../fonts/README.md) is checksum-verified and loaded through repository-local Fontconfig, without network or system-font fallback.
 - `scripts/validate-signals.mjs` checks required repository strings, toolchain strings, static totals, layout bounds, transit canon contradictions, output dimensions, and that only the configured overlay regions differ from the blank source image.
 - Static mode should preserve configured labels such as `1mo ago` instead of recomputing them into equivalent but visually different strings.
 - `assets/generated/` crops should be used for sign-level QA before judging the full image.
@@ -526,7 +525,7 @@ ImageMagick 7.1.2-25 `magick` is the default and required raster pipeline. JavaS
 Default optimization should preserve truecolor PNG quality. Palette quantization belongs in the explicit web-size path:
 
 - `npm run optimize`: truecolor PNG optimization for the committed profile image, including metadata stripping and removal of the unused opaque alpha channel.
-- `npm run optimize:web`: palette/quantized PNG optimization for experiments when size matters more than gradient fidelity.
+- `npm run optimize:web`: write the quantized experiment to ignored `assets/generated/signals-web.png`, preserving the production image.
 
 ### 11.4 Coordinate tuning
 

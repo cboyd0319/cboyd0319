@@ -293,10 +293,7 @@ row 2:              127 px
 
 Use one station-style red rule and faint row discipline:
 
-```txt
-Marunouchi stripe y: 47 px
-row rule y:         107 px
-```
+Exact line positions live in [`scripts/lib/svg.mjs`](../scripts/lib/svg.mjs).
 
 Both should be extremely faint. No visible table grid.
 
@@ -330,15 +327,7 @@ Show the two most recently updated public owner repositories. This should read l
 
 ### Header stripe
 
-```txt
-x1: 36
-x2: 456
-y: 47
-stroke: --marunouchi-red
-opacity: 0.20
-width: 2 px
-softness: 0.2–0.3 px
-```
+Use the renderer's subdued Marunouchi stripe; geometry and opacity are code-owned.
 
 ---
 
@@ -350,8 +339,8 @@ Render the two most recent public owner repositories as one row each:
 time | status LED + status | repository | language | stars
 ```
 
-Preferred statuses are `ACTIVE` for the freshest repo and `DEPS CHECK` when the
-row needs review. Status can also come from repository metadata when provided.
+Live rows use `ACTIVE` for non-archived public repositories; no dependency-health
+check is implied. `DEPS CHECK` is an explicit static fixture value.
 Keep recency and status subordinate to the repository name. Keep the language
 and star metadata in a strict right-side column.
 

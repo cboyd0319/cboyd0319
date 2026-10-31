@@ -41,6 +41,6 @@ async function main() {
   console.log("ImageMagick raster crops written to assets/generated");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   await main();
 }

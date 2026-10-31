@@ -975,16 +975,17 @@ try {
   const languageOnly = isolateColumn(wideSvg, /x="405"/);
   await writeFile(nameSvgPath, languageOnly);
   await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
-  const { stdout: languageOverflow } = await runMagick([namePng, "-crop", "330x35+0+65", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+  // Check the neighboring column; downsampling may feather into the 10px gutter.
+  const { stdout: languageOverflow } = await runMagick([namePng, "-crop", "320x35+0+65", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
   assert("long GitHub language cannot paint over the repository column", Number(languageOverflow), 0);
   const { stdout: visibleLanguage } = await runMagick([namePng, "-crop", "75x32+330+69", "-alpha", "extract", "-trim", "-format", "%w", "info:"]);
   assert("long GitHub language remains visible with an ellipsis", Number(visibleLanguage) > 40 && Number(visibleLanguage) < 75 && fittedRepos[0].display_language.endsWith("..."), true);
   const unfittedSvg = renderRepositorySignSvg({ repos: [makeRepo("W".repeat(18), 1, { language: "Common Workflow Language" })], width: 500, height: 160 });
-  for (const [column, pattern, crop] of [["name", /x="17[89](?:\.5)?"/, "170x35+330+65"], ["language", /x="405"/, "330x35+0+65"]]) {
+  for (const [column, pattern, crop] of [["name", /x="17[89](?:\.5)?"/, "170x35+330+65"], ["language", /x="405"/, "320x35+0+65"]]) {
     await writeFile(nameSvgPath, isolateColumn(unfittedSvg, pattern));
     await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
     const { stdout } = await runMagick([namePng, "-crop", crop, "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
-    assert(`column viewport clips unfitted ${column} text`, Number(stdout), 0);
+    assert(`unfitted ${column} text stays out of the neighboring column`, Number(stdout), 0);
   }
 } finally {
   await rm(rendererTmp, { recursive: true, force: true });

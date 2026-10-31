@@ -5,6 +5,15 @@ set -euo pipefail
 : "${GITHUB_SHA:?}"
 : "${UPDATE_BRANCH:?}"
 
+if [[ "$UPDATE_BRANCH" != automation/update-signals-panel ]]; then
+  echo "Only automation/update-signals-panel may stage image updates." >&2
+  exit 1
+fi
+if ! git diff --cached --quiet; then
+  echo "The index must be clean before publishing an image." >&2
+  exit 1
+fi
+
 if git diff --quiet -- assets/signals.png; then
   echo "No image changes."
   exit 0
@@ -59,6 +68,6 @@ if [[ "$(git rev-parse origin/main)" != "$base_sha" ]]; then
   echo "main changed during validation; refusing a stale image."
   exit 1
 fi
-remote_git push origin "HEAD:refs/heads/main"
+remote_git push --force-with-lease="refs/heads/main:$base_sha" origin "HEAD:refs/heads/main"
 if [[ "$(remote_git ls-remote origin refs/heads/main | cut -f1)" != "$commit_sha" ]]; then exit 1; fi
 echo "Updated main with validated signals panel: $commit_sha (CI run $run_id)"

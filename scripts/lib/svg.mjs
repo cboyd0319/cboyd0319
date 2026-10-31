@@ -1,4 +1,4 @@
-import { USERNAME } from "./config.mjs";
+import { DISPLAY_ROUTE_CODE, USERNAME } from "./config.mjs";
 import { escapeHtml, relativeTime, shortText } from "./utils.mjs";
 
 const SIGN_COLORS = {
@@ -9,7 +9,6 @@ const SIGN_COLORS = {
   ruleLine: "#242018",
 };
 
-const DISPLAY_ROUTE_CODE = "M03";
 const STATUS_LED_GREEN = "#7FB95A";
 const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
 const REPOSITORY_BOARD_NAME_MAX = 18;

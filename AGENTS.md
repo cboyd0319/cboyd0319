@@ -4,7 +4,7 @@
 
 This is the `cboyd0319` GitHub profile README repository. The profile README must contain exactly two centered images: top `assets/tokyo-neon-city.png` and bottom `assets/signals.png`. The top image is static and should not be regenerated. The bottom image is generated from `assets/subway_blank_original.png` plus overlays based on public GitHub repository data. Keep the repository public and keep root `README.md` non-empty.
 
-ImageMagick 7.1.2-25 `magick` CLI owns all raster image work: SVG rasterization, opacity composition, perspective warp, resizing, metadata inspection, PNG optimization, debug crops, grayscale previews, and image comparison. JavaScript owns public GitHub data collection, deterministic fixtures, layout math, validation rules, and SVG/text template generation only. Sign overlays must stay transparent text/mark plates with only subtle clipped screen-surface layers; the base photo owns the dark sign glass. Do not reintroduce custom JavaScript pixel homography/compositing or Sharp/resvg raster pipelines. Local default command path is `/opt/homebrew/opt/imagemagick-full/bin/magick`; CI installs the pinned source release with `scripts/install-imagemagick-ci.sh` because the official Linux AppImage omits the rsvg delegate needed for this renderer.
+ImageMagick 7.1.2-34 `magick` CLI owns all raster image work: SVG rasterization, opacity composition, perspective warp, resizing, metadata inspection, PNG optimization, debug crops, grayscale previews, and image comparison. JavaScript owns public GitHub data collection, deterministic fixtures, layout math, validation rules, and SVG/text template generation only. Sign overlays must stay transparent text/mark plates with only subtle clipped screen-surface layers; the base photo owns the dark sign glass. Do not reintroduce custom JavaScript pixel homography/compositing or Sharp/resvg raster pipelines. Local default command path is `/opt/homebrew/opt/imagemagick-full/bin/magick`; CI builds the pinned source and required rsvg delegate with `scripts/install-imagemagick-ci.sh`.
 
 ## Project Structure
 
@@ -23,7 +23,7 @@ ImageMagick 7.1.2-25 `magick` CLI owns all raster image work: SVG rasterization,
 
 Use Node from `.node-version` and install with `npm ci`.
 Use npm from `package.json#packageManager`; publisher regression tests require jq 1.8.2.
-Use ImageMagick 7.1.2-25. Locally, `imagemagick-full` is expected at `/opt/homebrew/opt/imagemagick-full/`; set `MAGICK_BIN` only if `magick` lives elsewhere.
+Use ImageMagick 7.1.2-34. Locally, `imagemagick-full` is expected at `/opt/homebrew/opt/imagemagick-full/`; set `MAGICK_BIN` only if `magick` lives elsewhere.
 
 - `npm run generate`: render `assets/signals.png` from live public GitHub data.
 - `STATIC=1 npm run generate`: deterministic render using `config/static-data.json`.
@@ -52,11 +52,11 @@ Local hooks are the default guardrail: enable them with `git config core.hooksPa
 
 ## Security Considerations
 
-Use public GitHub data only. Do not display private repository names, private organization data, secrets, raw logs, employer data, tokens, email addresses, or data that implies private access. Do not commit tokens. `GITHUB_TOKEN` can be used locally or in GitHub Actions for live generation; static mode is preferred for review and CI. Keep workflow permissions least-privilege and do not add heavyweight CI such as CodeQL unless the threat model changes.
+Use public GitHub data only. Do not display private repository names, private organization data, secrets, raw logs, employer data, tokens, email addresses, or data that implies private access. Do not commit tokens. `GITHUB_TOKEN` can authenticate repository listing; language requests remain anonymous and reject redirects so a visibility change cannot expose private data. Anonymous rate limits abort the refresh and preserve the previous image. Static mode is preferred for review and CI. Keep workflow permissions least-privilege and do not add heavyweight CI such as CodeQL unless the threat model changes.
 
 ## Dependency Pinning Contract
 
-All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and script-downloaded tools. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin runners, for example `ubuntu-26.04`. Pin ImageMagick to source release `7.1.2-25` and SHA-256 in `scripts/install-imagemagick-ci.sh`; local and CI runs must fail fast on any other `magick` version.
+All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and script-downloaded tools. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin runners, for example `ubuntu-26.04`. Pin ImageMagick to source release `7.1.2-34` and SHA-256 in `scripts/install-imagemagick-ci.sh`; local and CI runs must fail fast on any other `magick` version.
 
 ## Assets, Data, and Large Files
 

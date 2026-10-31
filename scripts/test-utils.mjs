@@ -12,7 +12,7 @@ import { github } from "./lib/github.mjs";
 import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick, withImageLock } from "./lib/imagemagick.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
-import { assertOverlayPixelMetrics, expectedOutputSize, validateSignals } from "./validate-signals.mjs";
+import { assertOverlayPixelMetrics, expectedOutputSize, renderStaticSvgs, validateSignals } from "./validate-signals.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -518,6 +518,11 @@ const semanticInput = {
   scene: sceneConfig, staticData: staticDataConfig, layout: layoutConfig,
   repositorySvg: staticRepoSvg, toolchainSvg: staticToolchainSvg,
 };
+await assertRejects("station code must match the approved background", () => validateSignals({
+  ...semanticInput, scene: { ...sceneConfig, station: { ...sceneConfig.station, code: "M04" } },
+}), /approved M03 background/);
+const profileFixture = { ...staticDataConfig, repos: [{ ...staticDataConfig.repos[0], name: "cboyd0319", updated: "0m ago" }, ...staticDataConfig.repos] };
+assertDeepEqual("static validator selection excludes the profile repository", [...renderStaticSvgs(profileFixture, layoutConfig).repositorySvg.matchAll(/data-repo="([^"]+)"/g)].map((match) => match[1]), ["JobSentinel", "PyGuard"]);
 for (const [label, mutate] of [
   ["nonfinite coordinates", (layout) => { layout.board.left = NaN; }],
   ["missing dimensions", (layout) => { delete layout.board.width; }],
@@ -740,12 +745,26 @@ if (spawnSync("jq", ["--version"], { encoding: "utf8" }).stdout?.trim() !== "jq-
   throw new Error("Publisher regression tests require jq 1.8.2 on PATH.");
 }
 console.log("\nprofile publication");
+const installerSource = await readFile("scripts/install-imagemagick-ci.sh", "utf8");
+const aptPins = installerSource.match(/apt-get install[^\n]*\\\n((?:  .*(?:\\\n|\n))+)/)?.[1].replaceAll("\\", "").trim().split(/\s+/) ?? [];
+assert("CI build prerequisites are explicitly versioned", aptPins.length === 10 && aptPins.every((pin) => /^[a-z0-9+.-]+=[^\s]+$/.test(pin)), true);
+for (const file of ["ci.yml", "update-profile.yml"]) {
+  const workflow = await readFile(join(".github/workflows", file), "utf8");
+  assert(`${file} delegates package installation to one owner`, (workflow.match(/\.\/scripts\/install-imagemagick-ci\.sh/g) ?? []).length === 1 && !workflow.includes("apt-get install"), true);
+}
 const publisher = join(process.cwd(), "scripts/publish-signals.sh");
 const publicationDir = await mkdtemp(join(tmpdir(), "signals-publish-"));
 try {
   const bin = join(publicationDir, "bin");
   await mkdir(bin);
   await writeFile(join(bin, "sleep"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  await writeFile(join(bin, "git"), `#!/usr/bin/env bash
+set -eu
+if [[ "$CASE" == rollback && " $* " == *" HEAD:refs/heads/main "* ]]; then
+  PATH="$REAL_PATH" git --git-dir="$TEST_ROOT/remote" update-ref refs/heads/main "$ANCESTOR_SHA"
+fi
+PATH="$REAL_PATH" exec git "$@"
+`, { mode: 0o755 });
   await writeFile(join(bin, "gh"), String.raw`#!/usr/bin/env bash
 set -eu
 case "$1 $2" in
@@ -773,10 +792,11 @@ case "$1 $2" in
   *) exit 9 ;;
 esac
 `, { mode: 0o755 });
-  for (const scenario of ["success", "dispatch", "failed", "wrong_sha", "wrong_event", "wrong_job", "drift", "unchanged"]) {
+  for (const scenario of ["success", "dispatch", "failed", "wrong_sha", "wrong_event", "wrong_job", "drift", "unchanged", "staged_image", "staged_other", "main_branch", "rollback"]) {
     const root = join(publicationDir, scenario);
     await mkdir(root);
     const env = { PATH: bin + ":" + process.env.PATH, HOME: root, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_AUTHOR_NAME: "test", GIT_AUTHOR_EMAIL: "test@example.invalid", GIT_COMMITTER_NAME: "test", GIT_COMMITTER_EMAIL: "test@example.invalid", GITHUB_REPOSITORY: "test/profile", UPDATE_BRANCH: "automation/update-signals-panel", TEST_ROOT: root, CASE: scenario };
+    env.REAL_PATH = process.env.PATH;
     const git = (...args) => {
       const result = spawnSync("git", args, { cwd: root, env, encoding: "utf8" });
       if (result.status !== 0) throw new Error(result.stderr);
@@ -789,26 +809,39 @@ esac
     await writeFile(join(local, "assets/signals.png"), "original");
     git("-C", local, "add", "assets/signals.png");
     git("-C", local, "commit", "-m", "Initial image");
+    if (scenario === "rollback") {
+      env.ANCESTOR_SHA = git("-C", local, "rev-parse", "HEAD");
+      git("-C", local, "commit", "--allow-empty", "-m", "Baseline");
+    }
     git("-C", local, "remote", "add", "origin", join(root, "remote"));
     git("-C", local, "push", "origin", "main");
     env.GITHUB_SHA = git("-C", local, "rev-parse", "HEAD");
     env.DRIFT_SHA = git("-C", local, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "Concurrent update");
     git("-C", local, "push", "origin", env.DRIFT_SHA + ":refs/heads/drift");
     if (scenario !== "unchanged") await writeFile(join(local, "assets/signals.png"), "updated");
+    if (scenario === "staged_image") git("-C", local, "add", "assets/signals.png");
+    if (scenario === "staged_other") {
+      await writeFile(join(local, "unrelated.txt"), "unrelated");
+      git("-C", local, "add", "unrelated.txt");
+    }
+    if (scenario === "main_branch") {
+      env.UPDATE_BRANCH = "main";
+      env.CASE = "failed";
+    }
     const result = spawnSync("bash", [publisher], { cwd: local, env, encoding: "utf8", timeout: 30_000 });
     const succeeds = ["success", "dispatch", "unchanged"].includes(scenario);
     assert("publisher " + scenario + " exit", result.status === 0, succeeds);
     const remoteHead = git("--git-dir", join(root, "remote"), "rev-parse", "main");
-    const expected = scenario === "drift" ? env.DRIFT_SHA : succeeds && scenario !== "unchanged" ? git("-C", local, "rev-parse", "HEAD") : env.GITHUB_SHA;
+    const expected = scenario === "rollback" ? env.ANCESTOR_SHA : scenario === "drift" ? env.DRIFT_SHA : succeeds && scenario !== "unchanged" ? git("-C", local, "rev-parse", "HEAD") : env.GITHUB_SHA;
     assert("publisher " + scenario + " preserves expected main", remoteHead, expected);
   }
   for (const [name, version, delegates, expected] of [
-    ["valid", "7.1.2-25", "freetype png rsvg", true],
+    ["valid", "7.1.2-34", "freetype png rsvg", true],
     ["wrong version", "7.1.2-24", "freetype png rsvg", false],
-    ["missing rsvg", "7.1.2-25", "freetype png", false],
+    ["missing rsvg", "7.1.2-34", "freetype png", false],
   ]) {
     const root = join(publicationDir, name);
-    const bin = join(root, "ImageMagick-7.1.2-25/bin");
+    const bin = join(root, "ImageMagick-7.1.2-34/bin");
     await mkdir(bin, { recursive: true });
     await writeFile(join(bin, "magick"), '#!/bin/sh\nprintf "%s\\n" "Version: ImageMagick ' + version + ' Q16-HDRI" "Delegates (built-in): ' + delegates + '"\n', { mode: 0o755 });
     const pathFile = join(root, "path");

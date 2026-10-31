@@ -12,7 +12,7 @@ Core rules:
   asked for an art-direction change.
 - Generate `assets/signals.png` from `assets/subway_blank_original.png`, public
   GitHub data, checked-in fonts, config, and layout geometry.
-- Use ImageMagick 7.1.2-25 for all raster work. Do not reintroduce Sharp,
+- Use ImageMagick 7.1.2-34 for all raster work. Do not reintroduce Sharp,
   resvg, browser screenshots, or custom JavaScript pixel compositing.
 - Keep sign overlays as transparent text/mark plates with only subtle clipped
   screen-surface layers. The source photo owns the dark sign glass, grime,

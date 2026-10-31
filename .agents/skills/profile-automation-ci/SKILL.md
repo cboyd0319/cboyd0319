@@ -29,7 +29,7 @@ Use this skill for workflow, CI, dependency pinning, and publication changes in 
 - Pin npm direct dependencies exactly and commit `package-lock.json`.
 - Pin `packageManager`, `.node-version`, `engines.node`, runner images, GitHub Actions SHAs, and script-downloaded tools.
 - Use full GitHub Action commit SHAs with version comments.
-- Keep ImageMagick pinned to `7.1.2-25` with SHA-256 in `scripts/install-imagemagick-ci.sh`.
+- Keep ImageMagick pinned to `7.1.2-34` with SHA-256 in `scripts/install-imagemagick-ci.sh`.
 - Do not use `latest`, semver ranges, branch refs, or major-version action refs.
 
 ## Repo Files

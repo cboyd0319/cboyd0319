@@ -42,7 +42,7 @@ Use **two transparent overlay canvases**, then perspective-warp each canvas onto
 
 Do **not** draw opaque cards, panels, rounded boxes, dashboard containers, or chart backgrounds. The physical black display surface already exists in the artwork. The overlay should be text and subtle surface treatment only.
 
-ImageMagick 7.1.2-25 `magick` CLI is the required raster pipeline. JavaScript may fetch public data and emit SVG/text templates, but ImageMagick owns SVG rasterization, opacity/glass composition, blur/softness, perspective distortion, scene compositing, resizing, metadata inspection, PNG optimization, and debug crops. Do not use custom JavaScript homography/pixel sampling, Sharp, resvg, browser screenshots, or dashboard renderers for these raster steps.
+ImageMagick 7.1.2-34 `magick` CLI is the required raster pipeline. JavaScript may fetch public data and emit SVG/text templates, but ImageMagick owns SVG rasterization, opacity/glass composition, blur/softness, perspective distortion, scene compositing, resizing, metadata inspection, PNG optimization, and debug crops. Do not use custom JavaScript homography/pixel sampling, Sharp, resvg, browser screenshots, or dashboard renderers for these raster steps.
 
 ### Recommended render pipeline
 
@@ -194,10 +194,8 @@ radius/feather:                       20–40 px on design canvas
 
 Use only a tiny readable-layer soften pass.
 
-```txt
-primary readable layer soften: 0.08 sigma
-emissive glow blur:           0.75 sigma
-```
+Exact readable-layer softening and emissive blur values live in
+[`scripts/generate-overlays.mjs`](../scripts/generate-overlays.mjs).
 
 Do not blur the primary text enough to make it muddy. The intent is to remove vector-perfect edges, not hide the text.
 
@@ -205,10 +203,7 @@ Do not blur the primary text enough to make it muddy. The intent is to remove ve
 
 Do not add uniform sign-level noise. The base image already owns dark-glass texture and station grime. If more texture is needed, use a tiny text-layer ImageMagick noise pass only.
 
-```txt
-text-layer Gaussian noise attenuation: 0.012
-sign-level noise rectangles:          off
-```
+Text-layer attenuation is code-owned; sign-level noise rectangles stay off.
 
 ### Through-glass absorption
 

@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { open, unlink } from "node:fs/promises";
 import { FONTCONFIG_FILE, verifyDisplayFont } from "./font.mjs";
 
-export const REQUIRED_MAGICK_VERSION = "7.1.2-25";
+export const REQUIRED_MAGICK_VERSION = "7.1.2-34";
 
 const HOMEBREW_MAGICK = "/opt/homebrew/opt/imagemagick-full/bin/magick";
 let cachedMagickPath = null;

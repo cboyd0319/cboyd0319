@@ -1,4 +1,12 @@
+import { isAbsolute, join } from "node:path";
+
 export const USERNAME = "cboyd0319";
+export const DISPLAY_ROUTE_CODE = "M03";
+
+export function resolveBackground(assetDir, env = process.env) {
+  const path = env.BACKGROUND?.trim() || "subway_blank_original.png";
+  return isAbsolute(path) ? path : join(assetDir, path);
+}
 
 function envNumber(name, fallback) {
   if (!process.env[name]?.trim()) return fallback;

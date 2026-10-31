@@ -3,10 +3,10 @@ import { dirname, join } from "node:path";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
-import { applyLayoutEnv, staticRepos } from "./lib/config.mjs";
+import { applyLayoutEnv, DISPLAY_ROUTE_CODE, resolveBackground, staticRepos } from "./lib/config.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
 import { ensureImageMagick, identifyImage, pngOutput, runMagick } from "./lib/imagemagick.mjs";
-import { renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { selectRepos } from "./lib/utils.mjs";
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -69,9 +69,9 @@ function requireDesignSize(label, box, expected) {
   }
 }
 
-function renderStaticSvgs(staticData, layout) {
+export function renderStaticSvgs(staticData, layout) {
   const repos = staticRepos(staticData);
-  const selectedRepos = selectRepos(repos, 2);
+  const selectedRepos = selectRepos(ownActiveRepos(repos), 2);
   return {
     repositorySvg: renderRepositorySignSvg({
       repos: selectedRepos,
@@ -202,7 +202,7 @@ export async function validateSignals({
   expectedOutputSize(layout, {});
 
   requireIncludes("repository SVG", repositorySvg || "", [
-    "M03",
+    DISPLAY_ROUTE_CODE,
     "リポジトリ状況",
     "REPOSITORY SIGNALS",
   ]);
@@ -210,7 +210,7 @@ export async function validateSignals({
   requireIncludes("repository SVG status LEDs", repositorySvg || "", ['data-status-led="']);
   requireIncludes("toolchain SVG", toolchainSvg || "", [
     "コード構成",
-    "M03 CODE MIX",
+    `${DISPLAY_ROUTE_CODE} CODE MIX`,
   ]);
   // Historical label checks belong in static template tests, not public repo text.
   if (/<path\b|(?:fill|stroke)=["']#ffffff["']/i.test(`${repositorySvg}\n${toolchainSvg}`)) {
@@ -246,12 +246,7 @@ export async function validateSignals({
   if (scene.mode === "fictional_tokyo_inspired" && scene.operator?.show_real_tokyo_metro_branding) {
     fail("fictional mode cannot enable real Tokyo Metro branding");
   }
-  if (!/^[A-Z]\d{2}$/.test(String(scene.station?.code || ""))) {
-    fail(`station code must use line prefix plus two digits, got ${scene.station?.code}`);
-  }
-  if (/^\d+$/.test(String(scene.station?.code || ""))) {
-    fail(`station code uses bare digits instead of line prefix: ${scene.station?.code}`);
-  }
+  if (scene.station?.code !== DISPLAY_ROUTE_CODE) fail(`station code must match the approved ${DISPLAY_ROUTE_CODE} background`);
   if (scene.servicePanel?.items?.includes(scene.servicePanel?.title)) {
     fail(`service panel duplicates title ${scene.servicePanel.title} in items`);
   }
@@ -311,7 +306,7 @@ export function expectedOutputSize(layout, env = process.env) {
 async function main() {
   await ensureImageMagick();
   const output = join(ROOT_DIR, "assets/signals.png");
-  const background = join(ROOT_DIR, "assets/subway_blank_original.png");
+  const background = resolveBackground(join(ROOT_DIR, "assets"));
   const [scene, staticData, layout] = await Promise.all([
     readFile(join(ROOT_DIR, "config/scene.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/static-data.json"), "utf8").then(JSON.parse),

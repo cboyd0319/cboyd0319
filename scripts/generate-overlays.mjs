@@ -1,10 +1,11 @@
 import { fileURLToPath } from "node:url";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, join } from "node:path";
 import { copyFile, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 
 import {
   USERNAME,
   applyLayoutEnv,
+  resolveBackground,
   staticRepos,
 } from "./lib/config.mjs";
 import { github } from "./lib/github.mjs";
@@ -30,7 +31,6 @@ const ASSET_DIR = join(SCRIPT_DIR, "../assets");
 const OUT_DIR = ASSET_DIR;
 const GENERATED_DIR = join(ASSET_DIR, "generated");
 const CONFIG_DIR = join(ROOT_DIR, "config");
-const BACKGROUND = process.env.BACKGROUND?.trim() || "subway_blank_original.png";
 const REPOS_PER_PAGE = 100;
 const MAX_REPO_PAGES = 10;
 const REPO_LIMIT = 2;
@@ -433,7 +433,7 @@ async function main() {
   const scene = await readJson(join(CONFIG_DIR, "scene.json"));
   const staticData = await readJson(join(CONFIG_DIR, "static-data.json"));
   const layout = applyLayoutEnv(await readJson(join(CONFIG_DIR, "layouts/subway-default.json")));
-  const backgroundPath = isAbsolute(BACKGROUND) ? BACKGROUND : join(ASSET_DIR, BACKGROUND);
+  const backgroundPath = resolveBackground(ASSET_DIR);
   const metadata = await identifyImage(backgroundPath);
   const sourceWidth = metadata.width || layout.sourceWidth;
   const sourceHeight = metadata.height || layout.sourceHeight;

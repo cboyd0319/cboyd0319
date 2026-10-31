@@ -6,8 +6,8 @@ import { join } from "node:path";
 
 import { LANGUAGE_COLORS, staticRepos, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
-import { applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, withLanguageBreakdowns } from "./generate-overlays.mjs";
-import { extractFontUrls, replaceFontUrlsWithDataUrls } from "./lib/font.mjs";
+import { applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, publishSignals, withLanguageBreakdowns } from "./generate-overlays.mjs";
+import { verifyDisplayFont } from "./lib/font.mjs";
 import { github } from "./lib/github.mjs";
 import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick } from "./lib/imagemagick.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
@@ -310,7 +310,6 @@ const escapedRepoSvg = renderRepositorySignSvg({
       stargazers_count: 1,
     }),
   ],
-  fontDataUrl: null,
   width: 500,
   height: 160,
 });
@@ -322,6 +321,12 @@ assert("repository SVG includes Japanese status header", escapedRepoSvg.includes
 assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
 assert("repository SVG omits station target label", escapedRepoSvg.includes("新高円寺"), false);
+
+const publicRowsSvg = renderRepositorySignSvg({
+  repos: [makeRepo("first", 1), makeRepo("second", 2)],
+  width: 500, height: 160,
+});
+assert("public rows do not invent dependency alerts", publicRowsSvg.includes(">DEPS CHECK<"), false);
 
 const longRepoSvg = renderRepositorySignSvg({
   repos: [
@@ -336,7 +341,6 @@ const longRepoSvg = renderRepositorySignSvg({
       stargazers_count: 47,
     }),
   ],
-  fontDataUrl: null,
   width: 500,
   height: 160,
 });
@@ -351,7 +355,6 @@ const toolchainSvg = renderToolchainSpectrumSvg({
     makeRepo("sh", 3, { language: "Shell", language_pct: 25 }),
     makeRepo("ps", 4, { language: "PowerShell", language_pct: 15 }),
   ],
-  fontDataUrl: null,
   width: 131,
   height: 420,
 });
@@ -371,12 +374,17 @@ const liveLanguageToolchainSvg = renderToolchainSpectrumSvg({
     makeRepo("b", 2, { language: "Python", languages: { Python: 120, Ruby: 40 } }),
     makeRepo("c", 3, { language: "Shell", languages: { Shell: 20, JavaScript: 20 } }),
   ],
-  fontDataUrl: null,
   width: 131,
   height: 420,
 });
 assert("toolchain SVG uses full Rust label", liveLanguageToolchainSvg.includes(">RUST<"), true);
 assert("toolchain SVG uses full Other label", liveLanguageToolchainSvg.includes(">OTHER<"), true);
+
+const longLanguageSvg = renderToolchainSpectrumSvg({
+  allRepos: [makeRepo("notebook", 1, { language: "Jupyter Notebook" })],
+  width: 131, height: 420,
+});
+assert("long language label stays clear of percentages", longLanguageSvg.includes(">JUPYTER...<"), true);
 
 // ImageMagick helper
 
@@ -408,23 +416,9 @@ assertDeepEqual("panel texture disabled emits no args", panelTextureArgs(0), [])
 
 console.log("\nfont loader");
 
-const quotedFontA = "https://fonts.gstatic.com/s/notosansjp/v1/a.woff2";
-const quotedFontB = "https://fonts.gstatic.com/s/notosansjp/v1/b.woff2";
-const fontCss = [
-  `@font-face{src:url("${quotedFontA}") format("woff2")}`,
-  `@font-face{src:url('${quotedFontB}') format("woff2")}`,
-  `@font-face{src:url( ${quotedFontA} ) format("woff2")}`,
-  "@font-face{src:url(https://example.com/not-font.woff2) format(\"woff2\")}",
-].join("\n");
-const embeddedFontCss = replaceFontUrlsWithDataUrls(fontCss, new Map([
-  [quotedFontA, 'url("data:font/woff2;base64,AAA")'],
-  [quotedFontB, 'url("data:font/woff2;base64,BBB")'],
-]));
-
-assertDeepEqual("extracts quoted and unquoted Google font URLs", extractFontUrls(fontCss), [quotedFontA, quotedFontB]);
-assert("replaces quoted Google font URLs", embeddedFontCss.includes(quotedFontA) || embeddedFontCss.includes(quotedFontB), false);
-assert("keeps non-Google URLs untouched", embeddedFontCss.includes("https://example.com/not-font.woff2"), true);
-assert("embeds requested font data URLs", embeddedFontCss.includes("data:font/woff2;base64,AAA") && embeddedFontCss.includes("data:font/woff2;base64,BBB"), true);
+await verifyDisplayFont();
+assert("bundled display font matches its pinned checksum", true, true);
+assert("SVG relies on the bundled Fontconfig font", escapedRepoSvg.includes("@font-face"), false);
 
 // config validation
 
@@ -441,13 +435,11 @@ const selectedStaticRepos = selectRepos(staticReposForTests, 2);
 const staticRepoSvg = renderRepositorySignSvg({
   repos: selectedStaticRepos,
   allRepos: staticReposForTests,
-  fontDataUrl: null,
   width: layoutConfig.board.designWidth,
   height: layoutConfig.board.designHeight,
 });
 const staticToolchainSvg = renderToolchainSpectrumSvg({
   allRepos: staticReposForTests,
-  fontDataUrl: null,
   width: layoutConfig.toolchain.designWidth,
   height: layoutConfig.toolchain.designHeight,
 });
@@ -585,29 +577,39 @@ console.log("\nimage validation");
 const validationTmp = await mkdtemp(join(tmpdir(), "signals-validation-"));
 try {
   await mkdir(join(validationTmp, "scripts/lib"), { recursive: true });
-  for (const file of ["optimize-signals.mjs", "lib/imagemagick.mjs"]) {
+  for (const file of ["optimize-signals.mjs", "lib/imagemagick.mjs", "lib/font.mjs"]) {
     await copyFile(join("scripts", file), join(validationTmp, "scripts", file));
   }
   const missingOptimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs")], { encoding: "utf8" });
   assert("optimizer fails when signals.png is missing", missingOptimization.status, 1);
   assert("optimizer explains missing input", missingOptimization.stderr.includes("run the generator before optimizing"), true);
+  const candidate = join(validationTmp, "candidate.png");
+  const published = join(validationTmp, "signals.png");
+  await writeFile(candidate, "invalid candidate");
+  await writeFile(published, "last valid output");
+  try {
+    await publishSignals(candidate, published, {});
+    assert("publisher rejects invalid candidate", "accepted", "rejected");
+  } catch (err) {
+    assert("publisher validates before replacing output", err.message.includes("scene config not loaded"), true);
+  }
+  assert("failed validation preserves published image", await readFile(published, "utf8"), "last valid output");
   const blackImage = join(validationTmp, "black.png");
   await runMagick(["-size", "1672x941", "xc:black", pngOutput(blackImage)]);
   try {
-    await validateSignals({
+    await publishSignals(blackImage, published, {
       scene: sceneConfig,
       staticData: staticDataConfig,
       layout: layoutConfig,
       repositorySvg: staticRepoSvg,
       toolchainSvg: staticToolchainSvg,
-      output: blackImage,
       background: "assets/subway_blank_original.png",
       width: 1672,
       height: 941,
     });
-    assert("validator rejects blank or unrelated PNG content", "accepted", "rejected");
+    assert("publisher rejects blank or unrelated PNG content", "accepted", "rejected");
   } catch (err) {
-    assert("validator rejects blank or unrelated PNG content", err.message.includes("outside overlay region"), true);
+    assert("publisher rejects blank or unrelated PNG content", err.message.includes("outside overlay region"), true);
   }
   const graded = join(validationTmp, "graded.png");
   await applyFinalGrade("assets/subway_blank_original.png", graded, { width: 1672, height: 941, workDir: validationTmp });
@@ -618,6 +620,7 @@ try {
       ...semanticInput, output: partial, background: "assets/subway_blank_original.png", width: 1672, height: 941,
     }), /missing overlay-region changes/);
   }
+  assert("failed raster validation preserves published image", await readFile(published, "utf8"), "last valid output");
 } finally {
   await rm(validationTmp, { recursive: true, force: true });
 }

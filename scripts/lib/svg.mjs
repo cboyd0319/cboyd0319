@@ -103,13 +103,7 @@ function summarizeLanguageEntries(entries, { sort = true } = {}) {
   }));
 }
 
-function svgFontFace({ fontCss, fontDataUrl }) {
-  if (fontCss) return fontCss;
-  if (!fontDataUrl) return "";
-  return `@font-face{font-family:"Noto Sans JP";src:url("${fontDataUrl}") format("woff2");font-weight:500 700;font-display:block;}`;
-}
-
-function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl }) {
+function svgHeader({ width, height, viewWidth, viewHeight }) {
   return `<svg width="${width}" height="${height}" viewBox="0 0 ${viewWidth} ${viewHeight}" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <clipPath id="display-clip" clipPathUnits="userSpaceOnUse">
@@ -131,7 +125,6 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
   </radialGradient>
 </defs>
 <style>
-${svgFontFace({ fontCss, fontDataUrl })}
 text{font-family:${TEXT_FONT_FAMILY};text-rendering:geometricPrecision}
 </style>`;
 }
@@ -150,18 +143,18 @@ function repoDisplayName(name, compact) {
   return shortText(displayName, compact ? REPOSITORY_BOARD_NAME_MAX : 24);
 }
 
-function statusForRepo(repo, index) {
+function statusForRepo(repo) {
   const configured = String(repo?.security_status || repo?.status || "").trim();
   if (configured) return configured.toUpperCase();
   const alerts = Number(repo?.dependabot_alerts ?? repo?.security_alerts ?? repo?.vulnerability_alerts ?? 0);
   if (Number.isFinite(alerts) && alerts > 0) return "DEPS CHECK";
   if (repo?.archived) return "ARCHIVED";
-  return index === 0 ? "ACTIVE" : "DEPS CHECK";
+  return "ACTIVE";
 }
 
-function repoRowText(repo, { y, index, emissiveOnly = false }) {
+function repoRowText(repo, { y, emissiveOnly = false }) {
   const updated = (repo.updated_label || relativeTime(repo.pushed_at)).replace(/\s+ago$/i, "");
-  const status = statusForRepo(repo, index);
+  const status = statusForRepo(repo);
   const alertStatus = /CHECK|WARN|REVIEW|FAIL|ARCHIVED/.test(status);
   const statusFill = alertStatus ? SIGN_COLORS.alertRed : SIGN_COLORS.textSecondary;
   const dotColor = status === "ACTIVE" ? STATUS_LED_GREEN : statusFill;
@@ -180,13 +173,13 @@ ${text(language, { x: BOARD_COLS.language, y, size: 10.4, fill: SIGN_COLORS.text
 ${text(`★ ${stars}`, { x: BOARD_COLS.stars, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
 }
 
-export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
+export function renderRepositorySignSvg({ repos, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const rowBaselines = [91, 127];
 
   const rows = repos.map((repo, index) => {
     const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
     return `<g data-repo="${escapeHtml(repo.name)}">
-  ${repoRowText(repo, { y: baseline, index, emissiveOnly })}
+  ${repoRowText(repo, { y: baseline, emissiveOnly })}
 </g>`;
   }).join("");
 
@@ -197,9 +190,8 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 <line x1="36" y1="50" x2="456" y2="50" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.55" stroke-width="2" filter="url(#soft-glow)"/>
 <line x1="37.5" y1="113.5" x2="457.5" y2="113.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
 <line x1="36" y1="112" x2="456" y2="112" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
-  const displayTexture = "";
 
-  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
+  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height })}
 <rect width="${width}" height="${height}" fill="transparent"/>
 <g clip-path="url(#display-clip)">
 ${surface}
@@ -214,12 +206,11 @@ ${text("LANG  ★", { x: BOARD_COLS.stars, y: 67, size: 8.2, fill: SIGN_COLORS.t
 ${structure}
 ${rows}
 </g>
-${displayTexture}
 </g>
 </svg>`;
 }
 
-export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
+export function renderToolchainSpectrumSvg({ allRepos, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const langs = languageSummary(allRepos)
     .map((lang, index) => ({ ...lang, index }))
     .sort((a, b) => b.pct - a.pct || a.index - b.index);
@@ -228,18 +219,10 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   const valueOpacities = [0.96, 0.94, 0.92, 0.9];
   const signalRows = langs.map((lang, index) => {
     const y = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
-    const displayName = {
-      TypeScript: "TYPESCRIPT",
-      JavaScript: "JAVASCRIPT",
-      Python: "PYTHON",
-      Shell: "SHELL",
-      PowerShell: "POWERSHELL",
-      Rust: "RUST",
-      Ruby: "RUBY",
-      Dockerfile: "DOCKER",
-      Makefile: "MAKE",
-      Other: "OTHER",
-    }[lang.name] ?? lang.name;
+    const displayName = shortText(
+      lang.name === "Dockerfile" ? "DOCKER" : lang.name === "Makefile" ? "MAKE" : lang.name.toUpperCase(),
+      10,
+    );
     const labelSize = displayName.length > 8 ? 8.4 : 9.4;
     return `<g data-lang="${escapeHtml(lang.name)}">
   ${text(displayName, { x: 20, y, size: labelSize, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.86 : codeOpacities[index], style: "letter-spacing:0.035em" })}
@@ -249,9 +232,8 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#unlit-leds)" opacity="0.08"/>`;
   const glassWash = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="#050403" opacity="0.09"/>`;
   const screenFalloff = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#screen-falloff)" opacity="0.18"/>`;
-  const displayTexture = "";
 
-  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
+  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height })}
 <rect width="${width}" height="${height}" fill="transparent"/>
 <g clip-path="url(#display-clip)">
 ${surface}
@@ -270,7 +252,6 @@ ${emissiveOnly ? "" : `<line x1="20.5" y1="106.5" x2="109.5" y2="106.5" stroke="
 <line x1="19" y1="202" x2="108" y2="202" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.055"/>`}
 ${signalRows}
 </g>
-${displayTexture}
 </g>
 </svg>`;
 }

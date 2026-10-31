@@ -1,15 +1,17 @@
 import { spawn, spawnSync } from "node:child_process";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
+import { FONTCONFIG_FILE, verifyDisplayFont } from "./font.mjs";
 
 export const REQUIRED_MAGICK_VERSION = "7.1.2-25";
 
 const HOMEBREW_MAGICK = "/opt/homebrew/opt/imagemagick-full/bin/magick";
 let cachedMagickPath = null;
+let cachedMagickInfo;
 
 function commandCandidates() {
+  if (process.env.MAGICK_BIN?.trim()) return [process.env.MAGICK_BIN.trim()];
   return [
-    process.env.MAGICK_BIN,
     HOMEBREW_MAGICK,
     "magick",
     "magick.exe",
@@ -42,11 +44,13 @@ export function resolveMagickPath() {
 
 export async function ensureImageMagick({ requiredVersion = REQUIRED_MAGICK_VERSION } = {}) {
   const magick = resolveMagickPath();
-  const { stdout } = await runCommand(magick, ["-version"]);
+  cachedMagickInfo ??= Promise.all([runCommand(magick, ["-version"]), verifyDisplayFont()]);
+  const [{ stdout }] = await cachedMagickInfo;
   const version = parseMagickVersion(stdout);
   if (version !== requiredVersion) {
     throw new Error(`ImageMagick ${requiredVersion} required, got ${version || "unknown"} from ${magick}.`);
   }
+  if (!/\brsvg\b/.test(stdout)) throw new Error(`ImageMagick must include the rsvg delegate: ${magick}.`);
   return { magick, version, output: stdout };
 }
 
@@ -75,7 +79,11 @@ export function runCommand(command, args, options = {}) {
 }
 
 export async function runMagick(args, options = {}) {
-  return runCommand(resolveMagickPath(), args, options);
+  const { magick } = await ensureImageMagick();
+  return runCommand(magick, args, {
+    ...options,
+    env: { ...(options.env ?? process.env), FONTCONFIG_FILE },
+  });
 }
 
 export async function identifyImage(path) {

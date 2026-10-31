@@ -1,16 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { dirname, isAbsolute, join } from "node:path";
-import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 
 import {
-  OUTPUT_WIDTH as DEFAULT_OUTPUT_WIDTH,
   USERNAME,
   applyLayoutEnv,
-  envNumber,
   staticRepos,
 } from "./lib/config.mjs";
 import { github } from "./lib/github.mjs";
-import { loadFontAsDataUrl } from "./lib/font.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
 import {
   alphaMultiplyArgs,
@@ -22,7 +19,7 @@ import {
 } from "./lib/imagemagick.mjs";
 import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { selectRepos } from "./lib/utils.mjs";
-import { validateSignals } from "./validate-signals.mjs";
+import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
 
 export { applyLayoutEnv } from "./lib/config.mjs";
 
@@ -70,8 +67,6 @@ function rgbaMultiplyArgs(path, opacity) {
     ")",
   ];
 }
-
-const OUTPUT_WIDTH = envNumber("OUTPUT_WIDTH", DEFAULT_OUTPUT_WIDTH);
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
@@ -173,6 +168,12 @@ async function validateImage(path, expectedWidth) {
   if (metadata.width !== expectedWidth || !metadata.height || metadata.height <= 0) {
     throw new Error(`Generated signals.png has unexpected dimensions: ${metadata.width}x${metadata.height}`);
   }
+}
+
+export async function publishSignals(candidatePath, outputPath, validation) {
+  await validateSignals({ ...validation, output: candidatePath });
+  await validateImage(candidatePath, validation.width);
+  await rename(candidatePath, outputPath);
 }
 
 async function rasterizeSvg(svgPath, outputPath, { width, height }) {
@@ -433,11 +434,10 @@ async function main() {
   const metadata = await identifyImage(backgroundPath);
   const sourceWidth = metadata.width || layout.sourceWidth;
   const sourceHeight = metadata.height || layout.sourceHeight;
-  const scale = OUTPUT_WIDTH / sourceWidth;
-  const outputHeight = Math.round(sourceHeight * scale);
+  const { width: OUTPUT_WIDTH, height: outputHeight } = expectedOutputSize(layout);
   const quadScale = {
-    scaleX: OUTPUT_WIDTH / sourceWidth,
-    scaleY: outputHeight / sourceHeight,
+    scaleX: OUTPUT_WIDTH / layout.sourceWidth,
+    scaleY: outputHeight / layout.sourceHeight,
   };
 
   const { allRepos, repos } = await collectData(staticData);
@@ -446,7 +446,6 @@ async function main() {
     return;
   }
 
-  const { css: fontCss } = await loadFontAsDataUrl();
   const boardDesign = designSize(layout.board);
   const toolchainDesign = designSize(layout.toolchain);
   const boardQuad = scaledQuad(layout.board, quadScale, "board");
@@ -456,7 +455,6 @@ async function main() {
   const repositorySvg = renderRepositorySignSvg({
     repos,
     allRepos,
-    fontCss,
     width: boardDesign.width,
     height: boardDesign.height,
     outputWidth: boardDesign.width,
@@ -465,7 +463,6 @@ async function main() {
   const repositoryEmissiveSvg = renderRepositorySignSvg({
     repos,
     allRepos,
-    fontCss,
     width: boardDesign.width,
     height: boardDesign.height,
     outputWidth: boardDesign.width,
@@ -474,7 +471,6 @@ async function main() {
   });
   const toolchainSvg = renderToolchainSpectrumSvg({
     allRepos,
-    fontCss,
     width: toolchainDesign.width,
     height: toolchainDesign.height,
     outputWidth: toolchainDesign.width,
@@ -482,7 +478,6 @@ async function main() {
   });
   const toolchainEmissiveSvg = renderToolchainSpectrumSvg({
     allRepos,
-    fontCss,
     width: toolchainDesign.width,
     height: toolchainDesign.height,
     outputWidth: toolchainDesign.width,
@@ -494,6 +489,7 @@ async function main() {
   const repositoryEmissiveSvgPath = join(GENERATED_DIR, "repository-sign-emissive.svg");
   const toolchainSvgPath = join(GENERATED_DIR, "toolchain-spectrum.svg");
   const toolchainEmissiveSvgPath = join(GENERATED_DIR, "toolchain-spectrum-emissive.svg");
+  await validateSignals({ scene, staticData, layout, repositorySvg, toolchainSvg });
   await Promise.all([
     writeFile(repositorySvgPath, repositorySvg),
     writeFile(repositoryEmissiveSvgPath, repositoryEmissiveSvg),
@@ -583,6 +579,7 @@ async function main() {
   const resizedBackgroundPath = join(GENERATED_DIR, "background-resized.png");
   const compositedPath = join(GENERATED_DIR, "signals-composited.png");
   const outputPath = join(OUT_DIR, "signals.png");
+  const candidatePath = join(GENERATED_DIR, "signals-candidate.png");
   await runMagick([
     backgroundPath,
     "-resize",
@@ -617,20 +614,18 @@ async function main() {
     "-composite",
     pngOutput(compositedPath),
   ]);
-  await applyFinalGrade(compositedPath, outputPath, {
+  await applyFinalGrade(compositedPath, candidatePath, {
     width: OUTPUT_WIDTH,
     height: outputHeight,
     workDir: GENERATED_DIR,
   });
 
-  await validateImage(outputPath, OUTPUT_WIDTH);
-  await validateSignals({
+  await publishSignals(candidatePath, outputPath, {
     scene,
     staticData,
     layout,
     repositorySvg,
     toolchainSvg,
-    output: outputPath,
     background: backgroundPath,
     width: OUTPUT_WIDTH,
     height: outputHeight,

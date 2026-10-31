@@ -56,7 +56,7 @@ Use public GitHub data only. Do not display private repository names, private or
 
 ## Dependency Pinning Contract
 
-All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and script-downloaded tools. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin runners, for example `ubuntu-24.04`. Pin ImageMagick to source release `7.1.2-25` and SHA-256 in `scripts/install-imagemagick-ci.sh`; local and CI runs must fail fast on any other `magick` version.
+All external dependencies must use the latest stable release and be hard pinned. This applies to npm packages, `packageManager`, `.node-version`, `engines.node`, GitHub Actions, runner images, CLIs installed in workflows, Docker images, and script-downloaded tools. Do not use `latest`, semver ranges such as `^` or `~`, branch refs, or major-version action refs. Pin npm direct dependencies exactly in `package.json` and commit `package-lock.json`. Pin GitHub Actions by full commit SHA with a version comment, for example `actions/checkout@<sha> # v6.0.3`. Pin runners, for example `ubuntu-26.04`. Pin ImageMagick to source release `7.1.2-25` and SHA-256 in `scripts/install-imagemagick-ci.sh`; local and CI runs must fail fast on any other `magick` version.
 
 ## Assets, Data, and Large Files
 

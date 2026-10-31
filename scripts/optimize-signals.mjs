@@ -17,13 +17,13 @@ try {
   before = await stat(outputPath);
 } catch (err) {
   if (err?.code === "ENOENT") {
-    console.warn("signals.png does not exist yet; run the generator before optimizing.");
-    process.exit(0);
+    throw new Error("signals.png does not exist yet; run the generator before optimizing.");
   }
   throw err;
 }
 
 await ensureImageMagick();
+const originalMetadata = await identifyImage(outputPath);
 await mkdir(generatedDir, { recursive: true });
 const args = [
   outputPath,
@@ -48,7 +48,7 @@ const [optimized, metadata] = await Promise.all([
   stat(tempPath),
   identifyImage(tempPath),
 ]);
-if (!metadata.width || !metadata.height || optimized.size < MIN_OPTIMIZED_BYTES) {
+if (metadata.width !== originalMetadata.width || metadata.height !== originalMetadata.height || optimized.size < MIN_OPTIMIZED_BYTES) {
   throw new Error("Optimized signals.png failed validation.");
 }
 

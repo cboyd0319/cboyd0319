@@ -25,13 +25,6 @@ function requireIncludes(label, haystack, needles) {
   }
 }
 
-function requireExcludes(label, haystack, needles) {
-  const upper = haystack.toUpperCase();
-  for (const needle of needles) {
-    if (upper.includes(String(needle).toUpperCase())) fail(`${label} contains prohibited ${needle}`);
-  }
-}
-
 function requireAny(label, haystack, needles) {
   for (const needle of needles) {
     if (haystack.includes(needle)) return;
@@ -46,12 +39,18 @@ function sum(items) {
 function requireQuad(label, box) {
   if (!Array.isArray(box.quad) || box.quad.length !== 4) fail(`${label} quad missing`);
   for (const [index, point] of box.quad.entries()) {
-    if (!Number.isFinite(Number(point?.x)) || !Number.isFinite(Number(point?.y))) {
+    if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) {
       fail(`${label} quad point ${index} is invalid: ${JSON.stringify(point)}`);
     }
   }
   const area = polygonArea(box.quad);
   if (area < 1) fail(`${label} quad area is too small: ${area}`);
+  const turns = box.quad.map((a, i, points) => {
+    const b = points[(i + 1) % 4];
+    const c = points[(i + 2) % 4];
+    return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+  });
+  if (!turns.every((turn) => turn > 0)) fail(`${label} quad must be convex and ordered clockwise`);
 }
 
 function polygonArea(points) {
@@ -147,6 +146,11 @@ async function maskedDiffMetric(diffPath, maskPath) {
 }
 
 export function assertOverlayPixelMetrics(metrics) {
+  for (const region of [metrics.outside, metrics.inside]) {
+    if (![region?.mean, region?.max].every((value) => Number.isFinite(value) && value >= 0 && value <= 1)) {
+      fail("invalid overlay pixel metrics");
+    }
+  }
   if (metrics.outside.mean > MAX_OUTSIDE_DIFF_MEAN || metrics.outside.max > MAX_OUTSIDE_DIFF_MAX) {
     fail(`output changed outside overlay region: mean ${metrics.outside.mean}, max ${metrics.outside.max}`);
   }
@@ -169,16 +173,13 @@ async function overlayPixelMetrics({ output, background, layout, width, height }
     await runMagick([background, "-resize", `${width}x${height}!`, pngOutput(resizedBackground)]);
     await applyFinalGrade(resizedBackground, gradedBackground, { width, height, workDir: tempDir });
     await runMagick([gradedBackground, output, "-compose", "difference", "-composite", pngOutput(diffPath)]);
-    await Promise.all([
-      runMagick(["-size", `${width}x${height}`, "xc:white", "-fill", "black", "-draw", draw, pngOutput(outsideMask)]),
-      runMagick(["-size", `${width}x${height}`, "xc:black", "-fill", "white", "-draw", draw, pngOutput(insideMask)]),
-    ]);
-
-    const [outside, inside] = await Promise.all([
-      maskedDiffMetric(diffPath, outsideMask),
-      maskedDiffMetric(diffPath, insideMask),
-    ]);
-    return { outside, inside };
+    await runMagick(["-size", `${width}x${height}`, "xc:white", "-fill", "black", "-draw", draw, pngOutput(outsideMask)]);
+    const outside = await maskedDiffMetric(diffPath, outsideMask);
+    for (const box of boxes) {
+      await runMagick(["-size", `${width}x${height}`, "xc:black", "-fill", "white", "-draw", maskDraw([box]), pngOutput(insideMask)]);
+      const inside = await maskedDiffMetric(diffPath, insideMask);
+      assertOverlayPixelMetrics({ outside, inside });
+    }
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -209,8 +210,9 @@ export async function validateSignals({
   height,
 } = {}) {
   if (!scene) fail("scene config not loaded");
-  if (!staticData?.repos?.length) fail("static repo data missing");
+  if (!Array.isArray(staticData?.repos) || !staticData.repos.length) fail("static repo data missing");
   if (!layout?.board || !layout?.toolchain) fail("layout boxes missing");
+  expectedOutputSize(layout, {});
 
   requireIncludes("repository SVG", repositorySvg || "", [
     "M03",
@@ -223,25 +225,18 @@ export async function validateSignals({
     "コード構成",
     "M03 CODE MIX",
   ]);
-  requireExcludes("generated SVG", `${repositorySvg || ""}\n${toolchainSvg || ""}`, [
-    "#FFFFFF",
-    "#ffffff",
-    "SPECTRUM",
-    "TOOLCHAIN",
-    "M03 SERVICE",
-    "CODE LINES",
-    "運行情報",
-    "新高円寺",
-    "M03 LOCAL",
-    "リポジトリ信号",
-    "ACTIVE REPOS",
-    "M03-TS",
-    "M03-PY",
-    "M03-SH",
-    "M03-PS",
-    "<path",
-  ]);
+  // Historical label checks belong in static template tests, not public repo text.
+  if (/<path\b|(?:fill|stroke)=["']#ffffff["']/i.test(`${repositorySvg}\n${toolchainSvg}`)) {
+    fail("generated SVG contains prohibited path or pure-white paint");
+  }
 
+  for (const repo of staticData.repos) {
+    if (typeof repo?.name !== "string" || !repo.name.trim()) fail("static repo name missing");
+    if (!Number.isSafeInteger(repo.stars) || repo.stars < 0) fail(`invalid static stars for ${repo.name}`);
+    if (!Number.isFinite(repo.language_pct) || repo.language_pct < 0 || repo.language_pct > 100) {
+      fail(`invalid static language percentage for ${repo.name}`);
+    }
+  }
   const languagePct = sum(staticData.repos.map((repo) => repo.language_pct));
   if (languagePct !== 100) fail(`toolchain percentages sum to ${languagePct}, expected 100`);
 
@@ -282,6 +277,7 @@ export async function validateSignals({
   }
 
   for (const [name, box] of Object.entries({ board: layout.board, toolchain: layout.toolchain })) {
+    if (![box.left, box.top, box.width, box.height].every(Number.isFinite)) fail(`${name} layout dimensions must be finite numbers`);
     if (box.left < 0 || box.top < 0 || box.width <= 0 || box.height <= 0) fail(`${name} layout has invalid dimensions`);
     if (box.left + box.width > layout.sourceWidth || box.top + box.height > layout.sourceHeight) {
       fail(`${name} layout exceeds source image bounds`);
@@ -302,7 +298,7 @@ export async function validateSignals({
       fail(`output dimensions ${metadata.width}x${metadata.height}, expected ${width}x${height}`);
     }
     if (background) {
-      assertOverlayPixelMetrics(await overlayPixelMetrics({ output, background, layout, width, height }));
+      await overlayPixelMetrics({ output, background, layout, width, height });
     }
   }
 
@@ -310,14 +306,16 @@ export async function validateSignals({
 }
 
 export function expectedOutputSize(layout, env = process.env) {
+  for (const key of ["sourceWidth", "sourceHeight"]) {
+    if (!Number.isSafeInteger(layout[key]) || layout[key] <= 0) fail(`${key} must be a positive integer`);
+  }
   const outputWidthText = env.OUTPUT_WIDTH?.trim();
-  const outputWidth = outputWidthText ? Number(outputWidthText) : layout.sourceWidth;
-  const width = Number.isFinite(outputWidth) ? outputWidth : layout.sourceWidth;
+  const width = outputWidthText ? Number(outputWidthText) : layout.sourceWidth;
+  if (!Number.isSafeInteger(width) || width <= 0) fail("OUTPUT_WIDTH must be a positive integer");
   const scale = width / layout.sourceWidth;
-  return {
-    width,
-    height: Math.round(layout.sourceHeight * scale),
-  };
+  const height = Math.round(layout.sourceHeight * scale);
+  if (!Number.isSafeInteger(height) || height <= 0) fail("output height must be a positive integer");
+  return { width, height };
 }
 
 async function main() {

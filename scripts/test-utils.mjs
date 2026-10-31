@@ -1,16 +1,18 @@
 // Focused tests - no live network calls.
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
+import { applyFinalGrade } from "./lib/final-grade.mjs";
 import { applyLayoutEnv, panelTextureArgs } from "./generate-overlays.mjs";
 import { extractFontUrls, replaceFontUrlsWithDataUrls } from "./lib/font.mjs";
 import { github } from "./lib/github.mjs";
 import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick } from "./lib/imagemagick.mjs";
 import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
-import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
+import { assertOverlayPixelMetrics, expectedOutputSize, validateSignals } from "./validate-signals.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -49,6 +51,15 @@ async function assertResolvesDeepEqual(label, fn, expected) {
     console.error(`    expected: ${JSON.stringify(expected)}`);
     console.error(`    threw:    ${err.message}`);
     failed++;
+  }
+}
+
+async function assertRejects(label, fn, pattern) {
+  try {
+    await fn();
+    assert(label, "accepted", "rejected");
+  } catch (err) {
+    assert(label, pattern.test(err.message), true);
   }
 }
 
@@ -441,7 +452,9 @@ assert("layout board inside source width", layoutConfig.board.left + layoutConfi
 assert("layout toolchain inside source height", layoutConfig.toolchain.top + layoutConfig.toolchain.height <= layoutConfig.sourceHeight, true);
 assertDeepEqual("validate default output size uses layout source", expectedOutputSize(layoutConfig, {}), { width: 1672, height: 941 });
 assertDeepEqual("validate output size honors OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "800" }), { width: 800, height: 450 });
-assertDeepEqual("validate output size ignores invalid OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "bad" }), { width: 1672, height: 941 });
+for (const value of ["bad", "-1", "0", "0.5", "Infinity"]) {
+  await assertRejects(`reject invalid OUTPUT_WIDTH ${value}`, () => expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: value }), /OUTPUT_WIDTH/);
+}
 assert("static repository SVG uses plain station route label", staticRepoSvg.includes('data-station-code="M03"'), true);
 assert("static repository SVG uses Japanese status header", staticRepoSvg.includes(">リポジトリ状況<"), true);
 assert("static repository SVG omits old Japanese signal header", staticRepoSvg.includes(">リポジトリ信号<"), false);
@@ -492,6 +505,36 @@ try {
   assert("semantic validator accepts static config/SVGs", err.message, "no error");
 }
 
+const semanticInput = {
+  scene: sceneConfig, staticData: staticDataConfig, layout: layoutConfig,
+  repositorySvg: staticRepoSvg, toolchainSvg: staticToolchainSvg,
+};
+for (const [label, mutate] of [
+  ["nonfinite coordinates", (layout) => { layout.board.left = NaN; }],
+  ["missing dimensions", (layout) => { delete layout.board.width; }],
+  ["nonnumeric quad", (layout) => { layout.board.quad[0].x = null; }],
+  ["invalid source size", (layout) => { layout.sourceWidth = NaN; }],
+  ["concave quad", (layout) => { layout.board.quad[2] = { x: 500, y: 100 }; }],
+]) {
+  const layout = structuredClone(layoutConfig);
+  mutate(layout);
+  await assertRejects(`validator rejects ${label}`, () => validateSignals({ ...semanticInput, layout }), /signals validation failed/);
+}
+for (const value of [NaN, Infinity, -0.1, undefined]) {
+  await assertRejects(`validator rejects invalid pixel metric ${value}`, () => assertOverlayPixelMetrics({
+    outside: { mean: value, max: 0 }, inside: { mean: 0.1, max: 0.2 },
+  }), /invalid overlay pixel metrics/);
+}
+const invalidStaticData = structuredClone(staticDataConfig);
+invalidStaticData.repos[0].language_pct = -10;
+invalidStaticData.repos[1].language_pct += 35;
+await assertRejects("validator rejects negative percentages even when total is 100", () => validateSignals({
+  ...semanticInput, staticData: invalidStaticData,
+}), /invalid static language percentage/);
+await assertResolvesDeepEqual("historical label substrings remain valid public repo names", () => validateSignals({
+  ...semanticInput, repositorySvg: staticRepoSvg.replaceAll("JobSentinel", "toolchain-spectrum"),
+}), true);
+
 const originalBoardLeft = process.env.BOARD_LEFT;
 const originalBoardTop = process.env.BOARD_TOP;
 const originalBoardWidth = process.env.BOARD_WIDTH;
@@ -532,6 +575,13 @@ console.log("\nimage validation");
 
 const validationTmp = await mkdtemp(join(tmpdir(), "signals-validation-"));
 try {
+  await mkdir(join(validationTmp, "scripts/lib"), { recursive: true });
+  for (const file of ["optimize-signals.mjs", "lib/imagemagick.mjs"]) {
+    await copyFile(join("scripts", file), join(validationTmp, "scripts", file));
+  }
+  const missingOptimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs")], { encoding: "utf8" });
+  assert("optimizer fails when signals.png is missing", missingOptimization.status, 1);
+  assert("optimizer explains missing input", missingOptimization.stderr.includes("run the generator before optimizing"), true);
   const blackImage = join(validationTmp, "black.png");
   await runMagick(["-size", "1672x941", "xc:black", pngOutput(blackImage)]);
   try {
@@ -549,6 +599,15 @@ try {
     assert("validator rejects blank or unrelated PNG content", "accepted", "rejected");
   } catch (err) {
     assert("validator rejects blank or unrelated PNG content", err.message.includes("outside overlay region"), true);
+  }
+  const graded = join(validationTmp, "graded.png");
+  await applyFinalGrade("assets/subway_blank_original.png", graded, { width: 1672, height: 941, workDir: validationTmp });
+  for (const [name, rectangle] of [["toolchain", "500,100 800,150"], ["repository", "1450,300 1500,500"]]) {
+    const partial = join(validationTmp, `missing-${name}.png`);
+    await runMagick([graded, "-fill", "white", "-draw", `rectangle ${rectangle}`, pngOutput(partial)]);
+    await assertRejects(`validator rejects missing ${name} overlay`, () => validateSignals({
+      ...semanticInput, output: partial, background: "assets/subway_blank_original.png", width: 1672, height: 941,
+    }), /missing overlay-region changes/);
   }
 } finally {
   await rm(validationTmp, { recursive: true, force: true });

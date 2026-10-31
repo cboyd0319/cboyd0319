@@ -1,5 +1,5 @@
 // Focused tests - no live network calls.
-import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -700,6 +700,27 @@ try {
   globalThis.fetch = originalFetch;
 }
 
+
+console.log("\nImageMagick installer");
+const publicationDir = await mkdtemp(join(tmpdir(), "signals-install-"));
+try {
+  for (const [name, version, delegates, expected] of [
+    ["valid", "7.1.2-25", "freetype png rsvg", true],
+    ["wrong version", "7.1.2-24", "freetype png rsvg", false],
+    ["missing rsvg", "7.1.2-25", "freetype png", false],
+  ]) {
+    const root = join(publicationDir, name);
+    const bin = join(root, "ImageMagick-7.1.2-25/bin");
+    await mkdir(bin, { recursive: true });
+    await writeFile(join(bin, "magick"), '#!/bin/sh\nprintf "%s\\n" "Version: ImageMagick ' + version + ' Q16-HDRI" "Delegates (built-in): ' + delegates + '"\n', { mode: 0o755 });
+    const pathFile = join(root, "path");
+    const result = spawnSync("bash", ["scripts/install-imagemagick-ci.sh"], { env: { PATH: process.env.PATH, RUNNER_TEMP: root, GITHUB_PATH: pathFile }, encoding: "utf8" });
+    assert("installer " + name, result.status === 0, expected);
+    assert("installer " + name + " publishes only verified binary", await readFile(pathFile, "utf8").catch(() => ""), expected ? bin + "\n" : "");
+  }
+} finally {
+  await rm(publicationDir, { recursive: true, force: true });
+}
 
 // Summary
 

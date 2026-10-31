@@ -2,19 +2,32 @@
 set -euo pipefail
 
 version="7.1.2-25"
-sha256="c4ce2d982fbedf0347aeca804326308311d767c8da6a69e91ed39371f8de137b"
-url="https://imagemagick.org/archive/releases/ImageMagick-${version}.tar.gz"
+sha256="ff33d227d2e1744327280e956ec9f7abaebbd8f48277d16cdad906e05e4794b6"
+url="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${version}.tar.gz"
 prefix="${RUNNER_TEMP:-${PWD}/.tools}/ImageMagick-${version}"
 
 # Official 7.1.2-25 Linux AppImages omit the rsvg delegate and render this
 # repo's SVG text incorrectly under MSVG, so CI builds the pinned source.
-if [[ -x "${prefix}/bin/magick" ]]; then
-  detected="$("${prefix}/bin/magick" -version | sed -n 's/^Version: ImageMagick \([^ ]*\).*/\1/p')"
-  if [[ "${detected}" == "${version}" ]]; then
-    echo "${prefix}/bin" >> "${GITHUB_PATH:-/dev/null}"
-    "${prefix}/bin/magick" -version
-    exit 0
+verify_install() {
+  local output
+  output="$("${prefix}/bin/magick" -version)"
+  if [[ "$(sed -n 's/^Version: ImageMagick \([^ ]*\).*/\1/p' <<< "$output")" != "$version" ]]; then
+    echo "ImageMagick $version required" >&2
+    return 1
   fi
+  for delegate in freetype png rsvg; do
+    if ! grep '^Delegates ' <<< "$output" | grep -qw "$delegate"; then
+      echo "ImageMagick $version missing required $delegate delegate" >&2
+      return 1
+    fi
+  done
+  printf '%s\n' "$output"
+}
+
+if [[ -x "${prefix}/bin/magick" ]]; then
+  verify_install
+  echo "${prefix}/bin" >> "${GITHUB_PATH:-/dev/null}"
+  exit 0
 fi
 
 tmpdir="$(mktemp -d)"
@@ -37,5 +50,5 @@ cd "${tmpdir}/ImageMagick-${version}"
 make -j"$(nproc)"
 make install
 
+verify_install
 echo "${prefix}/bin" >> "${GITHUB_PATH:-/dev/null}"
-"${prefix}/bin/magick" -version

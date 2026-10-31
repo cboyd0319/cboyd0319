@@ -9,7 +9,7 @@ import { applyFinalGrade } from "./lib/final-grade.mjs";
 import { applyChromaticAberration, applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, publishSignals, withLanguageBreakdowns } from "./generate-overlays.mjs";
 import { verifyDisplayFont } from "./lib/font.mjs";
 import { github } from "./lib/github.mjs";
-import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick, rasterizeSvg, waitForWriters, withImageLock } from "./lib/imagemagick.mjs";
+import { APNG_PROBE, parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick, rasterizeSvg, waitForWriters, withImageLock } from "./lib/imagemagick.mjs";
 import { fitRepositoryRows, languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
 import { assertOverlayPixelMetrics, expectedOutputSize, renderStaticSvgs, validateSignals } from "./validate-signals.mjs";
@@ -648,6 +648,26 @@ try {
     assert("publisher validates before replacing output", err.message.includes("scene config not loaded"), true);
   }
   assert("failed validation preserves published image", await readFile(published, "utf8"), "last valid output");
+  const imageValidation = { ...semanticInput, background: "assets/subway_blank_original.png", width: 1672, height: 941 };
+  await writeFile(candidate, Buffer.from(APNG_PROBE, "base64"));
+  await assertRejects("validator rejects animation before checking dimensions", () => validateSignals({ ...imageValidation, output: candidate }), /animated PNG/);
+  const noAnimationMetadata = join(validationTmp, "magick-no-animation");
+  await writeFile(noAnimationMetadata, `#!/bin/sh\nif [ "$1" = -version ]; then printf '%s\\n' 'Version: ImageMagick ${REQUIRED_MAGICK_VERSION}' 'Delegates (built-in): rsvg'; fi\n`, { mode: 0o755 });
+  const unsupportedDecoder = spawnSync(process.execPath, ["--input-type=module", "-e", 'import { ensureImageMagick } from "./scripts/lib/imagemagick.mjs"; await ensureImageMagick();'], {
+    env: { PATH: process.env.PATH, MAGICK_BIN: noAnimationMetadata }, encoding: "utf8",
+  });
+  assert("unsupported PNG animation metadata fails closed", unsupportedDecoder.status === 1 && unsupportedDecoder.stderr.includes("must expose PNG animation metadata"), true);
+  const opaquePng = join(validationTmp, "opaque-alpha.png");
+  await runMagick(["assets/signals.png", "-alpha", "on", pngOutput(opaquePng)]);
+  await assertResolvesDeepEqual("validator accepts an opaque PNG with an alpha channel", () => validateSignals({ ...imageValidation, output: opaquePng }), true);
+  for (const [label, args, message] of [
+    ["transparent output", [opaquePng, "-channel", "A", "-evaluate", "multiply", "0.5", "+channel", pngOutput(candidate)], /opaque PNG/],
+    ["non-PNG bytes named PNG", [opaquePng, `MIFF:${candidate}`], /opaque PNG/],
+    ["multiple image frames", [opaquePng, opaquePng, `MIFF:${candidate}`], /single image frame/],
+  ]) {
+    await runMagick(args);
+    await assertRejects(`validator rejects ${label}`, () => validateSignals({ ...imageValidation, output: candidate }), message);
+  }
   const blackImage = join(validationTmp, "black.png");
   await runMagick(["-size", "1672x941", "xc:black", pngOutput(blackImage)]);
   try {
@@ -667,9 +687,11 @@ try {
   }
   const graded = join(validationTmp, "graded.png");
   await applyFinalGrade("assets/subway_blank_original.png", graded, { width: 1672, height: 941, workDir: validationTmp });
+  await runMagick([graded, "-fill", "white", "-draw", "rectangle 500,100 800,150 rectangle 1450,300 1500,500", pngOutput(candidate)]);
+  await assertRejects("validator rejects gross bright-card corruption", () => validateSignals({ ...imageValidation, output: candidate }), /excessive changes in overlay region/);
   for (const [name, rectangle] of [["toolchain", "500,100 800,150"], ["repository", "1450,300 1500,500"]]) {
     const partial = join(validationTmp, `missing-${name}.png`);
-    await runMagick([graded, "-fill", "white", "-draw", `rectangle ${rectangle}`, pngOutput(partial)]);
+    await runMagick([graded, "-fill", "rgba(255,255,255,0.2)", "-draw", `rectangle ${rectangle}`, pngOutput(partial)]);
     await assertRejects(`validator rejects missing ${name} overlay`, () => validateSignals({
       ...semanticInput, output: partial, background: "assets/subway_blank_original.png", width: 1672, height: 941,
     }), /missing overlay-region changes/);
@@ -948,10 +970,10 @@ try {
   const raster = join(rendererTmp, "raster.png");
   const reference = join(rendererTmp, "reference.png");
   await writeFile(detailSvg, '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><path d="M0 0L40 20M0 20L40 0" stroke="white" stroke-width="0.7"/></svg>');
-  const { stdout: oversampledSize } = await runMagick(["-background", "none", "-density", "192", detailSvg, "-format", "%wx%h", "info:"]);
+  const { stdout: oversampledSize } = await runMagick(["-background", "none", "-density", "192", `RSVG:${detailSvg}`, "-format", "%wx%h", "info:"]);
   assert("rsvg density192 produces two design pixels per axis", oversampledSize, "80x40");
   await rasterizeSvg(detailSvg, raster, { width: 40, height: 20 });
-  await runMagick(["-background", "none", "-density", "192", detailSvg, "-resize", "40x20!", "-alpha", "on", pngOutput(reference)]);
+  await runMagick(["-background", "none", "-density", "192", `RSVG:${detailSvg}`, "-resize", "40x20!", "-alpha", "on", pngOutput(reference)]);
   const { stdout: rasterDifference } = await runMagick([raster, reference, "-compose", "Difference", "-composite", "-format", "%[fx:maxima]", "info:"]);
   assert("shared SVG rasterizer uses actual 2x rsvg oversampling", Number(rasterDifference), 0);
 

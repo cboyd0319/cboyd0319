@@ -13,6 +13,7 @@ const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OVERLAY_BOX_PAD = 18;
 const MIN_INSIDE_DIFF_MEAN = 0.0001;
 const MIN_INSIDE_DIFF_MAX = 0.05;
+const MAX_REGION_DIFF_MEAN = 0.05;
 const MAX_OUTSIDE_DIFF_MEAN = 0.000001;
 const MAX_OUTSIDE_DIFF_MAX = 0.001;
 
@@ -91,12 +92,7 @@ function scaledOverlayBoxes(layout, width, height) {
   const scaleX = width / layout.sourceWidth;
   const scaleY = height / layout.sourceHeight;
   return [layout.board, layout.toolchain].map((box) => {
-    const points = (box.quad || [
-      { x: box.left, y: box.top },
-      { x: box.left + box.width, y: box.top },
-      { x: box.left + box.width, y: box.top + box.height },
-      { x: box.left, y: box.top + box.height },
-    ]).map((point) => ({ x: point.x * scaleX, y: point.y * scaleY }));
+    const points = box.quad.map((point) => ({ x: point.x * scaleX, y: point.y * scaleY }));
     const left = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x)) - OVERLAY_BOX_PAD));
     const top = Math.max(0, Math.floor(Math.min(...points.map((point) => point.y)) - OVERLAY_BOX_PAD));
     const right = Math.min(width - 1, Math.ceil(Math.max(...points.map((point) => point.x)) + OVERLAY_BOX_PAD));
@@ -166,6 +162,10 @@ async function overlayPixelMetrics({ output, background, layout, width, height }
       await runMagick(["-size", `${width}x${height}`, "xc:black", "-fill", "white", "-draw", maskDraw([box]), pngOutput(insideMask)]);
       const inside = await maskedDiffMetric(diffPath, insideMask);
       assertOverlayPixelMetrics({ outside, inside });
+      const area = (box.right - box.left + 1) * (box.bottom - box.top + 1);
+      // Coarse corruption bound; pixel differences do not prove text content.
+      const regionMean = inside.mean * width * height / area;
+      if (regionMean > MAX_REGION_DIFF_MEAN) fail(`excessive changes in overlay region: mean ${regionMean}`);
     }
   } finally {
     await rm(tempDir, { recursive: true, force: true });
@@ -279,6 +279,8 @@ export async function validateSignals({
 
   if (output) {
     const metadata = await identifyImage(output);
+    if (metadata.animated) fail("animated PNG output is not allowed");
+    if (metadata.format !== "PNG" || !metadata.opaque) fail("output must be an opaque PNG");
     if (metadata.width !== width || metadata.height !== height) {
       fail(`output dimensions ${metadata.width}x${metadata.height}, expected ${width}x${height}`);
     }

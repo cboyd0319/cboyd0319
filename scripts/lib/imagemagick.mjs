@@ -1,12 +1,29 @@
 import { spawn, spawnSync } from "node:child_process";
-import { open, unlink } from "node:fs/promises";
+import { mkdtemp, open, rm, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { FONTCONFIG_FILE, verifyDisplayFont } from "./font.mjs";
 
 export const REQUIRED_MAGICK_VERSION = "7.1.2-34";
+// ImageMagick-generated two-frame PNG; probe native libpng animation metadata.
+export const APNG_PROBE = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABEAIAAADA54+dAAAACXBIWXMAAAAAAAAAAQCEeRdzAAAACGFjVEwAAAACAAAAAPONk3AAAAAaZmNUTAAAAAAAAAABAAAAAQAAAAAAAAAAAAEAAQAAVirfMQAAAA1JREFUeJxj/P+fAQgACwMCABopyrUAAAAaZmNUTAAAAAEAAAABAAAAAQAAAAAAAAAAAAEAAQAAzVk15QAAAA9mZEFUAAAAAnicY2QAAwAADgACJrUFpAAAAABJRU5ErkJggg==";
 
 const HOMEBREW_MAGICK = "/opt/homebrew/opt/imagemagick-full/bin/magick";
 let cachedMagickPath = null;
 let cachedMagickInfo;
+let cachedAnimationProbe;
+
+async function verifyAnimationMetadata(magick) {
+  const directory = await mkdtemp(join(tmpdir(), "signals-png-probe-"));
+  try {
+    const path = join(directory, "animation.png");
+    await writeFile(path, Buffer.from(APNG_PROBE, "base64"));
+    const { stdout } = await runCommand(magick, ["identify", "-quiet", "-format", "%[png:acTL]", path]);
+    if (stdout.trim() !== "chunk was found") throw new Error("ImageMagick must expose PNG animation metadata.");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
 
 function commandCandidates() {
   if (process.env.MAGICK_BIN?.trim()) return [process.env.MAGICK_BIN.trim()];
@@ -50,6 +67,8 @@ export async function ensureImageMagick({ requiredVersion = REQUIRED_MAGICK_VERS
     throw new Error(`ImageMagick ${requiredVersion} required, got ${version || "unknown"} from ${magick}.`);
   }
   if (!/\brsvg\b/.test(stdout)) throw new Error(`ImageMagick must include the rsvg delegate: ${magick}.`);
+  cachedAnimationProbe ??= verifyAnimationMetadata(magick);
+  await cachedAnimationProbe;
   return { magick, version, output: stdout };
 }
 
@@ -88,17 +107,24 @@ export async function runMagick(args, options = {}) {
 export async function identifyImage(path) {
   const { stdout } = await runMagick([
     "identify",
+    "-quiet",
     "-format",
-    "%w\t%h\t%[channels]\t%[colorspace]\t%b\n",
+    "%w\t%h\t%[channels]\t%[colorspace]\t%b\t%m\t%n\t%[opaque]\t%[png:acTL]\n",
     path,
   ]);
-  const [width, height, channels, colorspace, bytes] = stdout.trim().split("\t");
+  const frames = stdout.trim().split(/\r?\n/);
+  if (frames.length !== 1) throw new Error("Expected a single image frame.");
+  const [width, height, channels, colorspace, bytes, format, frameCount, opaque, animation] = frames[0].split("\t");
+  if (Number(frameCount) !== 1) throw new Error("Expected a single image frame.");
   return {
     width: Number(width),
     height: Number(height),
     channels,
     colorspace,
     bytes,
+    format,
+    opaque: opaque?.toLowerCase() === "true",
+    animated: Boolean(animation),
   };
 }
 
@@ -158,7 +184,7 @@ export async function waitForWriters(writers) {
 
 export async function rasterizeSvg(svgPath, outputPath, { width, height }) {
   await runMagick([
-    "-background", "none", "-density", "192", svgPath,
+    "-background", "none", "-density", "192", `RSVG:${svgPath}`,
     "-resize", `${width}x${height}!`, "-alpha", "on", pngOutput(outputPath),
   ]);
 }

@@ -514,7 +514,7 @@ Current canon:
 The production path should be deterministic:
 
 - The pinned [display font](../fonts/README.md) is checksum-verified and loaded through repository-local Fontconfig, without network or system-font fallback.
-- `scripts/validate-signals.mjs` checks required repository strings, toolchain strings, static totals, layout bounds, transit canon contradictions, output dimensions, and that only the configured overlay regions differ from the graded blank image.
+- `scripts/validate-signals.mjs` checks configuration and SVG templates, using static templates in a fresh checkout. The committed image must be a static opaque PNG of the expected size, with changes in both sign regions, no exterior changes, and no excessive regional change. These pixel checks catch coarse corruption; they do not read or verify text inside the PNG.
 - Static mode should preserve configured labels such as `1mo ago` instead of recomputing them into equivalent but visually different strings.
 - `assets/generated/` crops should be used for sign-level QA before judging the full image.
 

@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="7.1.2-25"
-sha256="ff33d227d2e1744327280e956ec9f7abaebbd8f48277d16cdad906e05e4794b6"
-url="https://github.com/ImageMagick/ImageMagick/archive/refs/tags/${version}.tar.gz"
+version="7.1.2-34"
+sha256="55fe0ec246245b46c429f9e6bc65294ad4a78a66b88abd9817971ca157856323"
+url="https://github.com/ImageMagick/ImageMagick/releases/download/${version}/ImageMagick-${version}.tar.xz"
 prefix="${RUNNER_TEMP:-${PWD}/.tools}/ImageMagick-${version}"
 
-# Official 7.1.2-25 Linux AppImages omit the rsvg delegate and render this
-# repo's SVG text incorrectly under MSVG, so CI builds the pinned source.
+# Build from source to require rsvg for this repo's SVG text.
 verify_install() {
   local output
   output="$("${prefix}/bin/magick" -version)"
@@ -30,13 +29,34 @@ if [[ -x "${prefix}/bin/magick" ]]; then
   exit 0
 fi
 
+# Ubuntu 26.04's current production packages; keep both CI callers here.
+source /etc/os-release
+if [[ "$ID" != ubuntu || "$VERSION_ID" != 26.04 ]]; then
+  echo "ImageMagick CI build requires Ubuntu 26.04" >&2
+  exit 1
+fi
+privilege=()
+if (( EUID != 0 )); then privilege=(sudo); fi
+"${privilege[@]}" apt-get update
+"${privilege[@]}" apt-get install -y --no-install-recommends \
+  build-essential=12.12ubuntu2.26.04.2 \
+  ca-certificates=20260816ubuntu0.26.04.1 \
+  curl=8.18.0-1ubuntu2.8 \
+  libfontconfig1-dev=2.17.1-3ubuntu1 \
+  libfreetype-dev=2.14.2+dfsg-1ubuntu0.2 \
+  libpng-dev=1.6.57-1ubuntu0.1 \
+  librsvg2-dev=2.61.3+dfsg-3ubuntu0.1 \
+  pkg-config=2.5.1-4 \
+  xz-utils=5.8.3-1ubuntu0.1 \
+  zlib1g-dev=1:1.3.dfsg+really1.3.1-1ubuntu3.2
+
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "${tmpdir}"' EXIT
-archive="${tmpdir}/ImageMagick-${version}.tar.gz"
+archive="${tmpdir}/ImageMagick-${version}.tar.xz"
 
 curl -fsSL "${url}" -o "${archive}"
 printf '%s  %s\n' "${sha256}" "${archive}" | sha256sum -c -
-tar -xzf "${archive}" -C "${tmpdir}"
+tar -xJf "${archive}" -C "${tmpdir}"
 
 cd "${tmpdir}/ImageMagick-${version}"
 ./configure \

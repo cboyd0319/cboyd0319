@@ -212,10 +212,10 @@ console.log("\nlanguageSummary");
 
 const languageNames = languageSummary([
   null,
-  makeRepo("cboyd0319", 0, { language: "JavaScript" }),
-  makeRepo("PyGuard", 1, { language: "Python" }),
-  makeRepo("forked", 2, { fork: true, language: "Go" }),
-  makeRepo("archived", 3, { archived: true, language: "Rust" }),
+  makeRepo("cboyd0319", 0, { languages: { JavaScript: 1 } }),
+  makeRepo("PyGuard", 1, { languages: { Python: 1 } }),
+  makeRepo("forked", 2, { fork: true, languages: { Go: 1 } }),
+  makeRepo("archived", 3, { archived: true, languages: { Rust: 1 } }),
 ]).map((item) => item.name);
 
 assert("profile repo language is excluded", languageNames.includes("JavaScript"), false);
@@ -223,16 +223,17 @@ assert("active repo language is included", languageNames.includes("Python"), tru
 assert("fork language is excluded", languageNames.includes("Go"), false);
 assert("archived language is excluded", languageNames.includes("Rust"), false);
 assertDeepEqual("private language data is excluded", languageSummary([makeRepo("hidden", 0, { private: true, languages: { Python: 10 } })]), []);
+assertDeepEqual("missing byte maps do not invent language shares", languageSummary([makeRepo("missing", 0, { language: "Python" })]), []);
 assertDeepEqual("empty language maps do not invent byte counts", languageSummary([makeRepo("empty", 0, { language: "Python", languages: {} })]), []);
 assertDeepEqual("language byte counts reject coercible values", languageSummary([makeRepo("bad", 0, { languages: { Python: "100", Shell: -10 } })]), []);
-assertDeepEqual("equal language shares total exactly 100", languageSummary(["A", "B", "C"].map((language) => makeRepo(language, 0, { language }))).map(({ pct }) => pct), [34, 33, 33]);
+assertDeepEqual("equal language shares total exactly 100", languageSummary(["A", "B", "C"].map((language) => makeRepo(language, 0, { languages: { [language]: 1 } }))).map(({ pct }) => pct), [34, 33, 33]);
 
 const manyLanguageSummary = languageSummary([
-  makeRepo("python-a", 1, { language: "Python" }),
-  makeRepo("python-b", 2, { language: "Python" }),
-  makeRepo("python-c", 3, { language: "Python" }),
+  makeRepo("python-a", 1, { languages: { Python: 1 } }),
+  makeRepo("python-b", 2, { languages: { Python: 1 } }),
+  makeRepo("python-c", 3, { languages: { Python: 1 } }),
   ...["JavaScript", "TypeScript", "Rust", "Go", "Ruby", "Java", "Kotlin", "Swift", "HTML"].map(
-    (language, i) => makeRepo(`lang-${i}`, i + 4, { language }),
+    (language, i) => makeRepo(`lang-${i}`, i + 4, { languages: { [language]: 1 } }),
   ),
 ]);
 
@@ -297,13 +298,18 @@ const partialByteLanguageSummary = languageSummary([
 ]).map(({ name, pct }) => ({ name, pct }));
 
 assertDeepEqual(
-  "partial language-map coverage still uses byte totals, not the count fallback",
+  "partial language-map coverage still uses byte totals, without inventing shares for missing maps",
   partialByteLanguageSummary,
   [
     { name: "Python", pct: 75 },
     { name: "Shell", pct: 25 },
   ],
 );
+
+for (const unsupported of [{ security_status: "FAIL" }, { dependabot_alerts: 1 }, { security_alerts: 1 }, { vulnerability_alerts: 1 }, { archived: true }]) {
+  const svg = renderRepositorySignSvg({ repos: [makeRepo("public", 0, unsupported)], width: 500, height: 160 });
+  assert("uncollected metadata cannot imply a security status: " + Object.keys(unsupported)[0], svg.includes('data-status-led="ACTIVE"'), true);
+}
 
 const escapedRepoSvg = renderRepositorySignSvg({
   repos: [
@@ -389,7 +395,7 @@ assert("toolchain SVG uses full Rust label", liveLanguageToolchainSvg.includes("
 assert("toolchain SVG uses full Other label", liveLanguageToolchainSvg.includes(">OTHER<"), true);
 
 const longLanguageSvg = renderToolchainSpectrumSvg({
-  allRepos: [makeRepo("notebook", 1, { language: "Jupyter Notebook" })],
+  allRepos: [makeRepo("notebook", 1, { languages: { "Jupyter Notebook": 1 } })],
   width: 131, height: 420,
 });
 assert("long language label stays clear of percentages", longLanguageSvg.includes(">JUPYTER...<"), true);
@@ -694,6 +700,30 @@ await assertResolvesDeepEqual(
 assert("github retried once", githubFetchCalls, 2);
 
 try {
+  const failedBodyResponse = (status) => new Response(new ReadableStream({
+    start(controller) { controller.error(new Error("sensitive stream failure")); },
+  }), { status });
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => ++githubFetchCalls === 1
+    ? failedBodyResponse(200) : Response.json({ recovered: true });
+  await assertResolvesDeepEqual("github retries interrupted response bodies", () => github("/test", { retryDelayMs: 0 }), { recovered: true });
+  assert("interrupted body is retried once", githubFetchCalls, 2);
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => { githubFetchCalls++; return failedBodyResponse(200); };
+  await assertRejects("body retry exhaustion keeps transport errors private", () => github("/test", { retryDelayMs: 0 }), /^GitHub API request failed after retries\.$/);
+  assert("body retry exhaustion is bounded", githubFetchCalls, 4);
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => { githubFetchCalls++; return new Response("invalid JSON"); };
+  await assertRejects("malformed JSON fails closed", () => github("/test", { retryDelayMs: 0 }), /^GitHub API returned invalid JSON\.$/);
+  assert("malformed JSON is not retried", githubFetchCalls, 1);
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => ++githubFetchCalls === 1
+    ? failedBodyResponse(503) : Response.json({ recovered: true });
+  await assertResolvesDeepEqual("body cancellation failure preserves HTTP retry", () => github("/test", { retryDelayMs: 0 }), { recovered: true });
+  assert("HTTP status retries despite cancellation failure", githubFetchCalls, 2);
+  globalThis.fetch = async () => failedBodyResponse(403);
+  await assertRejects("body cancellation failure cannot expose raw errors", () => github("/test", { retryDelayMs: 0 }), /^GitHub API 403$/);
+
   for (const status of [403, 429]) {
     githubFetchCalls = 0;
     globalThis.fetch = async () => { githubFetchCalls++; return jsonResponse(status, { message: "sensitive response body" }); };
@@ -718,6 +748,30 @@ try {
   await assertRejects("malformed repository data fails closed", fetchOwnerRepos, /invalid repository metadata/);
   globalThis.fetch = async () => jsonResponse(200, Array.from({ length: 100 }, (_, index) => publicRepo(`repo-${index}`)));
   await assertRejects("pagination cap cannot silently publish partial totals", fetchOwnerRepos, /pagination limit/);
+
+  const originalToken = process.env.GITHUB_TOKEN;
+  process.env.GITHUB_TOKEN = "test-public-boundary-sentinel";
+  try {
+    globalThis.fetch = async (_url, options) => {
+      assert("owner listing can retain optional authentication", options.headers.authorization === "Bearer test-public-boundary-sentinel", true);
+      assert("owner listing rejects redirects", options.redirect, "manual");
+      return Response.json([publicRepo("one", { status: "FAIL", security_status: "FAIL", dependabot_alerts: 1 })]);
+    };
+    const listed = await fetchOwnerRepos();
+    assert("live repository data drops status metadata", "status" in listed[0] || "security_status" in listed[0] || "dependabot_alerts" in listed[0], false);
+    globalThis.fetch = async (_url, options) => {
+      assert("language lookup never sends the configured token", new Headers(options.headers).has("authorization"), false);
+      assert("language lookup rejects redirects", options.redirect, "manual");
+      return new Headers(options.headers).has("authorization")
+        ? Response.json({ Private: 100 }) : new Response(null, { status: 404 });
+    };
+    await assertRejects("a repository made private after listing aborts refresh", () => withLanguageBreakdowns(listed), /^GitHub API 404$/);
+    globalThis.fetch = async () => new Response(null, { status: 301, headers: { location: "https://api.github.com/repos/elsewhere/one/languages" } });
+    await assertRejects("transferred repository languages abort refresh", () => withLanguageBreakdowns(listed), /^GitHub API 301$/);
+  } finally {
+    if (originalToken === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = originalToken;
+  }
 
   let activeRequests = 0;
   let peakRequests = 0;

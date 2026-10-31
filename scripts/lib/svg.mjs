@@ -56,13 +56,7 @@ export function languageSummary(allRepos) {
     return summarizeLanguageEntries([...totals.entries()], { sort: false });
   }
 
-  const counts = new Map();
-  for (const repo of activeRepos) {
-    if (typeof repo.language !== "string" || !repo.language) continue;
-    counts.set(repo.language, (counts.get(repo.language) || 0) + 1);
-  }
-
-  return summarizeLanguageEntries([...counts.entries()]);
+  return [];
 }
 
 function isLanguageMap(value) {
@@ -132,12 +126,7 @@ function repoDisplayName(name, compact) {
 }
 
 function statusForRepo(repo) {
-  const configured = String(repo?.security_status || repo?.status || "").trim();
-  if (configured) return configured.toUpperCase();
-  const alerts = Number(repo?.dependabot_alerts ?? repo?.security_alerts ?? repo?.vulnerability_alerts ?? 0);
-  if (Number.isFinite(alerts) && alerts > 0) return "DEPS CHECK";
-  if (repo?.archived) return "ARCHIVED";
-  return "ACTIVE";
+  return String(repo?.status || "").trim().toUpperCase() || "ACTIVE";
 }
 
 function repoRowText(repo, { y, emissiveOnly = false }) {

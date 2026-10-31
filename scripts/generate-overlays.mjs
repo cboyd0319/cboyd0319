@@ -101,7 +101,7 @@ export async function fetchOwnerRepos() {
 }
 
 async function fetchRepoLanguages(repoName) {
-  const data = await github(`/repos/${USERNAME}/${encodeURIComponent(repoName)}/languages`);
+  const data = await github(`/repos/${USERNAME}/${encodeURIComponent(repoName)}/languages`, { publicOnly: true });
   if (!data || Array.isArray(data) || typeof data !== "object"
     || Object.entries(data).some(([name, bytes]) => !name.trim() || !Number.isSafeInteger(bytes) || bytes < 0)) {
     throw new Error("GitHub languages API returned an unexpected payload.");

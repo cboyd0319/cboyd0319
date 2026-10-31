@@ -75,6 +75,14 @@ jobs:
           name: signals-panel
           path: assets
 
+      - name: Install pinned GitHub CLI
+        run: |
+          archive="${RUNNER_TEMP}/gh.tar.gz"
+          curl -fsSL https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_linux_amd64.tar.gz -o "$archive"
+          printf '%s  %s\n' 4c806978ffce1cec70853302a56d70ac6da4f19bae7adca4e1a8ab00633dd91d "$archive" | sha256sum -c -
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          echo "${RUNNER_TEMP}/gh_2.103.3_linux_amd64/bin" >> "$GITHUB_PATH"
+
       - name: Publish validated update if changed
         shell: bash
         env:

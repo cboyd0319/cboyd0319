@@ -981,6 +981,14 @@ try {
   const { stdout: visibleLanguage } = await runMagick([namePng, "-crop", "75x32+330+69", "-alpha", "extract", "-trim", "-format", "%w", "info:"]);
   assert("long GitHub language remains visible with an ellipsis", Number(visibleLanguage) > 40 && Number(visibleLanguage) < 75 && fittedRepos[0].display_language.endsWith("..."), true);
   const unfittedSvg = renderRepositorySignSvg({ repos: [makeRepo("W".repeat(18), 1, { language: "Common Workflow Language" })], width: 500, height: 160 });
+  assert("maintenance suffix cannot erase a whole repository name", renderRepositorySignSvg({ repos: [makeRepo("-fix", 1)], width: 500, height: 160 }).includes(">-fix<"), true);
+  for (const stars of [9999, 10_000, 100_000, 999_999, Number.MAX_SAFE_INTEGER]) {
+    const starsSvg = renderRepositorySignSvg({ repos: [makeRepo("public", 1, { stargazers_count: stars })], width: 500, height: 160 });
+    await writeFile(nameSvgPath, isolateColumn(starsSvg, /x="45[56](?:\.5)?"/));
+    await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+    const { stdout } = await runMagick([namePng, "-crop", "405x35+0+70", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+    assert(`star count ${stars} cannot paint over the language column`, Number(stdout), 0);
+  }
   for (const [column, pattern, crop] of [["name", /x="17[89](?:\.5)?"/, "170x35+330+65"], ["language", /x="405"/, "320x35+0+65"]]) {
     await writeFile(nameSvgPath, isolateColumn(unfittedSvg, pattern));
     await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });

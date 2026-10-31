@@ -129,9 +129,9 @@ function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600,
   return `<svg x="${left}" y="${y - 22}" width="${clipWidth}" height="32" viewBox="${left} ${y - 22} ${clipWidth} 32" overflow="hidden">${glyphs}</svg>`;
 }
 
-function repoDisplayName(name, compact) {
-  const displayName = String(name ?? "").replace(/-fix$/i, "");
-  return shortText(displayName, compact ? REPOSITORY_BOARD_NAME_MAX : 24);
+function repoDisplayName(name) {
+  const original = String(name ?? "");
+  return shortText(original.replace(/-fix$/i, "") || original, REPOSITORY_BOARD_NAME_MAX);
 }
 
 export async function fitRepositoryRows(repos) {
@@ -161,7 +161,7 @@ export async function fitRepositoryRows(repos) {
   try {
     const fitted = [];
     for (const repo of repos) {
-      const displayName = await fit(repoDisplayName(repo.name, true), REPOSITORY_NAME_WIDTH, REPOSITORY_NAME_TEXT);
+      const displayName = await fit(repoDisplayName(repo.name), REPOSITORY_NAME_WIDTH, REPOSITORY_NAME_TEXT);
       const displayLanguage = await fit(shortText(repo.language || "PUBLIC", 14), REPOSITORY_LANGUAGE_WIDTH, REPOSITORY_LANGUAGE_TEXT);
       fitted.push({ ...repo, display_name: displayName, display_language: displayLanguage });
     }
@@ -184,6 +184,8 @@ function repoRowText(repo, { y, emissiveOnly = false }) {
   const statusOpacity = status === "IDLE" ? 0.58 : alertStatus ? 0.8 : 0.7;
   const language = repo.display_language ?? shortText(repo.language || "PUBLIC", 14);
   const stars = Math.max(0, Number(repo.stargazers_count) || 0);
+  const compactStars = stars < 10_000 ? String(stars) : new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 0 }).format(stars);
+  const displayedStars = compactStars.length <= 4 ? compactStars : stars.toExponential(0).replace("e+", "e");
   const dotX = BOARD_COLS.statusDot;
   const dotY = y - 5;
   const statusSize = status.length > 7 ? 9.4 : 10.8;
@@ -191,9 +193,9 @@ function repoRowText(repo, { y, emissiveOnly = false }) {
 ${emissiveOnly ? "" : `<circle cx="${dotX + 1.5}" cy="${dotY + 1.5}" r="3" fill="#000000" opacity="0.55"/>`}
 ${emissiveOnly ? "" : `<circle data-status-led="${escapeHtml(status)}" cx="${dotX}" cy="${dotY}" r="3" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
 ${text(status, { x: BOARD_COLS.status, y, size: statusSize, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.78, statusOpacity + 0.04) : Math.max(0.7, statusOpacity), style: "letter-spacing:0.01em" })}
-${text(repo.display_name ?? repoDisplayName(repo.name, true), { ...REPOSITORY_NAME_TEXT, x: BOARD_COLS.repo, y, fill: SIGN_COLORS.textPrimary, opacity: emissiveOnly ? 0.88 : 0.96, shadow: !emissiveOnly, clipWidth: REPOSITORY_NAME_WIDTH })}
+${text(repo.display_name ?? repoDisplayName(repo.name), { ...REPOSITORY_NAME_TEXT, x: BOARD_COLS.repo, y, fill: SIGN_COLORS.textPrimary, opacity: emissiveOnly ? 0.88 : 0.96, shadow: !emissiveOnly, clipWidth: REPOSITORY_NAME_WIDTH })}
 ${text(language, { ...REPOSITORY_LANGUAGE_TEXT, x: BOARD_COLS.language, y, fill: SIGN_COLORS.textSecondary, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, clipWidth: REPOSITORY_LANGUAGE_WIDTH })}
-${text(`★ ${stars}`, { x: BOARD_COLS.stars, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
+${text(`★ ${displayedStars}`, { x: BOARD_COLS.stars, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
 }
 
 export function renderRepositorySignSvg({ repos, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {

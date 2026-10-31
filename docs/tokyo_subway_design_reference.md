@@ -191,15 +191,15 @@ The palette should be controlled and cinematic, not carnival-neon. The final ima
 | `#6faac2` | Fluorescent cyan spill |
 | `#9fcbd8` | Pale station light |
 | `#5b85a6` | Blue-gray highlights |
-| `#b5d5dc` | Data sign text glow |
+| `#b5d5dc` | Station-light highlights |
 
 ### Neon accents
 
 | Color | Use |
 | --- | --- |
 | `#ec6cc8` | Limited magenta signage |
-| `#7e5dc8` | Purple route stripe / chart accent |
-| `#1fc7e6` | Cyan data bars |
+| `#7e5dc8` | Small environmental purple accents |
+| `#1fc7e6` | Restrained cyan vending-machine light |
 | `#f07848` | Amber/orange train sign and warm lamps |
 
 ### Muted environmental tones

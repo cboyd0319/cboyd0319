@@ -338,6 +338,7 @@ Live rows use `ACTIVE` for non-archived public repositories; no dependency-healt
 check is implied. `DEPS CHECK` is an explicit static fixture value.
 Keep recency and status subordinate to the repository name. Keep the language
 and star metadata in a strict right-side column.
+Large star counts use compact notation to stay within their column.
 
 ---
 
@@ -351,7 +352,7 @@ Default recommendation: **off**. Do not render `ACTIVE REPOS` or `TOTAL` metrics
 
 Render only the small status LEDs beside status text. These are physical
 indicator dots paired with the status word, not chart marks or row bullets.
-Use muted green for healthy active rows and controlled red only for review or
+Use muted green for active rows and controlled red only for review or
 dependency-check states. Exact geometry and opacity live in the renderer.
 
 ---

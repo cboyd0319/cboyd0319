@@ -701,9 +701,73 @@ try {
 }
 
 
-console.log("\nImageMagick installer");
-const publicationDir = await mkdtemp(join(tmpdir(), "signals-install-"));
+// Exercise publication against disposable Git remotes; no credentials or network.
+if (spawnSync("jq", ["--version"], { encoding: "utf8" }).stdout?.trim() !== "jq-1.8.2") {
+  throw new Error("Publisher regression tests require jq 1.8.2 on PATH.");
+}
+console.log("\nprofile publication");
+const publisher = join(process.cwd(), "scripts/publish-signals.sh");
+const publicationDir = await mkdtemp(join(tmpdir(), "signals-publish-"));
 try {
+  const bin = join(publicationDir, "bin");
+  await mkdir(bin);
+  await writeFile(join(bin, "sleep"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  await writeFile(join(bin, "gh"), String.raw`#!/usr/bin/env bash
+set -eu
+case "$1 $2" in
+  'api '*)
+    sha="$(git rev-parse HEAD)"
+    [[ "$CASE" != wrong_sha ]] || sha=0000000000000000000000000000000000000000
+    event=push
+    [[ "$CASE" != wrong_event ]] || event=pull_request
+    if [[ "$CASE" == dispatch && ! -f "$TEST_ROOT/dispatched" ]]; then
+      data='{"workflow_runs":[]}'
+    else
+      data="{\"workflow_runs\":[{\"id\":123,\"head_sha\":\"$sha\",\"head_branch\":\"$UPDATE_BRANCH\",\"event\":\"$event\"}]}"
+    fi
+    [[ "$2" == *'/actions/workflows/ci.yml/runs?'* ]] || exit 9
+    printf '%s' "$data" | jq -r "$4"
+    ;;
+  'workflow run') touch "$TEST_ROOT/dispatched" ;;
+  'run watch') [[ "$CASE" != failed ]] ;;
+  'run view')
+    if [[ "$CASE" == drift ]]; then git --git-dir="$TEST_ROOT/remote" update-ref refs/heads/main "$DRIFT_SHA"; fi
+    job=validate
+    [[ "$CASE" != wrong_job ]] || job=unrelated
+    printf '{"headSha":"%s","headBranch":"%s","status":"completed","conclusion":"success","jobs":[{"name":"%s","conclusion":"success"}]}' "$(git rev-parse HEAD)" "$UPDATE_BRANCH" "$job" | jq -r "$7"
+    ;;
+  *) exit 9 ;;
+esac
+`, { mode: 0o755 });
+  for (const scenario of ["success", "dispatch", "failed", "wrong_sha", "wrong_event", "wrong_job", "drift", "unchanged"]) {
+    const root = join(publicationDir, scenario);
+    await mkdir(root);
+    const env = { PATH: bin + ":" + process.env.PATH, HOME: root, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_AUTHOR_NAME: "test", GIT_AUTHOR_EMAIL: "test@example.invalid", GIT_COMMITTER_NAME: "test", GIT_COMMITTER_EMAIL: "test@example.invalid", GITHUB_REPOSITORY: "test/profile", UPDATE_BRANCH: "automation/update-signals-panel", TEST_ROOT: root, CASE: scenario };
+    const git = (...args) => {
+      const result = spawnSync("git", args, { cwd: root, env, encoding: "utf8" });
+      if (result.status !== 0) throw new Error(result.stderr);
+      return result.stdout.trim();
+    };
+    git("init", "--bare", "remote");
+    git("init", "-b", "main", "local");
+    const local = join(root, "local");
+    await mkdir(join(local, "assets"));
+    await writeFile(join(local, "assets/signals.png"), "original");
+    git("-C", local, "add", "assets/signals.png");
+    git("-C", local, "commit", "-m", "Initial image");
+    git("-C", local, "remote", "add", "origin", join(root, "remote"));
+    git("-C", local, "push", "origin", "main");
+    env.GITHUB_SHA = git("-C", local, "rev-parse", "HEAD");
+    env.DRIFT_SHA = git("-C", local, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "Concurrent update");
+    git("-C", local, "push", "origin", env.DRIFT_SHA + ":refs/heads/drift");
+    if (scenario !== "unchanged") await writeFile(join(local, "assets/signals.png"), "updated");
+    const result = spawnSync("bash", [publisher], { cwd: local, env, encoding: "utf8", timeout: 30_000 });
+    const succeeds = ["success", "dispatch", "unchanged"].includes(scenario);
+    assert("publisher " + scenario + " exit", result.status === 0, succeeds);
+    const remoteHead = git("--git-dir", join(root, "remote"), "rev-parse", "main");
+    const expected = scenario === "drift" ? env.DRIFT_SHA : succeeds && scenario !== "unchanged" ? git("-C", local, "rev-parse", "HEAD") : env.GITHUB_SHA;
+    assert("publisher " + scenario + " preserves expected main", remoteHead, expected);
+  }
   for (const [name, version, delegates, expected] of [
     ["valid", "7.1.2-25", "freetype png rsvg", true],
     ["wrong version", "7.1.2-24", "freetype png rsvg", false],

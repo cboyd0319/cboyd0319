@@ -68,11 +68,10 @@ jobs:
   publish:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     needs: render
     permissions:
       actions: write
-      checks: read
       contents: write
     steps:
       - name: Check out repository
@@ -91,67 +90,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PROFILE_UPDATE_TOKEN || github.token }}
           UPDATE_BRANCH: automation/update-signals-panel
-        run: |
-          set -euo pipefail
-
-          if git diff --quiet -- assets/signals.png; then
-            echo "No changes - skipping PR."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin \
-            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}"
-          git fetch origin "$UPDATE_BRANCH:refs/remotes/origin/$UPDATE_BRANCH" || true
-          git checkout -B "$UPDATE_BRANCH"
-          git add assets/signals.png
-          git commit -m "Update signals panel"
-          commit_sha="$(git rev-parse HEAD)"
-          git push --force-with-lease origin "HEAD:$UPDATE_BRANCH"
-
-          check_started=0
-          for attempt in {1..6}; do
-            status="$(gh api \
-              "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/check-runs?check_name=validate" \
-              --jq '.check_runs[0].status // ""')"
-
-            if [ -n "$status" ]; then
-              check_started=1
-              break
-            fi
-
-            sleep 5
-          done
-
-          if [ "$check_started" -eq 0 ]; then
-            gh workflow run ci.yml --ref "$UPDATE_BRANCH"
-          fi
-
-          for attempt in {1..60}; do
-            conclusion="$(gh api \
-              "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/check-runs?check_name=validate" \
-              --jq '.check_runs[0].conclusion // ""')"
-
-            case "$conclusion" in
-              success)
-                # The real CI "validate" check-run is attached to commit_sha and
-                # satisfies the branch ruleset's required status check directly, so
-                # we push the validated commit without minting our own status.
-                git push origin "HEAD:main"
-                echo "Updated main with validated signals panel: $commit_sha"
-                exit 0
-                ;;
-              failure|cancelled|timed_out|action_required)
-                echo "validate concluded $conclusion for $commit_sha"
-                exit 1
-                ;;
-            esac
-
-            if [ "$attempt" -eq 60 ]; then
-              echo "Timed out waiting for validate on $commit_sha"
-              exit 1
-            fi
-
-            sleep 5
-          done
+        run: ./scripts/publish-signals.sh

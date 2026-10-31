@@ -4,6 +4,7 @@
  * Returns a dash sentinel for invalid dates and "just now" for future or sub-minute dates.
  */
 export function relativeTime(dateStr, now = Date.now()) {
+  if (typeof dateStr !== "string" || !dateStr.trim() || !Number.isFinite(now)) return "—";
   const date = new Date(dateStr);
   if (!isFinite(date.getTime())) return "—";
   const diffMs = now - date.getTime();
@@ -46,8 +47,9 @@ export function selectRepos(allRepos, limit = 5) {
   return allRepos
     .filter((repo) => {
       if (!repo || typeof repo !== "object") return false;
-      if (repo.fork || repo.archived) return false;
-      return Number.isFinite(new Date(repo.pushed_at).getTime());
+      if (repo.fork || repo.archived || repo.private || (repo.visibility && repo.visibility !== "public")) return false;
+      return typeof repo.name === "string" && repo.name.trim()
+        && typeof repo.pushed_at === "string" && Number.isFinite(Date.parse(repo.pushed_at));
     })
     .sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime())
     .slice(0, maxRepos)
@@ -56,6 +58,7 @@ export function selectRepos(allRepos, limit = 5) {
       description: repo.description ?? null,
       language: repo.language ?? null,
       updated_label: repo.updated_label ?? null,
+      status: repo.status ?? null,
       pushed_at: repo.pushed_at,
       stargazers_count: Number.isFinite(Number(repo.stargazers_count))
         ? Math.max(0, Number(repo.stargazers_count))

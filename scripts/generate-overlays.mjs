@@ -5,6 +5,9 @@ import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import {
   OUTPUT_WIDTH as DEFAULT_OUTPUT_WIDTH,
   USERNAME,
+  applyLayoutEnv,
+  envNumber,
+  staticRepos,
 } from "./lib/config.mjs";
 import { github } from "./lib/github.mjs";
 import { loadFontAsDataUrl } from "./lib/font.mjs";
@@ -20,6 +23,8 @@ import {
 import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { selectRepos } from "./lib/utils.mjs";
 import { validateSignals } from "./validate-signals.mjs";
+
+export { applyLayoutEnv } from "./lib/config.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = join(SCRIPT_DIR, "..");
@@ -50,12 +55,6 @@ const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+2+1";
 const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-1-1";
 
-function envNumber(name, fallback) {
-  if (!process.env[name]?.trim()) return fallback;
-  const value = Number(process.env[name]);
-  return Number.isFinite(value) ? value : fallback;
-}
-
 function rgbaMultiplyArgs(path, opacity) {
   return [
     "(",
@@ -72,110 +71,54 @@ function rgbaMultiplyArgs(path, opacity) {
   ];
 }
 
-function minutesAgo(minutes) {
-  return new Date(Date.now() - minutes * 60_000).toISOString();
-}
-
-function daysAgo(days) {
-  return new Date(Date.now() - days * 24 * 60 * 60_000).toISOString();
-}
-
 const OUTPUT_WIDTH = envNumber("OUTPUT_WIDTH", DEFAULT_OUTPUT_WIDTH);
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
-function relativeDate(value) {
-  const text = String(value ?? "").trim().toLowerCase();
-  const match = text.match(/^(\d+)(m|h|d|w|mo)\s+ago$/);
-  if (!match) return new Date().toISOString();
-  const amount = Number(match[1]);
-  const unit = match[2];
-  if (unit === "m") return minutesAgo(amount);
-  if (unit === "h") return new Date(Date.now() - amount * 60 * 60_000).toISOString();
-  if (unit === "d") return daysAgo(amount);
-  if (unit === "w") return daysAgo(amount * 7);
-  if (unit === "mo") return daysAgo(amount * 30);
-  return new Date().toISOString();
-}
-
-function staticRepos(staticData) {
-  return staticData.repos.map((repo) => ({
-    name: repo.name,
-    language: repo.language,
-    language_pct: repo.language_pct,
-    updated_label: repo.updated,
-    pushed_at: relativeDate(repo.updated),
-    stargazers_count: repo.stars,
-    fork: false,
-    archived: false,
-  }));
-}
-
-function rectQuad(box) {
-  return [
-    { x: box.left, y: box.top },
-    { x: box.left + box.width, y: box.top },
-    { x: box.left + box.width, y: box.top + box.height },
-    { x: box.left, y: box.top + box.height },
-  ];
-}
-
-function applyBoxEnv(box, prefix) {
-  const adjusted = {
-    ...box,
-    left: envNumber(`${prefix}_LEFT`, box.left),
-    top: envNumber(`${prefix}_TOP`, box.top),
-    width: envNumber(`${prefix}_WIDTH`, box.width),
-    height: envNumber(`${prefix}_HEIGHT`, box.height),
-  };
-  const geometryChanged = adjusted.left !== box.left
-    || adjusted.top !== box.top
-    || adjusted.width !== box.width
-    || adjusted.height !== box.height;
-  return {
-    ...adjusted,
-    quad: geometryChanged ? rectQuad(adjusted) : box.quad,
-  };
-}
-
-export function applyLayoutEnv(layout) {
-  return {
-    ...layout,
-    board: applyBoxEnv(layout.board, "BOARD"),
-    toolchain: applyBoxEnv(layout.toolchain, "TOOLCHAIN"),
-  };
-}
-
-async function fetchOwnerRepos() {
-  const repos = [];
+export async function fetchOwnerRepos() {
+  const repos = new Map();
   for (let page = 1; page <= MAX_REPO_PAGES; page++) {
-    const chunk = await github(`/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=${REPOS_PER_PAGE}&page=${page}`);
+    const chunk = await github(`/users/${USERNAME}/repos?type=owner&sort=full_name&direction=asc&per_page=${REPOS_PER_PAGE}&page=${page}`);
     if (!Array.isArray(chunk)) throw new Error("GitHub repos API returned an unexpected payload.");
-    repos.push(...chunk);
-    if (chunk.length < REPOS_PER_PAGE) return repos;
+    for (const repo of chunk) {
+      if (!repo || typeof repo !== "object" || typeof repo.private !== "boolean"
+        || typeof repo.owner?.login !== "string") {
+        throw new Error("GitHub repos API returned invalid repository metadata.");
+      }
+      if (repo.private || (repo.visibility && repo.visibility !== "public")
+        || repo.owner.login.toLowerCase() !== USERNAME.toLowerCase()) continue;
+      if (typeof repo.name !== "string" || !/^[\w.-]+$/.test(repo.name) || [".", ".."].includes(repo.name)
+        || typeof repo.fork !== "boolean" || typeof repo.archived !== "boolean"
+        || (repo.language !== null && typeof repo.language !== "string")
+        || (repo.pushed_at !== null && (typeof repo.pushed_at !== "string" || !Number.isFinite(Date.parse(repo.pushed_at))))
+        || !Number.isSafeInteger(repo.stargazers_count) || repo.stargazers_count < 0) {
+        throw new Error("GitHub repos API returned invalid repository metadata.");
+      }
+      const { name, fork, archived, language, pushed_at, stargazers_count } = repo;
+      repos.set(name.toLowerCase(), { name, fork, archived, language, pushed_at, stargazers_count });
+    }
+    if (chunk.length < REPOS_PER_PAGE) return [...repos.values()];
   }
-  return repos;
+  throw new Error("GitHub repository pagination limit reached; refusing incomplete data.");
 }
 
 async function fetchRepoLanguages(repoName) {
-  try {
-    const data = await github(`/repos/${USERNAME}/${encodeURIComponent(repoName)}/languages`);
-    if (!data || Array.isArray(data) || typeof data !== "object") return null;
-    return data;
-  } catch (err) {
-    console.warn(`Language fetch failed for ${repoName}: ${err.message}`);
-    return null;
+  const data = await github(`/repos/${USERNAME}/${encodeURIComponent(repoName)}/languages`);
+  if (!data || Array.isArray(data) || typeof data !== "object"
+    || Object.entries(data).some(([name, bytes]) => !name.trim() || !Number.isSafeInteger(bytes) || bytes < 0)) {
+    throw new Error("GitHub languages API returned an unexpected payload.");
   }
+  return data;
 }
 
-async function withLanguageBreakdowns(repos) {
+export async function withLanguageBreakdowns(repos) {
   const activeRepos = ownActiveRepos(repos);
-  const languagesByName = new Map(await Promise.all(activeRepos.map(async (repo) => [
-    repo.name,
-    await fetchRepoLanguages(repo.name),
-  ])));
+  const languagesByName = new Map();
+  for (const repo of activeRepos) {
+    languagesByName.set(repo.name, await fetchRepoLanguages(repo.name));
+  }
   return repos.map((repo) => {
     const languages = languagesByName.get(repo.name);
     return languages ? { ...repo, languages } : repo;

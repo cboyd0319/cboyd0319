@@ -4,9 +4,9 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
+import { LANGUAGE_COLORS, staticRepos, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
-import { applyLayoutEnv, panelTextureArgs } from "./generate-overlays.mjs";
+import { applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, withLanguageBreakdowns } from "./generate-overlays.mjs";
 import { extractFontUrls, replaceFontUrlsWithDataUrls } from "./lib/font.mjs";
 import { github } from "./lib/github.mjs";
 import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick } from "./lib/imagemagick.mjs";
@@ -96,6 +96,8 @@ assert("4 weeks ago", relativeTime(at(days(28)), BASE), "4w ago");
 assert("5 weeks -> 1mo", relativeTime(at(days(35)), BASE), "1mo ago");
 assert("2 months ago", relativeTime(at(days(62)), BASE), "2mo ago");
 assert("invalid date -> dash", relativeTime("not-a-date", BASE), "—");
+assert("null date -> dash", relativeTime(null, BASE), "—");
+assert("invalid reference clock -> dash", relativeTime(at(0), NaN), "—");
 assert("future date -> just now", relativeTime(at(-mins(5)), BASE), "just now");
 
 // escapeHtml
@@ -190,6 +192,11 @@ assertDeepEqual("invalid entries are skipped", selectRepos([null, "bad", makeRep
 assertDeepEqual("invalid pushed_at is skipped", selectRepos([makeRepo("bad-date", 0, { pushed_at: "not-a-date" }), makeRepo("valid", 1)]).map((repo) => repo.name), ["valid"]);
 assertDeepEqual("all forked -> []", selectRepos([makeRepo("a", 0, { fork: true })]), []);
 assertDeepEqual("all archived -> []", selectRepos([makeRepo("b", 0, { archived: true })]), []);
+assertDeepEqual("private repositories are excluded", selectRepos([makeRepo("hidden", 0, { private: true })]), []);
+assertDeepEqual("internal repositories are excluded", selectRepos([makeRepo("hidden", 0, { visibility: "internal" })]), []);
+assertDeepEqual("null push dates are excluded", selectRepos([makeRepo("empty", 0, { pushed_at: null })]), []);
+assertDeepEqual("invalid names are excluded", selectRepos([makeRepo(null, 0)]), []);
+assert("explicit fixture status survives selection", selectRepos([makeRepo("fixture", 0, { status: "DEPS CHECK" })])[0].status, "DEPS CHECK");
 
 // Output shape
 const [first] = selected;
@@ -215,6 +222,10 @@ assert("profile repo language is excluded", languageNames.includes("JavaScript")
 assert("active repo language is included", languageNames.includes("Python"), true);
 assert("fork language is excluded", languageNames.includes("Go"), false);
 assert("archived language is excluded", languageNames.includes("Rust"), false);
+assertDeepEqual("private language data is excluded", languageSummary([makeRepo("hidden", 0, { private: true, languages: { Python: 10 } })]), []);
+assertDeepEqual("empty language maps do not invent byte counts", languageSummary([makeRepo("empty", 0, { language: "Python", languages: {} })]), []);
+assertDeepEqual("language byte counts reject coercible values", languageSummary([makeRepo("bad", 0, { languages: { Python: "100", Shell: -10 } })]), []);
+assertDeepEqual("equal language shares total exactly 100", languageSummary(["A", "B", "C"].map((language) => makeRepo(language, 0, { language }))).map(({ pct }) => pct), [34, 33, 33]);
 
 const manyLanguageSummary = languageSummary([
   makeRepo("python-a", 1, { language: "Python" }),
@@ -422,12 +433,10 @@ console.log("\nconfig validation");
 const sceneConfig = JSON.parse(await readFile("config/scene.json", "utf8"));
 const staticDataConfig = JSON.parse(await readFile("config/static-data.json", "utf8"));
 const layoutConfig = JSON.parse(await readFile("config/layouts/subway-default.json", "utf8"));
-const staticReposForTests = staticDataConfig.repos.map((repo, index) => makeRepo(repo.name, index + 1, {
-  language: repo.language,
-  language_pct: repo.language_pct,
-  updated_label: repo.updated,
-  stargazers_count: repo.stars,
-}));
+const staticReposForTests = staticRepos(staticDataConfig);
+assertDeepEqual("static timestamps are deterministic", staticRepos(staticDataConfig), staticReposForTests);
+assertDeepEqual("static selection sorts age labels instead of fixture order", selectRepos(staticRepos({ repos: [...staticDataConfig.repos].reverse() }), 2).map(({ name }) => name), ["JobSentinel", "PyGuard"]);
+await assertRejects("invalid static ages fail closed", () => staticRepos({ repos: [{ updated: "yesterday" }] }), /Invalid static/);
 const selectedStaticRepos = selectRepos(staticReposForTests, 2);
 const staticRepoSvg = renderRepositorySignSvg({
   repos: selectedStaticRepos,
@@ -645,7 +654,52 @@ await assertResolvesDeepEqual(
 );
 assert("github retried once", githubFetchCalls, 2);
 
-globalThis.fetch = originalFetch;
+try {
+  for (const status of [403, 429]) {
+    githubFetchCalls = 0;
+    globalThis.fetch = async () => { githubFetchCalls++; return jsonResponse(status, { message: "sensitive response body" }); };
+    await assertRejects(`github stops on ${status} without exposing response bodies`, () => github("/test", { retryDelayMs: 0 }), new RegExp(`^GitHub API ${status}$`));
+    assert(`github does not retry ${status}`, githubFetchCalls, 1);
+  }
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => { githubFetchCalls++; return jsonResponse(503, {}); };
+  await assertRejects("github bounds transient HTTP retries", () => github("/test", { retryDelayMs: 0 }), /^GitHub API 503$/);
+  assert("github exhausts exactly four attempts", githubFetchCalls, 4);
+
+  const publicRepo = (name, overrides = {}) => makeRepo(name, 0, { private: false, owner: { login: "cboyd0319" }, ...overrides });
+  let page = 0;
+  globalThis.fetch = async () => jsonResponse(200, ++page === 1
+    ? Array.from({ length: 100 }, (_, index) => publicRepo(`repo-${index}`))
+    : [publicRepo("repo-0"), publicRepo("private", { private: true }), publicRepo("foreign", { owner: { login: "elsewhere" } })]);
+  const fetchedRepos = await fetchOwnerRepos();
+  assert("owner repository pagination fetches all pages", page, 2);
+  assert("owner boundary filters private, foreign and duplicate entries", fetchedRepos.length, 100);
+  assert("API output drops unneeded fields", "owner" in fetchedRepos[0], false);
+  globalThis.fetch = async () => jsonResponse(200, [publicRepo("broken", { stargazers_count: "12" })]);
+  await assertRejects("malformed repository data fails closed", fetchOwnerRepos, /invalid repository metadata/);
+  globalThis.fetch = async () => jsonResponse(200, Array.from({ length: 100 }, (_, index) => publicRepo(`repo-${index}`)));
+  await assertRejects("pagination cap cannot silently publish partial totals", fetchOwnerRepos, /pagination limit/);
+
+  let activeRequests = 0;
+  let peakRequests = 0;
+  globalThis.fetch = async () => {
+    activeRequests++;
+    peakRequests = Math.max(peakRequests, activeRequests);
+    await Promise.resolve();
+    activeRequests--;
+    return jsonResponse(200, { Python: 100 });
+  };
+  const enriched = await withLanguageBreakdowns([makeRepo("one", 0), makeRepo("two", 0)]);
+  assert("language requests run serially", peakRequests, 1);
+  assert("all active repositories receive language maps", enriched.every((repo) => repo.languages.Python === 100), true);
+  globalThis.fetch = async () => jsonResponse(403, {});
+  await assertRejects("language failures abort incomplete refreshes", () => withLanguageBreakdowns([makeRepo("one", 0)]), /^GitHub API 403$/);
+  globalThis.fetch = async () => jsonResponse(200, { Python: "100" });
+  await assertRejects("malformed language bytes fail closed", () => withLanguageBreakdowns([makeRepo("one", 0)]), /unexpected payload/);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
 
 // Summary
 

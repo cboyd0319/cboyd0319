@@ -1,7 +1,7 @@
 const TIMEOUT_MS = 12_000;
 const RETRY_DELAY_MS = 2_000;
 const MAX_RETRIES = 3;
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
 
 function buildHeaders() {
   const headers = {
@@ -33,22 +33,31 @@ export async function github(path, { maxRetries = MAX_RETRIES, retryDelayMs = RE
         headers: buildHeaders(),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
-    } catch (err) {
+    } catch {
       if (attempt < maxRetries) {
         await waitForRetry(retryDelayMs);
         continue;
       }
-      throw err;
+      throw new Error("GitHub API request failed after retries.");
     }
 
-    if (response.ok) return response.json();
+    if (response.ok) {
+      try {
+        return await response.json();
+      } catch {
+        throw new Error("GitHub API returned invalid JSON.");
+      }
+    }
+
+    await response.body?.cancel();
 
     if (shouldRetryStatus(response.status) && attempt < maxRetries) {
       await waitForRetry(retryDelayMs);
       continue;
     }
 
-    throw new Error(`GitHub API ${response.status}: ${await response.text()}`);
+    // Stop this refresh on rate limits; keep the last image until the next run.
+    throw new Error(`GitHub API ${response.status}`);
   }
 
   throw new Error(`GitHub API request to ${path} exhausted retries`);

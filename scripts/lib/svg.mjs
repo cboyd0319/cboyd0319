@@ -31,7 +31,9 @@ const BOARD_COLS = {
 };
 
 export function ownActiveRepos(allRepos) {
-  return allRepos.filter((repo) => repo && !repo.fork && !repo.archived && repo.name !== USERNAME);
+  return allRepos.filter((repo) => repo && typeof repo.name === "string" && repo.name.trim()
+    && !repo.fork && !repo.archived && !repo.private && (!repo.visibility || repo.visibility === "public")
+    && repo.name.toLowerCase() !== USERNAME.toLowerCase());
 }
 
 export function languageSummary(allRepos) {
@@ -45,20 +47,21 @@ export function languageSummary(allRepos) {
     const totals = new Map();
     for (const languages of languageMaps) {
       for (const [language, bytes] of Object.entries(languages)) {
-        const count = Number(bytes);
-        if (!Number.isFinite(count) || count <= 0) continue;
+        const count = bytes;
+        if (!Number.isSafeInteger(count) || count <= 0) continue;
         totals.set(language, (totals.get(language) || 0) + count);
       }
     }
-    if (totals.size) return summarizeLanguageEntries([...totals.entries()]);
+    return summarizeLanguageEntries([...totals.entries()]);
   }
 
-  const weighted = activeRepos.filter((repo) => repo.language && Number.isFinite(Number(repo.language_pct)));
+  const weighted = activeRepos.filter((repo) => typeof repo.language === "string" && repo.language
+    && Number.isFinite(repo.language_pct) && repo.language_pct > 0);
 
   if (weighted.length) {
     const totals = new Map();
     for (const repo of weighted) {
-      totals.set(repo.language, (totals.get(repo.language) || 0) + Math.max(0, Number(repo.language_pct)));
+      totals.set(repo.language, (totals.get(repo.language) || 0) + repo.language_pct);
     }
 
     return summarizeLanguageEntries([...totals.entries()], { sort: false });
@@ -66,7 +69,7 @@ export function languageSummary(allRepos) {
 
   const counts = new Map();
   for (const repo of activeRepos) {
-    if (!repo.language) continue;
+    if (typeof repo.language !== "string" || !repo.language) continue;
     counts.set(repo.language, (counts.get(repo.language) || 0) + 1);
   }
 
@@ -87,9 +90,15 @@ function summarizeLanguageEntries(entries, { sort = true } = {}) {
       ]
     : sorted;
 
-  return summarized.map(([name, count]) => ({
+  const shares = summarized.map(([, count]) => count / total * 100);
+  const percentages = shares.map(Math.floor);
+  const remainderOrder = shares.map((_, index) => index)
+    .sort((a, b) => (shares[b] - percentages[b]) - (shares[a] - percentages[a]));
+  const remainder = 100 - percentages.reduce((sum, value) => sum + value, 0);
+  for (const index of remainderOrder.slice(0, remainder)) percentages[index]++;
+  return summarized.map(([name], index) => ({
     name,
-    pct: Math.round((count / total) * 100),
+    pct: percentages[index],
     color: PANEL_ACCENTS[name] || LANGUAGE_COLORS.get(name) || TOKYO_NEON_PALETTE.lavender,
   }));
 }

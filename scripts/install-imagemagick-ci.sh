@@ -62,6 +62,8 @@ cd "${tmpdir}/ImageMagick-${version}"
 ./configure \
   --prefix="${prefix}" \
   --disable-dependency-tracking \
+  --disable-docs \
+  --without-magick-plus-plus \
   --without-perl \
   --with-fontconfig=yes \
   --with-freetype=yes \

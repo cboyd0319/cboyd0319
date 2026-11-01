@@ -4,6 +4,7 @@ set -euo pipefail
 : "${GITHUB_REPOSITORY:?}"
 : "${GITHUB_SHA:?}"
 : "${UPDATE_BRANCH:?}"
+: "${GH_TOKEN:?PROFILE_UPDATE_TOKEN is required to trigger push CI before publication.}"
 
 if [[ "$UPDATE_BRANCH" != automation/update-signals-panel ]]; then
   echo "Only automation/update-signals-panel may stage image updates." >&2
@@ -40,27 +41,24 @@ git commit -m "Update signals panel"
 commit_sha="$(git rev-parse HEAD)"
 remote_git push --force-with-lease="refs/heads/$UPDATE_BRANCH:$old_sha" origin "HEAD:refs/heads/$UPDATE_BRANCH"
 
-# Select only this workflow's run for the exact image commit and branch.
+# Only push checks qualify for the protected main update; poll Actions REST for fine-grained PATs.
 run_id=""
+validated=false
 for attempt in {1..180}; do
-  run_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$commit_sha&branch=$UPDATE_BRANCH&per_page=100" \
-    --jq "[.workflow_runs[] | select(.head_sha == \"$commit_sha\" and .head_branch == \"$UPDATE_BRANCH\" and (.event == \"push\" or .event == \"workflow_dispatch\"))] | first | .id // empty")"
-  if [[ -n "$run_id" ]]; then break; fi
-  if [[ "$attempt" -eq 6 ]]; then
-    gh workflow run ci.yml --ref "$UPDATE_BRANCH"
+  run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$commit_sha&branch=$UPDATE_BRANCH&event=push&per_page=100" \
+    --jq "[.workflow_runs[] | select(.path == \".github/workflows/ci.yml\" and .head_sha == \"$commit_sha\" and .head_branch == \"$UPDATE_BRANCH\" and .event == \"push\")] | first | [.id // \"\", .status // \"\", .conclusion // \"\"] | @tsv")"
+  IFS=$'\t' read -r run_id run_status conclusion <<< "$run"
+  if [[ "$run_status" == completed ]]; then
+    if [[ "$conclusion" == success ]]; then
+      validated="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=latest&per_page=100" \
+        --jq "any(.jobs[]; .head_sha == \"$commit_sha\" and .name == \"validate\" and .status == \"completed\" and .conclusion == \"success\")")"
+    fi
+    break
   fi
   sleep 5
 done
-if [[ -z "$run_id" ]]; then
-  echo "Timed out waiting for CI on $commit_sha"
-  exit 1
-fi
-
-gh run watch "$run_id" --exit-status
-validated="$(gh run view "$run_id" --json headSha,headBranch,status,conclusion,jobs \
-  --jq ".headSha == \"$commit_sha\" and .headBranch == \"$UPDATE_BRANCH\" and .status == \"completed\" and .conclusion == \"success\" and any(.jobs[]; .name == \"validate\" and .conclusion == \"success\")")"
 if [[ "$validated" != true ]]; then
-  echo "CI did not validate $commit_sha"
+  echo "Push CI did not validate $commit_sha within the polling window."
   exit 1
 fi
 remote_git fetch origin main

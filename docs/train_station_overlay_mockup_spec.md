@@ -42,7 +42,7 @@ Use **two transparent overlay canvases**, then perspective-warp each canvas onto
 
 Do **not** draw opaque cards, panels, rounded boxes, dashboard containers, or chart backgrounds. The physical black display surface already exists in the artwork. The overlay should be text and subtle surface treatment only.
 
-ImageMagick 7.1.2-25 `magick` CLI is the required raster pipeline. JavaScript may fetch public data and emit SVG/text templates, but ImageMagick owns SVG rasterization, opacity/glass composition, blur/softness, perspective distortion, scene compositing, resizing, metadata inspection, PNG optimization, and debug crops. Do not use custom JavaScript homography/pixel sampling, Sharp, resvg, browser screenshots, or dashboard renderers for these raster steps.
+ImageMagick 7.1.2-34 `magick` CLI is the required raster pipeline. JavaScript may fetch public data and emit SVG/text templates, but ImageMagick owns SVG rasterization, opacity/glass composition, blur/softness, perspective distortion, scene compositing, resizing, metadata inspection, PNG optimization, and debug crops. Do not use custom JavaScript homography/pixel sampling, Sharp, resvg, browser screenshots, or dashboard renderers for these raster steps.
 
 ### Recommended render pipeline
 
@@ -194,10 +194,8 @@ radius/feather:                       20–40 px on design canvas
 
 Use only a tiny readable-layer soften pass.
 
-```txt
-primary readable layer soften: 0.08 sigma
-emissive glow blur:           0.75 sigma
-```
+Exact readable-layer softening and emissive blur values live in
+[`scripts/generate-overlays.mjs`](../scripts/generate-overlays.mjs).
 
 Do not blur the primary text enough to make it muddy. The intent is to remove vector-perfect edges, not hide the text.
 
@@ -205,10 +203,7 @@ Do not blur the primary text enough to make it muddy. The intent is to remove ve
 
 Do not add uniform sign-level noise. The base image already owns dark-glass texture and station grime. If more texture is needed, use a tiny text-layer ImageMagick noise pass only.
 
-```txt
-text-layer Gaussian noise attenuation: 0.012
-sign-level noise rectangles:          off
-```
+Text-layer attenuation is code-owned; sign-level noise rectangles stay off.
 
 ### Through-glass absorption
 
@@ -293,10 +288,7 @@ row 2:              127 px
 
 Use one station-style red rule and faint row discipline:
 
-```txt
-Marunouchi stripe y: 47 px
-row rule y:         107 px
-```
+Exact line positions live in [`scripts/lib/svg.mjs`](../scripts/lib/svg.mjs).
 
 Both should be extremely faint. No visible table grid.
 
@@ -330,15 +322,7 @@ Show the two most recently updated public owner repositories. This should read l
 
 ### Header stripe
 
-```txt
-x1: 36
-x2: 456
-y: 47
-stroke: --marunouchi-red
-opacity: 0.20
-width: 2 px
-softness: 0.2–0.3 px
-```
+Use the renderer's subdued Marunouchi stripe; geometry and opacity are code-owned.
 
 ---
 
@@ -350,10 +334,11 @@ Render the two most recent public owner repositories as one row each:
 time | status LED + status | repository | language | stars
 ```
 
-Preferred statuses are `ACTIVE` for the freshest repo and `DEPS CHECK` when the
-row needs review. Status can also come from repository metadata when provided.
+Live rows use `ACTIVE` for non-archived public repositories; no dependency-health
+check is implied. `DEPS CHECK` is an explicit static fixture value.
 Keep recency and status subordinate to the repository name. Keep the language
 and star metadata in a strict right-side column.
+Large star counts use compact notation to stay within their column.
 
 ---
 
@@ -367,7 +352,7 @@ Default recommendation: **off**. Do not render `ACTIVE REPOS` or `TOTAL` metrics
 
 Render only the small status LEDs beside status text. These are physical
 indicator dots paired with the status word, not chart marks or row bullets.
-Use muted green for healthy active rows and controlled red only for review or
+Use muted green for active rows and controlled red only for review or
 dependency-check states. Exact geometry and opacity live in the renderer.
 
 ---

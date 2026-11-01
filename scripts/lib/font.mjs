@@ -1,85 +1,12 @@
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
-const TIMEOUT_MS = 10_000;
-const FONT_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../fonts");
-const LOCAL_FONTS = [
-  { family: "Noto Sans JP", weight: 500, file: "NotoSansJP-Medium.woff2", format: "woff2", mediaType: "font/woff2" },
-  { family: "Noto Sans JP", weight: 700, file: "NotoSansJP-Bold.woff2", format: "woff2", mediaType: "font/woff2" },
-];
-const FONT_SHEETS = [
-  `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700&text=${encodeURIComponent("リポジトリ・シグナル渋谷新宿出口安全第一都市地下鉄未来を接続")}`,
-];
-const FONT_URL_RE = /url\(\s*['"]?(https:\/\/fonts\.gstatic\.com\/[^'")\s]+)['"]?\s*\)/g;
+export const FONTCONFIG_FILE = fileURLToPath(new URL("../../config/fonts.conf", import.meta.url));
 
-export function extractFontUrls(css) {
-  return [...new Set([...String(css).matchAll(FONT_URL_RE)].map((match) => match[1]))];
-}
-
-export function replaceFontUrlsWithDataUrls(css, fontDataUrls) {
-  return String(css).replace(FONT_URL_RE, (match, url) => fontDataUrls.get(url) ?? match);
-}
-
-/**
- * Fetches display fonts from Google Fonts and embeds font files into CSS
- * so generated SVG panels can render consistently through ImageMagick and GitHub Actions.
- *
- * Returns { css: string } on success or { css: "" } on any failure,
- * in which case the caller should fall back to the station-signage sans stack.
- */
-export async function loadFontAsDataUrl() {
-  const localCss = await loadLocalFonts();
-  if (localCss) return { css: localCss };
-
-  const chunks = [];
-  for (const cssUrl of FONT_SHEETS) {
-    chunks.push(await loadFontSheet(cssUrl));
-  }
-
-  return { css: chunks.filter(Boolean).join("\n") };
-}
-
-async function loadLocalFonts() {
-  try {
-    const chunks = [];
-    for (const font of LOCAL_FONTS) {
-      const data = await readFile(join(FONT_DIR, font.file));
-      chunks.push(`@font-face{font-family:"${font.family}";src:url("data:${font.mediaType};base64,${data.toString("base64")}") format("${font.format}");font-weight:${font.weight};font-style:normal;font-display:block;}`);
-    }
-    return chunks.join("\n");
-  } catch (err) {
-    if (err?.code !== "ENOENT") console.warn(`Local font load failed (${err.message}); trying network fonts`);
-    return "";
-  }
-}
-
-async function loadFontSheet(cssUrl) {
-  try {
-    const cssRes = await fetch(cssUrl, {
-      headers: { "user-agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!cssRes.ok) throw new Error(`Font CSS ${cssRes.status}`);
-
-    let css = await cssRes.text();
-    const urls = extractFontUrls(css);
-    if (!urls.length) throw new Error("Font URL not found in CSS - Google Fonts format may have changed");
-
-    const fontDataUrls = new Map();
-    for (const url of urls) {
-      const fontRes = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-      if (!fontRes.ok) throw new Error(`Font file ${fontRes.status}`);
-
-      const mediaType = fontRes.headers.get("content-type")?.split(";")[0] || "font/ttf";
-      const buf = await fontRes.arrayBuffer();
-      const dataUrl = `url("data:${mediaType};base64,${Buffer.from(buf).toString("base64")}")`;
-      fontDataUrls.set(url, dataUrl);
-    }
-
-    return replaceFontUrlsWithDataUrls(css, fontDataUrls);
-  } catch (err) {
-    console.warn(`Font load failed (${err.message}); using system fallback`);
-    return "";
+export async function verifyDisplayFont() {
+  const font = await readFile(new URL("../../fonts/NotoSansJP-VF.ttf", import.meta.url));
+  if (createHash("sha256").update(font).digest("hex") !== "f4b373b226668ee33a6e54b02823dcd2d1209f17159f777421ae8c2275160369") {
+    throw new Error("Bundled Noto Sans JP font checksum mismatch.");
   }
 }

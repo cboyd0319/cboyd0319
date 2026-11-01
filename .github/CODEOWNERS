@@ -2,3 +2,6 @@
 /.github/dependabot.yml @cboyd0319
 /package.json @cboyd0319
 /package-lock.json @cboyd0319
+/.node-version @cboyd0319
+/scripts/install-imagemagick-ci.sh @cboyd0319
+/scripts/publish-signals.sh @cboyd0319

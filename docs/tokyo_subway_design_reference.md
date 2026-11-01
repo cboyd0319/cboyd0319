@@ -191,15 +191,15 @@ The palette should be controlled and cinematic, not carnival-neon. The final ima
 | `#6faac2` | Fluorescent cyan spill |
 | `#9fcbd8` | Pale station light |
 | `#5b85a6` | Blue-gray highlights |
-| `#b5d5dc` | Data sign text glow |
+| `#b5d5dc` | Station-light highlights |
 
 ### Neon accents
 
 | Color | Use |
 | --- | --- |
 | `#ec6cc8` | Limited magenta signage |
-| `#7e5dc8` | Purple route stripe / chart accent |
-| `#1fc7e6` | Cyan data bars |
+| `#7e5dc8` | Small environmental purple accents |
+| `#1fc7e6` | Restrained cyan vending-machine light |
 | `#f07848` | Amber/orange train sign and warm lamps |
 
 ### Muted environmental tones
@@ -418,8 +418,7 @@ The image is decorative, but visible data should be internally consistent.
 
 - `Repository Signals`
 - `M03`
-- `JobSentinel`
-- `PyGuard`
+- `JobSentinel` and `PyGuard` in static mode.
 - Update age, status, language, and star count for each displayed repository.
 - The two rows must be the two most recently updated public owner repositories, not a hard-coded pair in live mode.
 - Static Code Mix split, sorted by displayed share:
@@ -489,7 +488,7 @@ The overlay script should:
 - Read the real source image dimensions.
 - Scale coordinates from source-image pixels.
 - Generate SVG panels for the main sign and toolchain sign.
-- Rasterize transparent text/mark plates, soften, perspective-warp, composite, resize, optimize, and inspect those panels with ImageMagick 7.1.2-25 `magick`.
+- Rasterize transparent text/mark plates, soften, perspective-warp, composite, resize, optimize, and inspect those panels with ImageMagick 7.1.2-34 `magick`.
 - Keep full-panel black cards, heavy haze, and scanlines out of the renderer. The current low-opacity unlit LED pattern, glass wash, screen falloff, and glare are clipped to the display surfaces and owned by code.
 - Validate PNG output before writing.
 - Support static data mode for deterministic design output.
@@ -514,19 +513,19 @@ Current canon:
 
 The production path should be deterministic:
 
-- Local font files in `fonts/` are used before network font fetching.
-- `scripts/validate-signals.mjs` checks required repository strings, toolchain strings, static totals, layout bounds, transit canon contradictions, output dimensions, and that only the configured overlay regions differ from the blank source image.
+- The pinned [display font](../fonts/README.md) is checksum-verified and loaded through repository-local Fontconfig, without network or system-font fallback.
+- `scripts/validate-signals.mjs` checks configuration and SVG templates, using static templates in a fresh checkout. The committed image must be a static opaque PNG of the expected size, with changes in both sign regions, no exterior changes, and no excessive regional change. These pixel checks catch coarse corruption; they do not read or verify text inside the PNG.
 - Static mode should preserve configured labels such as `1mo ago` instead of recomputing them into equivalent but visually different strings.
 - `assets/generated/` crops should be used for sign-level QA before judging the full image.
 
 ### 11.3.3 Rasterization and Optimization
 
-ImageMagick 7.1.2-25 `magick` is the default and required raster pipeline. JavaScript generates SVG/text templates; ImageMagick owns SVG rasterization, panel compositing, perspective distortion, final scene compositing, metadata checks, debug crops, and PNG optimization. `npm run render-magick-panels` writes ImageMagick raster crops for inspection.
+ImageMagick 7.1.2-34 `magick` is the default and required raster pipeline. JavaScript generates SVG/text templates; ImageMagick owns SVG rasterization, panel compositing, perspective distortion, final scene compositing, metadata checks, debug crops, and PNG optimization. `npm run render-magick-panels` writes ImageMagick raster crops for inspection.
 
 Default optimization should preserve truecolor PNG quality. Palette quantization belongs in the explicit web-size path:
 
 - `npm run optimize`: truecolor PNG optimization for the committed profile image, including metadata stripping and removal of the unused opaque alpha channel.
-- `npm run optimize:web`: palette/quantized PNG optimization for experiments when size matters more than gradient fidelity.
+- `npm run optimize:web`: write the quantized experiment to ignored `assets/generated/signals-web.png`, preserving the production image.
 
 ### 11.4 Coordinate tuning
 
@@ -801,7 +800,7 @@ Keep the main sign readable at:
 Before final use:
 
 - Desaturate the image briefly to check shape readability.
-- Shrink to 640px wide and verify that the main sign still reads.
+- Check text at the [profile display scale](train_station_overlay_mockup_spec.md#github-profile-scale-test); use smaller thumbnails to assess composition.
 - Confirm there is no fake text corruption in the key sign areas.
 - Confirm repo names and numbers are consistent.
 - Confirm overlay panels align to physical sign surfaces.
@@ -860,7 +859,7 @@ Before accepting a final render:
 
 ### README-scale QA
 
-Inspect `assets/generated/debug-full-small.png` at 640px width:
+Inspect `assets/generated/debug-full-small.png` at the [profile display scale](train_station_overlay_mockup_spec.md#github-profile-scale-test):
 
 - [ ] `REPOSITORY SIGNALS` reads.
 - [ ] Repo names read.

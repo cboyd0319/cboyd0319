@@ -1,13 +1,14 @@
 import { fileURLToPath } from "node:url";
-import { dirname, isAbsolute, join } from "node:path";
-import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { copyFile, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 
 import {
-  OUTPUT_WIDTH as DEFAULT_OUTPUT_WIDTH,
   USERNAME,
+  applyLayoutEnv,
+  resolveBackground,
+  staticRepos,
 } from "./lib/config.mjs";
 import { github } from "./lib/github.mjs";
-import { loadFontAsDataUrl } from "./lib/font.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
 import {
   alphaMultiplyArgs,
@@ -15,11 +16,16 @@ import {
   identifyImage,
   perspectiveControlPoints,
   pngOutput,
+  rasterizeSvg,
+  waitForWriters,
   runMagick,
+  withImageLock,
 } from "./lib/imagemagick.mjs";
-import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
-import { selectRepos } from "./lib/utils.mjs";
-import { validateSignals } from "./validate-signals.mjs";
+import { fitRepositoryRows, ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+import { relativeTime, selectRepos } from "./lib/utils.mjs";
+import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
+
+export { applyLayoutEnv } from "./lib/config.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = join(SCRIPT_DIR, "..");
@@ -27,7 +33,6 @@ const ASSET_DIR = join(SCRIPT_DIR, "../assets");
 const OUT_DIR = ASSET_DIR;
 const GENERATED_DIR = join(ASSET_DIR, "generated");
 const CONFIG_DIR = join(ROOT_DIR, "config");
-const BACKGROUND = process.env.BACKGROUND?.trim() || "subway_blank_original.png";
 const REPOS_PER_PAGE = 100;
 const MAX_REPO_PAGES = 10;
 const REPO_LIMIT = 2;
@@ -36,7 +41,6 @@ const STATIC = ["1", "true", "yes"].includes(String(process.env.STATIC ?? "").to
 const LIVE_SMOKE = process.argv.includes("--live") || ["1", "true", "yes"].includes(String(process.env.LIVE_SMOKE ?? "").toLowerCase());
 const USE_STATIC_DATA = STATIC || (SMOKE && !LIVE_SMOKE);
 const MIN_IMAGE_BYTES = 10_000;
-const PANEL_RASTER_DENSITY = 144;
 const PANEL_SOFTEN_SIGMA = 0.10;
 const PANEL_TEXTURE_ATTENUATE = 0.018;
 const PANEL_TEXTURE_SEED = 31;
@@ -49,12 +53,6 @@ const CHROMATIC_ABERRATION_RED_SHIFT = "+1+0";
 const CHROMATIC_ABERRATION_BLUE_SHIFT = "-1+0";
 const TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT = "+2+1";
 const TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT = "-1-1";
-
-function envNumber(name, fallback) {
-  if (!process.env[name]?.trim()) return fallback;
-  const value = Number(process.env[name]);
-  return Number.isFinite(value) ? value : fallback;
-}
 
 function rgbaMultiplyArgs(path, opacity) {
   return [
@@ -72,110 +70,52 @@ function rgbaMultiplyArgs(path, opacity) {
   ];
 }
 
-function minutesAgo(minutes) {
-  return new Date(Date.now() - minutes * 60_000).toISOString();
-}
-
-function daysAgo(days) {
-  return new Date(Date.now() - days * 24 * 60 * 60_000).toISOString();
-}
-
-const OUTPUT_WIDTH = envNumber("OUTPUT_WIDTH", DEFAULT_OUTPUT_WIDTH);
-
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
-function relativeDate(value) {
-  const text = String(value ?? "").trim().toLowerCase();
-  const match = text.match(/^(\d+)(m|h|d|w|mo)\s+ago$/);
-  if (!match) return new Date().toISOString();
-  const amount = Number(match[1]);
-  const unit = match[2];
-  if (unit === "m") return minutesAgo(amount);
-  if (unit === "h") return new Date(Date.now() - amount * 60 * 60_000).toISOString();
-  if (unit === "d") return daysAgo(amount);
-  if (unit === "w") return daysAgo(amount * 7);
-  if (unit === "mo") return daysAgo(amount * 30);
-  return new Date().toISOString();
-}
-
-function staticRepos(staticData) {
-  return staticData.repos.map((repo) => ({
-    name: repo.name,
-    language: repo.language,
-    language_pct: repo.language_pct,
-    updated_label: repo.updated,
-    pushed_at: relativeDate(repo.updated),
-    stargazers_count: repo.stars,
-    fork: false,
-    archived: false,
-  }));
-}
-
-function rectQuad(box) {
-  return [
-    { x: box.left, y: box.top },
-    { x: box.left + box.width, y: box.top },
-    { x: box.left + box.width, y: box.top + box.height },
-    { x: box.left, y: box.top + box.height },
-  ];
-}
-
-function applyBoxEnv(box, prefix) {
-  const adjusted = {
-    ...box,
-    left: envNumber(`${prefix}_LEFT`, box.left),
-    top: envNumber(`${prefix}_TOP`, box.top),
-    width: envNumber(`${prefix}_WIDTH`, box.width),
-    height: envNumber(`${prefix}_HEIGHT`, box.height),
-  };
-  const geometryChanged = adjusted.left !== box.left
-    || adjusted.top !== box.top
-    || adjusted.width !== box.width
-    || adjusted.height !== box.height;
-  return {
-    ...adjusted,
-    quad: geometryChanged ? rectQuad(adjusted) : box.quad,
-  };
-}
-
-export function applyLayoutEnv(layout) {
-  return {
-    ...layout,
-    board: applyBoxEnv(layout.board, "BOARD"),
-    toolchain: applyBoxEnv(layout.toolchain, "TOOLCHAIN"),
-  };
-}
-
-async function fetchOwnerRepos() {
-  const repos = [];
+export async function fetchOwnerRepos() {
+  const repos = new Map();
   for (let page = 1; page <= MAX_REPO_PAGES; page++) {
-    const chunk = await github(`/users/${USERNAME}/repos?type=owner&sort=pushed&direction=desc&per_page=${REPOS_PER_PAGE}&page=${page}`);
+    const chunk = await github(`/users/${USERNAME}/repos?type=owner&sort=full_name&direction=asc&per_page=${REPOS_PER_PAGE}&page=${page}`);
     if (!Array.isArray(chunk)) throw new Error("GitHub repos API returned an unexpected payload.");
-    repos.push(...chunk);
-    if (chunk.length < REPOS_PER_PAGE) return repos;
+    for (const repo of chunk) {
+      if (!repo || typeof repo !== "object" || typeof repo.private !== "boolean"
+        || typeof repo.owner?.login !== "string") {
+        throw new Error("GitHub repos API returned invalid repository metadata.");
+      }
+      if (repo.private || (repo.visibility && repo.visibility !== "public")
+        || repo.owner.login.toLowerCase() !== USERNAME.toLowerCase()) continue;
+      if (typeof repo.name !== "string" || !/^[\w.-]+$/.test(repo.name) || [".", ".."].includes(repo.name)
+        || typeof repo.fork !== "boolean" || typeof repo.archived !== "boolean"
+        || (repo.language !== null && typeof repo.language !== "string")
+        || (repo.pushed_at !== null && (typeof repo.pushed_at !== "string" || !Number.isFinite(Date.parse(repo.pushed_at))))
+        || !Number.isSafeInteger(repo.stargazers_count) || repo.stargazers_count < 0) {
+        throw new Error("GitHub repos API returned invalid repository metadata.");
+      }
+      const { name, fork, archived, language, pushed_at, stargazers_count } = repo;
+      repos.set(name.toLowerCase(), { name, fork, archived, language, pushed_at, stargazers_count });
+    }
+    if (chunk.length < REPOS_PER_PAGE) return [...repos.values()];
   }
-  return repos;
+  throw new Error("GitHub repository pagination limit reached; refusing incomplete data.");
 }
 
 async function fetchRepoLanguages(repoName) {
-  try {
-    const data = await github(`/repos/${USERNAME}/${encodeURIComponent(repoName)}/languages`);
-    if (!data || Array.isArray(data) || typeof data !== "object") return null;
-    return data;
-  } catch (err) {
-    console.warn(`Language fetch failed for ${repoName}: ${err.message}`);
-    return null;
+  const data = await github(`/repos/${USERNAME}/${encodeURIComponent(repoName)}/languages`, { publicOnly: true });
+  if (!data || Array.isArray(data) || typeof data !== "object"
+    || Object.entries(data).some(([name, bytes]) => !name.trim() || !Number.isSafeInteger(bytes) || bytes < 0)) {
+    throw new Error("GitHub languages API returned an unexpected payload.");
   }
+  return data;
 }
 
-async function withLanguageBreakdowns(repos) {
+export async function withLanguageBreakdowns(repos) {
   const activeRepos = ownActiveRepos(repos);
-  const languagesByName = new Map(await Promise.all(activeRepos.map(async (repo) => [
-    repo.name,
-    await fetchRepoLanguages(repo.name),
-  ])));
+  const languagesByName = new Map();
+  for (const repo of activeRepos) {
+    languagesByName.set(repo.name, await fetchRepoLanguages(repo.name));
+  }
   return repos.map((repo) => {
     const languages = languagesByName.get(repo.name);
     return languages ? { ...repo, languages } : repo;
@@ -185,6 +125,8 @@ async function withLanguageBreakdowns(repos) {
 async function collectData(staticData) {
   const allRepos = USE_STATIC_DATA ? staticRepos(staticData) : await withLanguageBreakdowns(await fetchOwnerRepos());
   const repos = selectRepos(ownActiveRepos(allRepos), REPO_LIMIT);
+  const now = Date.now();
+  for (const repo of repos) repo.updated_label ??= relativeTime(repo.pushed_at, now);
   return { allRepos, repos };
 }
 
@@ -232,19 +174,10 @@ async function validateImage(path, expectedWidth) {
   }
 }
 
-async function rasterizeSvg(svgPath, outputPath, { width, height }) {
-  await runMagick([
-    "-background",
-    "none",
-    "-density",
-    String(PANEL_RASTER_DENSITY),
-    svgPath,
-    "-resize",
-    `${width}x${height}!`,
-    "-alpha",
-    "on",
-    pngOutput(outputPath),
-  ]);
+export async function publishSignals(candidatePath, outputPath, validation) {
+  await validateSignals({ ...validation, output: candidatePath });
+  await validateImage(candidatePath, validation.width);
+  await rename(candidatePath, outputPath);
 }
 
 export function panelTextureArgs(attenuate = PANEL_TEXTURE_ATTENUATE) {
@@ -315,25 +248,19 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
   glowTintStrength = PANEL_GLOW_TINT_STRENGTH,
 }) {
   const basePath = join(GENERATED_DIR, `${prefix}-base.png`);
-  const softenedPath = join(GENERATED_DIR, `${prefix}-softened.png`);
   const panelPath = join(GENERATED_DIR, `${prefix}.png`);
   const emissivePath = join(GENERATED_DIR, `${prefix}-emissive.png`);
-  const emissiveTexturedPath = join(GENERATED_DIR, `${prefix}-emissive-textured.png`);
   const glowPath = join(GENERATED_DIR, `${prefix}-glow.png`);
   const macroGlowPath = join(GENERATED_DIR, `${prefix}-macro-glow.png`);
 
-  await Promise.all([
+  await waitForWriters([
     rasterizeSvg(svgPath, basePath, { width, height }),
     rasterizeSvg(emissiveSvgPath, emissivePath, { width, height }),
   ]);
-  await softenReadablePanel(basePath, softenedPath, panelSoftenSigma);
-  await Promise.all([
-    copyFile(softenedPath, panelPath),
-    copyFile(emissivePath, emissiveTexturedPath),
-  ]);
-  await Promise.all([
+  await softenReadablePanel(basePath, panelPath, panelSoftenSigma);
+  await waitForWriters([
     runMagick([
-      emissiveTexturedPath,
+      emissivePath,
       "-blur",
       "0x0.75",
       "-modulate",
@@ -344,14 +271,13 @@ async function renderPanelLayers(prefix, svgPath, emissiveSvgPath, {
       String(glowTintStrength),
       pngOutput(glowPath),
     ]),
-    renderMacroGlow(emissiveTexturedPath, macroGlowPath, { glowTintColor, glowTintStrength }),
+    renderMacroGlow(emissivePath, macroGlowPath, { glowTintColor, glowTintStrength }),
   ]);
 
   return {
     panel: panelPath,
     glow: glowPath,
     macroGlow: macroGlowPath,
-    emissive: emissiveTexturedPath,
   };
 }
 
@@ -368,27 +294,16 @@ async function renderOverlayCanvas(layers, outputPath, { width, height, emissive
   await runMagick(args);
 }
 
-async function applyChromaticAberration(inputPath, outputPath, {
+export async function applyChromaticAberration(inputPath, outputPath, {
   redShift = CHROMATIC_ABERRATION_RED_SHIFT,
   blueShift = CHROMATIC_ABERRATION_BLUE_SHIFT,
 } = {}) {
   await runMagick([
-    inputPath,
-    "-channel",
-    "R",
-    "-roll",
-    redShift,
-    "-blur",
-    "0x0.3",
-    "+channel",
-    "-channel",
-    "B",
-    "-roll",
-    blueShift,
-    "-blur",
-    "0x0.3",
-    "+channel",
-    pngOutput(outputPath),
+    "(", inputPath, "-channel", "R", "-separate", "-roll", redShift, "-blur", "0x0.3", ")",
+    "(", inputPath, "-channel", "G", "-separate", ")",
+    "(", inputPath, "-channel", "B", "-separate", "-roll", blueShift, "-blur", "0x0.3", ")",
+    "(", inputPath, "-alpha", "extract", ")",
+    "-channel", "RGBA", "-combine", "+channel", "-colorspace", "sRGB", pngOutput(outputPath),
   ]);
 }
 
@@ -463,22 +378,22 @@ async function writeDebugCrops(outputPath, { board, toolchain, width, height }) 
   const toolSign = expandedCrop(toolchain, { width, height, pad: 12 });
   const mainCropPath = join(GENERATED_DIR, "debug-main-sign.png");
   const toolCropPath = join(GENERATED_DIR, "debug-toolchain.png");
-  await Promise.all([
+  await waitForWriters([
     copyFile(outputPath, join(GENERATED_DIR, "debug-full.png")),
     cropImage(outputPath, mainCropPath, mainSign),
     cropImage(outputPath, toolCropPath, toolSign),
-    runMagick([outputPath, "-resize", "640x", pngOutput(join(GENERATED_DIR, "debug-full-small.png"))]),
+    runMagick([outputPath, "-resize", "1070x", pngOutput(join(GENERATED_DIR, "debug-full-small.png"))]),
     runMagick([outputPath, "-colorspace", "Gray", pngOutput(join(GENERATED_DIR, "debug-full-gray.png"))]),
     runMagick([outputPath, "-blur", "0x2", pngOutput(join(GENERATED_DIR, "debug-full-blur2.png"))]),
   ]);
-  await Promise.all([
+  await waitForWriters([
     runMagick([mainCropPath, "-resize", `${mainSign.width * 2}x`, pngOutput(join(GENERATED_DIR, "debug-main-sign-2x.png"))]),
     runMagick([toolCropPath, "-resize", `${toolSign.width * 2}x`, pngOutput(join(GENERATED_DIR, "debug-toolchain-2x.png"))]),
   ]);
 }
 
 async function main() {
-  const [{ version }] = await Promise.all([
+  const [{ version }] = await waitForWriters([
     ensureImageMagick(),
     mkdir(OUT_DIR, { recursive: true }),
     mkdir(GENERATED_DIR, { recursive: true }),
@@ -486,15 +401,14 @@ async function main() {
   const scene = await readJson(join(CONFIG_DIR, "scene.json"));
   const staticData = await readJson(join(CONFIG_DIR, "static-data.json"));
   const layout = applyLayoutEnv(await readJson(join(CONFIG_DIR, "layouts/subway-default.json")));
-  const backgroundPath = isAbsolute(BACKGROUND) ? BACKGROUND : join(ASSET_DIR, BACKGROUND);
+  const backgroundPath = resolveBackground(ASSET_DIR);
   const metadata = await identifyImage(backgroundPath);
   const sourceWidth = metadata.width || layout.sourceWidth;
   const sourceHeight = metadata.height || layout.sourceHeight;
-  const scale = OUTPUT_WIDTH / sourceWidth;
-  const outputHeight = Math.round(sourceHeight * scale);
+  const { width: OUTPUT_WIDTH, height: outputHeight } = expectedOutputSize(layout);
   const quadScale = {
-    scaleX: OUTPUT_WIDTH / sourceWidth,
-    scaleY: outputHeight / sourceHeight,
+    scaleX: OUTPUT_WIDTH / layout.sourceWidth,
+    scaleY: outputHeight / layout.sourceHeight,
   };
 
   const { allRepos, repos } = await collectData(staticData);
@@ -503,26 +417,24 @@ async function main() {
     return;
   }
 
-  const { css: fontCss } = await loadFontAsDataUrl();
   const boardDesign = designSize(layout.board);
   const toolchainDesign = designSize(layout.toolchain);
   const boardQuad = scaledQuad(layout.board, quadScale, "board");
   const toolchainQuad = scaledQuad(layout.toolchain, quadScale, "toolchain");
   const board = boxFromQuad(boardQuad);
   const toolchain = boxFromQuad(toolchainQuad);
+  const fittedRepos = await fitRepositoryRows(repos);
   const repositorySvg = renderRepositorySignSvg({
-    repos,
+    repos: fittedRepos,
     allRepos,
-    fontCss,
     width: boardDesign.width,
     height: boardDesign.height,
     outputWidth: boardDesign.width,
     outputHeight: boardDesign.height,
   });
   const repositoryEmissiveSvg = renderRepositorySignSvg({
-    repos,
+    repos: fittedRepos,
     allRepos,
-    fontCss,
     width: boardDesign.width,
     height: boardDesign.height,
     outputWidth: boardDesign.width,
@@ -531,7 +443,6 @@ async function main() {
   });
   const toolchainSvg = renderToolchainSpectrumSvg({
     allRepos,
-    fontCss,
     width: toolchainDesign.width,
     height: toolchainDesign.height,
     outputWidth: toolchainDesign.width,
@@ -539,7 +450,6 @@ async function main() {
   });
   const toolchainEmissiveSvg = renderToolchainSpectrumSvg({
     allRepos,
-    fontCss,
     width: toolchainDesign.width,
     height: toolchainDesign.height,
     outputWidth: toolchainDesign.width,
@@ -551,7 +461,8 @@ async function main() {
   const repositoryEmissiveSvgPath = join(GENERATED_DIR, "repository-sign-emissive.svg");
   const toolchainSvgPath = join(GENERATED_DIR, "toolchain-spectrum.svg");
   const toolchainEmissiveSvgPath = join(GENERATED_DIR, "toolchain-spectrum-emissive.svg");
-  await Promise.all([
+  await validateSignals({ scene, staticData, layout, repositorySvg, toolchainSvg });
+  await waitForWriters([
     writeFile(repositorySvgPath, repositorySvg),
     writeFile(repositoryEmissiveSvgPath, repositoryEmissiveSvg),
     writeFile(toolchainSvgPath, toolchainSvg),
@@ -572,7 +483,7 @@ async function main() {
   const toolchainOverlayPath = join(GENERATED_DIR, "toolchain-overlay.png");
   const repositoryGlarePath = join(GENERATED_DIR, "repository-glare.png");
   const toolchainGlarePath = join(GENERATED_DIR, "toolchain-glare.png");
-  await Promise.all([
+  await waitForWriters([
     renderOverlayCanvas(repositoryLayers, repositoryOverlayPath, {
       width: boardDesign.width,
       height: boardDesign.height,
@@ -603,14 +514,14 @@ async function main() {
   const toolchainGlareWarpedPath = join(GENERATED_DIR, "toolchain-glare-warped.png");
   const repositoryAberratedPath = join(GENERATED_DIR, "repository-overlay-aberrated.png");
   const toolchainAberratedPath = join(GENERATED_DIR, "toolchain-overlay-aberrated.png");
-  await Promise.all([
+  await waitForWriters([
     applyChromaticAberration(repositoryOverlayPath, repositoryAberratedPath),
     applyChromaticAberration(toolchainOverlayPath, toolchainAberratedPath, {
       redShift: TOOLCHAIN_CHROMATIC_ABERRATION_RED_SHIFT,
       blueShift: TOOLCHAIN_CHROMATIC_ABERRATION_BLUE_SHIFT,
     }),
   ]);
-  await Promise.all([
+  await waitForWriters([
     perspectiveWarpPng(repositoryAberratedPath, repositoryWarpedPath, {
       width: boardDesign.width,
       height: boardDesign.height,
@@ -640,6 +551,7 @@ async function main() {
   const resizedBackgroundPath = join(GENERATED_DIR, "background-resized.png");
   const compositedPath = join(GENERATED_DIR, "signals-composited.png");
   const outputPath = join(OUT_DIR, "signals.png");
+  const candidatePath = join(GENERATED_DIR, "signals-candidate.png");
   await runMagick([
     backgroundPath,
     "-resize",
@@ -674,20 +586,18 @@ async function main() {
     "-composite",
     pngOutput(compositedPath),
   ]);
-  await applyFinalGrade(compositedPath, outputPath, {
+  await applyFinalGrade(compositedPath, candidatePath, {
     width: OUTPUT_WIDTH,
     height: outputHeight,
     workDir: GENERATED_DIR,
   });
 
-  await validateImage(outputPath, OUTPUT_WIDTH);
-  await validateSignals({
+  await publishSignals(candidatePath, outputPath, {
     scene,
     staticData,
     layout,
     repositorySvg,
     toolchainSvg,
-    output: outputPath,
     background: backgroundPath,
     width: OUTPUT_WIDTH,
     height: outputHeight,
@@ -701,6 +611,6 @@ async function main() {
   console.log(`assets/signals.png written with ImageMagick ${version} and ${repos.length} repo rows`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  await main();
+if (import.meta.main) {
+  await withImageLock(join(OUT_DIR, "signals.png"), main);
 }

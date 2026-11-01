@@ -1,16 +1,18 @@
 // Focused tests - no live network calls.
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./lib/config.mjs";
-import { applyLayoutEnv, panelTextureArgs } from "./generate-overlays.mjs";
-import { extractFontUrls, replaceFontUrlsWithDataUrls } from "./lib/font.mjs";
+import { staticRepos } from "./lib/config.mjs";
+import { applyFinalGrade } from "./lib/final-grade.mjs";
+import { applyChromaticAberration, applyLayoutEnv, fetchOwnerRepos, panelTextureArgs, publishSignals, withLanguageBreakdowns } from "./generate-overlays.mjs";
+import { verifyDisplayFont } from "./lib/font.mjs";
 import { github } from "./lib/github.mjs";
-import { parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick } from "./lib/imagemagick.mjs";
-import { languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+import { APNG_PROBE, parseMagickVersion, perspectiveControlPoints, pngOutput, REQUIRED_MAGICK_VERSION, runMagick, rasterizeSvg, waitForWriters, withImageLock } from "./lib/imagemagick.mjs";
+import { fitRepositoryRows, languageSummary, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { relativeTime, escapeHtml, shortText, selectRepos } from "./lib/utils.mjs";
-import { expectedOutputSize, validateSignals } from "./validate-signals.mjs";
+import { assertOverlayPixelMetrics, expectedOutputSize, renderStaticSvgs, validateSignals } from "./validate-signals.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -52,6 +54,15 @@ async function assertResolvesDeepEqual(label, fn, expected) {
   }
 }
 
+async function assertRejects(label, fn, pattern) {
+  try {
+    await fn();
+    assert(label, "accepted", "rejected");
+  } catch (err) {
+    assert(label, pattern.test(err.message), true);
+  }
+}
+
 function jsonResponse(status, body) {
   return {
     status,
@@ -85,6 +96,8 @@ assert("4 weeks ago", relativeTime(at(days(28)), BASE), "4w ago");
 assert("5 weeks -> 1mo", relativeTime(at(days(35)), BASE), "1mo ago");
 assert("2 months ago", relativeTime(at(days(62)), BASE), "2mo ago");
 assert("invalid date -> dash", relativeTime("not-a-date", BASE), "—");
+assert("null date -> dash", relativeTime(null, BASE), "—");
+assert("invalid reference clock -> dash", relativeTime(at(0), NaN), "—");
 assert("future date -> just now", relativeTime(at(-mins(5)), BASE), "just now");
 
 // escapeHtml
@@ -179,6 +192,11 @@ assertDeepEqual("invalid entries are skipped", selectRepos([null, "bad", makeRep
 assertDeepEqual("invalid pushed_at is skipped", selectRepos([makeRepo("bad-date", 0, { pushed_at: "not-a-date" }), makeRepo("valid", 1)]).map((repo) => repo.name), ["valid"]);
 assertDeepEqual("all forked -> []", selectRepos([makeRepo("a", 0, { fork: true })]), []);
 assertDeepEqual("all archived -> []", selectRepos([makeRepo("b", 0, { archived: true })]), []);
+assertDeepEqual("private repositories are excluded", selectRepos([makeRepo("hidden", 0, { private: true })]), []);
+assertDeepEqual("internal repositories are excluded", selectRepos([makeRepo("hidden", 0, { visibility: "internal" })]), []);
+assertDeepEqual("null push dates are excluded", selectRepos([makeRepo("empty", 0, { pushed_at: null })]), []);
+assertDeepEqual("invalid names are excluded", selectRepos([makeRepo(null, 0)]), []);
+assert("explicit fixture status survives selection", selectRepos([makeRepo("fixture", 0, { status: "DEPS CHECK" })])[0].status, "DEPS CHECK");
 
 // Output shape
 const [first] = selected;
@@ -194,23 +212,28 @@ console.log("\nlanguageSummary");
 
 const languageNames = languageSummary([
   null,
-  makeRepo("cboyd0319", 0, { language: "JavaScript" }),
-  makeRepo("PyGuard", 1, { language: "Python" }),
-  makeRepo("forked", 2, { fork: true, language: "Go" }),
-  makeRepo("archived", 3, { archived: true, language: "Rust" }),
+  makeRepo("cboyd0319", 0, { languages: { JavaScript: 1 } }),
+  makeRepo("PyGuard", 1, { languages: { Python: 1 } }),
+  makeRepo("forked", 2, { fork: true, languages: { Go: 1 } }),
+  makeRepo("archived", 3, { archived: true, languages: { Rust: 1 } }),
 ]).map((item) => item.name);
 
 assert("profile repo language is excluded", languageNames.includes("JavaScript"), false);
 assert("active repo language is included", languageNames.includes("Python"), true);
 assert("fork language is excluded", languageNames.includes("Go"), false);
 assert("archived language is excluded", languageNames.includes("Rust"), false);
+assertDeepEqual("private language data is excluded", languageSummary([makeRepo("hidden", 0, { private: true, languages: { Python: 10 } })]), []);
+assertDeepEqual("missing byte maps do not invent language shares", languageSummary([makeRepo("missing", 0, { language: "Python" })]), []);
+assertDeepEqual("empty language maps do not invent byte counts", languageSummary([makeRepo("empty", 0, { language: "Python", languages: {} })]), []);
+assertDeepEqual("language byte counts reject coercible values", languageSummary([makeRepo("bad", 0, { languages: { Python: "100", Shell: -10 } })]), []);
+assertDeepEqual("equal language shares total exactly 100", languageSummary(["A", "B", "C"].map((language) => makeRepo(language, 0, { languages: { [language]: 1 } }))).map(({ pct }) => pct), [34, 33, 33]);
 
 const manyLanguageSummary = languageSummary([
-  makeRepo("python-a", 1, { language: "Python" }),
-  makeRepo("python-b", 2, { language: "Python" }),
-  makeRepo("python-c", 3, { language: "Python" }),
+  makeRepo("python-a", 1, { languages: { Python: 1 } }),
+  makeRepo("python-b", 2, { languages: { Python: 1 } }),
+  makeRepo("python-c", 3, { languages: { Python: 1 } }),
   ...["JavaScript", "TypeScript", "Rust", "Go", "Ruby", "Java", "Kotlin", "Swift", "HTML"].map(
-    (language, i) => makeRepo(`lang-${i}`, i + 4, { language }),
+    (language, i) => makeRepo(`lang-${i}`, i + 4, { languages: { [language]: 1 } }),
   ),
 ]);
 
@@ -235,6 +258,14 @@ assertDeepEqual(
     { name: "PowerShell", pct: 15 },
   ],
 );
+
+assertDeepEqual("weighted overflow keeps the largest language visible", languageSummary(
+  ["A", "B", "C", "D", "Rust"].map((language, index) => makeRepo(language, 1, {
+    language, language_pct: index === 4 ? 96 : 1,
+  })),
+).map(({ name, pct }) => ({ name, pct })), [
+  { name: "Rust", pct: 96 }, { name: "A", pct: 1 }, { name: "B", pct: 1 }, { name: "Other", pct: 2 },
+]);
 
 const byteLanguageSummary = languageSummary([
   makeRepo("frontend", 1, {
@@ -267,13 +298,18 @@ const partialByteLanguageSummary = languageSummary([
 ]).map(({ name, pct }) => ({ name, pct }));
 
 assertDeepEqual(
-  "partial language-map coverage still uses byte totals, not the count fallback",
+  "partial language-map coverage still uses byte totals, without inventing shares for missing maps",
   partialByteLanguageSummary,
   [
     { name: "Python", pct: 75 },
     { name: "Shell", pct: 25 },
   ],
 );
+
+for (const unsupported of [{ security_status: "FAIL" }, { dependabot_alerts: 1 }, { security_alerts: 1 }, { vulnerability_alerts: 1 }, { archived: true }]) {
+  const svg = renderRepositorySignSvg({ repos: [makeRepo("public", 0, unsupported)], width: 500, height: 160 });
+  assert("uncollected metadata cannot imply a security status: " + Object.keys(unsupported)[0], svg.includes('data-status-led="ACTIVE"'), true);
+}
 
 const escapedRepoSvg = renderRepositorySignSvg({
   repos: [
@@ -288,7 +324,6 @@ const escapedRepoSvg = renderRepositorySignSvg({
       stargazers_count: 1,
     }),
   ],
-  fontDataUrl: null,
   width: 500,
   height: 160,
 });
@@ -300,6 +335,12 @@ assert("repository SVG includes Japanese status header", escapedRepoSvg.includes
 assert("repository SVG escapes repo text", escapedRepoSvg.includes("&lt;bad &amp; repo&gt;"), true);
 assert("repository SVG omits raw unsafe repo text", escapedRepoSvg.includes("<bad & repo>"), false);
 assert("repository SVG omits station target label", escapedRepoSvg.includes("新高円寺"), false);
+
+const publicRowsSvg = renderRepositorySignSvg({
+  repos: [makeRepo("first", 1), makeRepo("second", 2)],
+  width: 500, height: 160,
+});
+assert("public rows do not invent dependency alerts", publicRowsSvg.includes(">DEPS CHECK<"), false);
 
 const longRepoSvg = renderRepositorySignSvg({
   repos: [
@@ -314,7 +355,6 @@ const longRepoSvg = renderRepositorySignSvg({
       stargazers_count: 47,
     }),
   ],
-  fontDataUrl: null,
   width: 500,
   height: 160,
 });
@@ -329,7 +369,6 @@ const toolchainSvg = renderToolchainSpectrumSvg({
     makeRepo("sh", 3, { language: "Shell", language_pct: 25 }),
     makeRepo("ps", 4, { language: "PowerShell", language_pct: 15 }),
   ],
-  fontDataUrl: null,
   width: 131,
   height: 420,
 });
@@ -349,12 +388,17 @@ const liveLanguageToolchainSvg = renderToolchainSpectrumSvg({
     makeRepo("b", 2, { language: "Python", languages: { Python: 120, Ruby: 40 } }),
     makeRepo("c", 3, { language: "Shell", languages: { Shell: 20, JavaScript: 20 } }),
   ],
-  fontDataUrl: null,
   width: 131,
   height: 420,
 });
 assert("toolchain SVG uses full Rust label", liveLanguageToolchainSvg.includes(">RUST<"), true);
 assert("toolchain SVG uses full Other label", liveLanguageToolchainSvg.includes(">OTHER<"), true);
+
+const longLanguageSvg = renderToolchainSpectrumSvg({
+  allRepos: [makeRepo("notebook", 1, { languages: { "Jupyter Notebook": 1 } })],
+  width: 131, height: 420,
+});
+assert("long language label stays clear of percentages", longLanguageSvg.includes(">JUPYTER...<"), true);
 
 // ImageMagick helper
 
@@ -386,23 +430,9 @@ assertDeepEqual("panel texture disabled emits no args", panelTextureArgs(0), [])
 
 console.log("\nfont loader");
 
-const quotedFontA = "https://fonts.gstatic.com/s/notosansjp/v1/a.woff2";
-const quotedFontB = "https://fonts.gstatic.com/s/notosansjp/v1/b.woff2";
-const fontCss = [
-  `@font-face{src:url("${quotedFontA}") format("woff2")}`,
-  `@font-face{src:url('${quotedFontB}') format("woff2")}`,
-  `@font-face{src:url( ${quotedFontA} ) format("woff2")}`,
-  "@font-face{src:url(https://example.com/not-font.woff2) format(\"woff2\")}",
-].join("\n");
-const embeddedFontCss = replaceFontUrlsWithDataUrls(fontCss, new Map([
-  [quotedFontA, 'url("data:font/woff2;base64,AAA")'],
-  [quotedFontB, 'url("data:font/woff2;base64,BBB")'],
-]));
-
-assertDeepEqual("extracts quoted and unquoted Google font URLs", extractFontUrls(fontCss), [quotedFontA, quotedFontB]);
-assert("replaces quoted Google font URLs", embeddedFontCss.includes(quotedFontA) || embeddedFontCss.includes(quotedFontB), false);
-assert("keeps non-Google URLs untouched", embeddedFontCss.includes("https://example.com/not-font.woff2"), true);
-assert("embeds requested font data URLs", embeddedFontCss.includes("data:font/woff2;base64,AAA") && embeddedFontCss.includes("data:font/woff2;base64,BBB"), true);
+await verifyDisplayFont();
+assert("bundled display font matches its pinned checksum", true, true);
+assert("SVG relies on the bundled Fontconfig font", escapedRepoSvg.includes("@font-face"), false);
 
 // config validation
 
@@ -411,23 +441,19 @@ console.log("\nconfig validation");
 const sceneConfig = JSON.parse(await readFile("config/scene.json", "utf8"));
 const staticDataConfig = JSON.parse(await readFile("config/static-data.json", "utf8"));
 const layoutConfig = JSON.parse(await readFile("config/layouts/subway-default.json", "utf8"));
-const staticReposForTests = staticDataConfig.repos.map((repo, index) => makeRepo(repo.name, index + 1, {
-  language: repo.language,
-  language_pct: repo.language_pct,
-  updated_label: repo.updated,
-  stargazers_count: repo.stars,
-}));
+const staticReposForTests = staticRepos(staticDataConfig);
+assertDeepEqual("static timestamps are deterministic", staticRepos(staticDataConfig), staticReposForTests);
+assertDeepEqual("static selection sorts age labels instead of fixture order", selectRepos(staticRepos({ repos: [...staticDataConfig.repos].reverse() }), 2).map(({ name }) => name), ["JobSentinel", "PyGuard"]);
+await assertRejects("invalid static ages fail closed", () => staticRepos({ repos: [{ updated: "yesterday" }] }), /Invalid static/);
 const selectedStaticRepos = selectRepos(staticReposForTests, 2);
 const staticRepoSvg = renderRepositorySignSvg({
   repos: selectedStaticRepos,
   allRepos: staticReposForTests,
-  fontDataUrl: null,
   width: layoutConfig.board.designWidth,
   height: layoutConfig.board.designHeight,
 });
 const staticToolchainSvg = renderToolchainSpectrumSvg({
   allRepos: staticReposForTests,
-  fontDataUrl: null,
   width: layoutConfig.toolchain.designWidth,
   height: layoutConfig.toolchain.designHeight,
 });
@@ -441,7 +467,9 @@ assert("layout board inside source width", layoutConfig.board.left + layoutConfi
 assert("layout toolchain inside source height", layoutConfig.toolchain.top + layoutConfig.toolchain.height <= layoutConfig.sourceHeight, true);
 assertDeepEqual("validate default output size uses layout source", expectedOutputSize(layoutConfig, {}), { width: 1672, height: 941 });
 assertDeepEqual("validate output size honors OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "800" }), { width: 800, height: 450 });
-assertDeepEqual("validate output size ignores invalid OUTPUT_WIDTH", expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: "bad" }), { width: 1672, height: 941 });
+for (const value of ["bad", "-1", "0", "0.5", "Infinity"]) {
+  await assertRejects(`reject invalid OUTPUT_WIDTH ${value}`, () => expectedOutputSize(layoutConfig, { OUTPUT_WIDTH: value }), /OUTPUT_WIDTH/);
+}
 assert("static repository SVG uses plain station route label", staticRepoSvg.includes('data-station-code="M03"'), true);
 assert("static repository SVG uses Japanese status header", staticRepoSvg.includes(">リポジトリ状況<"), true);
 assert("static repository SVG omits old Japanese signal header", staticRepoSvg.includes(">リポジトリ信号<"), false);
@@ -492,10 +520,60 @@ try {
   assert("semantic validator accepts static config/SVGs", err.message, "no error");
 }
 
+const semanticInput = {
+  scene: sceneConfig, staticData: staticDataConfig, layout: layoutConfig,
+  repositorySvg: staticRepoSvg, toolchainSvg: staticToolchainSvg,
+};
+await assertRejects("station code must match the approved background", () => validateSignals({
+  ...semanticInput, scene: { ...sceneConfig, station: { ...sceneConfig.station, code: "M04" } },
+}), /approved M03 background/);
+const profileFixture = { ...staticDataConfig, repos: [{ ...staticDataConfig.repos[0], name: "cboyd0319", updated: "0m ago" }, ...staticDataConfig.repos] };
+assertDeepEqual("static validator selection excludes the profile repository", [...renderStaticSvgs(profileFixture, layoutConfig).repositorySvg.matchAll(/data-repo="([^"]+)"/g)].map((match) => match[1]), ["JobSentinel", "PyGuard"]);
+for (const [label, mutate] of [
+  ["nonfinite coordinates", (layout) => { layout.board.left = NaN; }],
+  ["missing dimensions", (layout) => { delete layout.board.width; }],
+  ["nonnumeric quad", (layout) => { layout.board.quad[0].x = null; }],
+  ["invalid source size", (layout) => { layout.sourceWidth = NaN; }],
+  ["nonnumeric design size", (layout) => { layout.board.designWidth = "500"; }],
+  ["concave quad", (layout) => { layout.board.quad[2] = { x: 500, y: 100 }; }],
+]) {
+  const layout = structuredClone(layoutConfig);
+  mutate(layout);
+  await assertRejects(`validator rejects ${label}`, () => validateSignals({ ...semanticInput, layout }), /signals validation failed/);
+}
+for (const value of [NaN, Infinity, -0.1, undefined]) {
+  await assertRejects(`validator rejects invalid pixel metric ${value}`, () => assertOverlayPixelMetrics({
+    outside: { mean: value, max: 0 }, inside: { mean: 0.1, max: 0.2 },
+  }), /invalid overlay pixel metrics/);
+}
+const invalidStaticData = structuredClone(staticDataConfig);
+invalidStaticData.repos[0].language_pct = -10;
+invalidStaticData.repos[1].language_pct += 35;
+await assertRejects("validator rejects negative percentages even when total is 100", () => validateSignals({
+  ...semanticInput, staticData: invalidStaticData,
+}), /invalid static language percentage/);
+for (const language of [null, "", " "]) {
+  const staticData = structuredClone(staticDataConfig);
+  staticData.repos[0].language = language;
+  await assertRejects("positive static language weights require a language", () => validateSignals({
+    ...semanticInput, staticData,
+  }), /static language missing/);
+}
+const fractionalStaticData = structuredClone(staticDataConfig);
+fractionalStaticData.repos.forEach((repo, index) => { repo.language_pct = [33.3, 33.3, 33.3, 0.1][index]; });
+await assertResolvesDeepEqual("static percentages tolerate floating-point addition", () => validateSignals({
+  ...semanticInput, staticData: fractionalStaticData,
+}), true);
+await assertResolvesDeepEqual("historical label substrings remain valid public repo names", () => validateSignals({
+  ...semanticInput, repositorySvg: staticRepoSvg.replaceAll("JobSentinel", "toolchain-spectrum"),
+}), true);
+
 const originalBoardLeft = process.env.BOARD_LEFT;
 const originalBoardTop = process.env.BOARD_TOP;
 const originalBoardWidth = process.env.BOARD_WIDTH;
 const originalBoardHeight = process.env.BOARD_HEIGHT;
+process.env.BOARD_LEFT = "bad";
+await assertRejects("invalid layout overrides fail closed", () => applyLayoutEnv(layoutConfig), /BOARD_LEFT must be a finite number/);
 process.env.BOARD_LEFT = "10";
 process.env.BOARD_TOP = "20";
 process.env.BOARD_WIDTH = "30";
@@ -532,39 +610,96 @@ console.log("\nimage validation");
 
 const validationTmp = await mkdtemp(join(tmpdir(), "signals-validation-"));
 try {
+  await mkdir(join(validationTmp, "scripts/lib"), { recursive: true });
+  await mkdir(join(validationTmp, "assets"));
+  for (const file of ["optimize-signals.mjs", "lib/imagemagick.mjs", "lib/font.mjs"]) {
+    await copyFile(join("scripts", file), join(validationTmp, "scripts", file));
+  }
+  const missingOptimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs")], { encoding: "utf8" });
+  assert("optimizer fails when signals.png is missing", missingOptimization.status, 1);
+  assert("optimizer explains missing input", missingOptimization.stderr.includes("run the generator before optimizing"), true);
+  await Promise.all(["fonts", "config"].map((directory) => mkdir(join(validationTmp, directory))));
+  await copyFile("fonts/NotoSansJP-VF.ttf", join(validationTmp, "fonts/NotoSansJP-VF.ttf"));
+  await copyFile("config/fonts.conf", join(validationTmp, "config/fonts.conf"));
+  const optimizedImage = join(validationTmp, "assets/signals.png");
+  await copyFile("assets/subway_blank_original.png", optimizedImage);
+  const optimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs")], { encoding: "utf8" });
+  assert("optimizer accepts valid image", optimization.status, 0);
+  const { stdout: pngTime } = await runMagick(["identify", "-quiet", "-format", "%[png:tIME]", optimizedImage]);
+  assert("optimized PNG excludes nondeterministic time chunk", pngTime, "");
+  const optimizedBytes = await readFile(optimizedImage);
+  const webOptimization = spawnSync(process.execPath, [join(validationTmp, "scripts/optimize-signals.mjs"), "--web"], { encoding: "utf8" });
+  assert("web optimization succeeds", webOptimization.status, 0);
+  assert("web experiment preserves production image", (await readFile(optimizedImage)).equals(optimizedBytes), true);
+  assert("web experiment writes separate PNG", (await readFile(join(validationTmp, "assets/generated/signals-web.png"))).length > 10_000, true);
+  await withImageLock(optimizedImage, () => assertRejects("concurrent image writers fail before entering work", () => withImageLock(optimizedImage, () => {
+    throw new Error("second writer entered");
+  }), /Image writer lock exists/));
+  await assertRejects("image writer propagates failure", () => withImageLock(optimizedImage, () => { throw new Error("render failed"); }), /render failed/);
+  assert("image writer releases lock after success and failure", await withImageLock(optimizedImage, () => 42), 42);
+  const candidate = join(validationTmp, "candidate.png");
+  const published = join(validationTmp, "signals.png");
+  await writeFile(candidate, "invalid candidate");
+  await writeFile(published, "last valid output");
+  try {
+    await publishSignals(candidate, published, {});
+    assert("publisher rejects invalid candidate", "accepted", "rejected");
+  } catch (err) {
+    assert("publisher validates before replacing output", err.message.includes("scene config not loaded"), true);
+  }
+  assert("failed validation preserves published image", await readFile(published, "utf8"), "last valid output");
+  const imageValidation = { ...semanticInput, background: "assets/subway_blank_original.png", width: 1672, height: 941 };
+  await writeFile(candidate, Buffer.from(APNG_PROBE, "base64"));
+  await assertRejects("validator rejects animation before checking dimensions", () => validateSignals({ ...imageValidation, output: candidate }), /animated PNG/);
+  const noAnimationMetadata = join(validationTmp, "magick-no-animation");
+  await writeFile(noAnimationMetadata, `#!/bin/sh\nif [ "$1" = -version ]; then printf '%s\\n' 'Version: ImageMagick ${REQUIRED_MAGICK_VERSION}' 'Delegates (built-in): rsvg'; fi\n`, { mode: 0o755 });
+  const unsupportedDecoder = spawnSync(process.execPath, ["--input-type=module", "-e", 'import { ensureImageMagick } from "./scripts/lib/imagemagick.mjs"; await ensureImageMagick();'], {
+    env: { PATH: process.env.PATH, MAGICK_BIN: noAnimationMetadata }, encoding: "utf8",
+  });
+  assert("unsupported PNG animation metadata fails closed", unsupportedDecoder.status === 1 && unsupportedDecoder.stderr.includes("must expose PNG animation metadata"), true);
+  const opaquePng = join(validationTmp, "opaque-alpha.png");
+  await runMagick(["assets/signals.png", "-alpha", "on", pngOutput(opaquePng)]);
+  await assertResolvesDeepEqual("validator accepts an opaque PNG with an alpha channel", () => validateSignals({ ...imageValidation, output: opaquePng }), true);
+  for (const [label, args, message] of [
+    ["transparent output", [opaquePng, "-channel", "A", "-evaluate", "multiply", "0.5", "+channel", pngOutput(candidate)], /opaque PNG/],
+    ["non-PNG bytes named PNG", [opaquePng, `MIFF:${candidate}`], /opaque PNG/],
+    ["multiple image frames", [opaquePng, opaquePng, `MIFF:${candidate}`], /single image frame/],
+  ]) {
+    await runMagick(args);
+    await assertRejects(`validator rejects ${label}`, () => validateSignals({ ...imageValidation, output: candidate }), message);
+  }
   const blackImage = join(validationTmp, "black.png");
   await runMagick(["-size", "1672x941", "xc:black", pngOutput(blackImage)]);
   try {
-    await validateSignals({
+    await publishSignals(blackImage, published, {
       scene: sceneConfig,
       staticData: staticDataConfig,
       layout: layoutConfig,
       repositorySvg: staticRepoSvg,
       toolchainSvg: staticToolchainSvg,
-      output: blackImage,
       background: "assets/subway_blank_original.png",
       width: 1672,
       height: 941,
     });
-    assert("validator rejects blank or unrelated PNG content", "accepted", "rejected");
+    assert("publisher rejects blank or unrelated PNG content", "accepted", "rejected");
   } catch (err) {
-    assert("validator rejects blank or unrelated PNG content", err.message.includes("outside overlay region"), true);
+    assert("publisher rejects blank or unrelated PNG content", err.message.includes("outside overlay region"), true);
   }
+  const graded = join(validationTmp, "graded.png");
+  await applyFinalGrade("assets/subway_blank_original.png", graded, { width: 1672, height: 941, workDir: validationTmp });
+  await runMagick([graded, "-fill", "white", "-draw", "rectangle 500,100 800,150 rectangle 1450,300 1500,500", pngOutput(candidate)]);
+  await assertRejects("validator rejects gross bright-card corruption", () => validateSignals({ ...imageValidation, output: candidate }), /excessive changes in overlay region/);
+  for (const [name, rectangle] of [["toolchain", "500,100 800,150"], ["repository", "1450,300 1500,500"]]) {
+    const partial = join(validationTmp, `missing-${name}.png`);
+    await runMagick([graded, "-fill", "rgba(255,255,255,0.2)", "-draw", `rectangle ${rectangle}`, pngOutput(partial)]);
+    await assertRejects(`validator rejects missing ${name} overlay`, () => validateSignals({
+      ...semanticInput, output: partial, background: "assets/subway_blank_original.png", width: 1672, height: 941,
+    }), /missing overlay-region changes/);
+  }
+  assert("failed raster validation preserves published image", await readFile(published, "utf8"), "last valid output");
 } finally {
   await rm(validationTmp, { recursive: true, force: true });
 }
-
-// palette
-
-console.log("\npalette");
-
-const tokyoColors = new Set(Object.values(TOKYO_NEON_PALETTE));
-
-assert(
-  "language colors stay inside Tokyo neon palette",
-  [...LANGUAGE_COLORS.values()].every((color) => tokyoColors.has(color)),
-  true,
-);
 
 // github helpers
 
@@ -586,7 +721,305 @@ await assertResolvesDeepEqual(
 );
 assert("github retried once", githubFetchCalls, 2);
 
-globalThis.fetch = originalFetch;
+try {
+  const failedBodyResponse = (status) => new Response(new ReadableStream({
+    start(controller) { controller.error(new Error("sensitive stream failure")); },
+  }), { status });
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => ++githubFetchCalls === 1
+    ? failedBodyResponse(200) : Response.json({ recovered: true });
+  await assertResolvesDeepEqual("github retries interrupted response bodies", () => github("/test", { retryDelayMs: 0 }), { recovered: true });
+  assert("interrupted body is retried once", githubFetchCalls, 2);
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => { githubFetchCalls++; return failedBodyResponse(200); };
+  await assertRejects("body retry exhaustion keeps transport errors private", () => github("/test", { retryDelayMs: 0 }), /^GitHub API request failed after retries\.$/);
+  assert("body retry exhaustion is bounded", githubFetchCalls, 4);
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => { githubFetchCalls++; return new Response("invalid JSON"); };
+  await assertRejects("malformed JSON fails closed", () => github("/test", { retryDelayMs: 0 }), /^GitHub API returned invalid JSON\.$/);
+  assert("malformed JSON is not retried", githubFetchCalls, 1);
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => ++githubFetchCalls === 1
+    ? failedBodyResponse(503) : Response.json({ recovered: true });
+  await assertResolvesDeepEqual("body cancellation failure preserves HTTP retry", () => github("/test", { retryDelayMs: 0 }), { recovered: true });
+  assert("HTTP status retries despite cancellation failure", githubFetchCalls, 2);
+  globalThis.fetch = async () => failedBodyResponse(403);
+  await assertRejects("body cancellation failure cannot expose raw errors", () => github("/test", { retryDelayMs: 0 }), /^GitHub API 403$/);
+
+  for (const status of [403, 429]) {
+    githubFetchCalls = 0;
+    globalThis.fetch = async () => { githubFetchCalls++; return jsonResponse(status, { message: "sensitive response body" }); };
+    await assertRejects(`github stops on ${status} without exposing response bodies`, () => github("/test", { retryDelayMs: 0 }), new RegExp(`^GitHub API ${status}$`));
+    assert(`github does not retry ${status}`, githubFetchCalls, 1);
+  }
+  githubFetchCalls = 0;
+  globalThis.fetch = async () => { githubFetchCalls++; return jsonResponse(503, {}); };
+  await assertRejects("github bounds transient HTTP retries", () => github("/test", { retryDelayMs: 0 }), /^GitHub API 503$/);
+  assert("github exhausts exactly four attempts", githubFetchCalls, 4);
+
+  const publicRepo = (name, overrides = {}) => makeRepo(name, 0, { private: false, owner: { login: "cboyd0319" }, ...overrides });
+  let page = 0;
+  globalThis.fetch = async () => jsonResponse(200, ++page === 1
+    ? Array.from({ length: 100 }, (_, index) => publicRepo(`repo-${index}`))
+    : [publicRepo("repo-0"), publicRepo("private", { private: true }), publicRepo("foreign", { owner: { login: "elsewhere" } })]);
+  const fetchedRepos = await fetchOwnerRepos();
+  assert("owner repository pagination fetches all pages", page, 2);
+  assert("owner boundary filters private, foreign and duplicate entries", fetchedRepos.length, 100);
+  assert("API output drops unneeded fields", "owner" in fetchedRepos[0], false);
+  globalThis.fetch = async () => jsonResponse(200, [publicRepo("broken", { stargazers_count: "12" })]);
+  await assertRejects("malformed repository data fails closed", fetchOwnerRepos, /invalid repository metadata/);
+  globalThis.fetch = async () => jsonResponse(200, Array.from({ length: 100 }, (_, index) => publicRepo(`repo-${index}`)));
+  await assertRejects("pagination cap cannot silently publish partial totals", fetchOwnerRepos, /pagination limit/);
+
+  const originalToken = process.env.GITHUB_TOKEN;
+  process.env.GITHUB_TOKEN = "test-public-boundary-sentinel";
+  try {
+    globalThis.fetch = async (_url, options) => {
+      assert("owner listing can retain optional authentication", options.headers.authorization === "Bearer test-public-boundary-sentinel", true);
+      assert("owner listing rejects redirects", options.redirect, "manual");
+      return Response.json([publicRepo("one", { status: "FAIL", security_status: "FAIL", dependabot_alerts: 1 })]);
+    };
+    const listed = await fetchOwnerRepos();
+    assert("live repository data drops status metadata", "status" in listed[0] || "security_status" in listed[0] || "dependabot_alerts" in listed[0], false);
+    globalThis.fetch = async (_url, options) => {
+      assert("language lookup never sends the configured token", new Headers(options.headers).has("authorization"), false);
+      assert("language lookup rejects redirects", options.redirect, "manual");
+      return new Headers(options.headers).has("authorization")
+        ? Response.json({ Private: 100 }) : new Response(null, { status: 404 });
+    };
+    await assertRejects("a repository made private after listing aborts refresh", () => withLanguageBreakdowns(listed), /^GitHub API 404$/);
+    globalThis.fetch = async () => new Response(null, { status: 301, headers: { location: "https://api.github.com/repos/elsewhere/one/languages" } });
+    await assertRejects("transferred repository languages abort refresh", () => withLanguageBreakdowns(listed), /^GitHub API 301$/);
+  } finally {
+    if (originalToken === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = originalToken;
+  }
+
+  let activeRequests = 0;
+  let peakRequests = 0;
+  globalThis.fetch = async () => {
+    activeRequests++;
+    peakRequests = Math.max(peakRequests, activeRequests);
+    await Promise.resolve();
+    activeRequests--;
+    return jsonResponse(200, { Python: 100 });
+  };
+  const enriched = await withLanguageBreakdowns([makeRepo("one", 0), makeRepo("two", 0)]);
+  assert("language requests run serially", peakRequests, 1);
+  assert("all active repositories receive language maps", enriched.every((repo) => repo.languages.Python === 100), true);
+  globalThis.fetch = async () => jsonResponse(403, {});
+  await assertRejects("language failures abort incomplete refreshes", () => withLanguageBreakdowns([makeRepo("one", 0)]), /^GitHub API 403$/);
+  globalThis.fetch = async () => jsonResponse(200, { Python: "100" });
+  await assertRejects("malformed language bytes fail closed", () => withLanguageBreakdowns([makeRepo("one", 0)]), /unexpected payload/);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
+
+// Exercise publication against disposable Git remotes; no credentials or network.
+if (spawnSync("jq", ["--version"], { encoding: "utf8" }).stdout?.trim() !== "jq-1.8.2") {
+  throw new Error("Publisher regression tests require jq 1.8.2 on PATH.");
+}
+console.log("\nprofile publication");
+const installerSource = await readFile("scripts/install-imagemagick-ci.sh", "utf8");
+const aptPins = installerSource.match(/apt-get install[^\n]*\\\n((?:  .*(?:\\\n|\n))+)/)?.[1].replaceAll("\\", "").trim().split(/\s+/) ?? [];
+assert("CI build prerequisites are explicitly versioned", aptPins.length === 10 && aptPins.every((pin) => /^[a-z0-9+.-]+=[^\s]+$/.test(pin)), true);
+for (const file of ["ci.yml", "update-profile.yml"]) {
+  const workflow = await readFile(join(".github/workflows", file), "utf8");
+  assert(`${file} delegates package installation to one owner`, (workflow.match(/\.\/scripts\/install-imagemagick-ci\.sh/g) ?? []).length === 1 && !workflow.includes("apt-get install"), true);
+}
+const publisher = join(process.cwd(), "scripts/publish-signals.sh");
+const publicationDir = await mkdtemp(join(tmpdir(), "signals-publish-"));
+try {
+  const bin = join(publicationDir, "bin");
+  await mkdir(bin);
+  await writeFile(join(bin, "sleep"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  await writeFile(join(bin, "git"), `#!/usr/bin/env bash
+set -eu
+if [[ "$CASE" == rollback && " $* " == *" HEAD:refs/heads/main "* ]]; then
+  PATH="$REAL_PATH" git --git-dir="$TEST_ROOT/remote" update-ref refs/heads/main "$ANCESTOR_SHA"
+fi
+PATH="$REAL_PATH" exec git "$@"
+`, { mode: 0o755 });
+  await writeFile(join(bin, "gh"), String.raw`#!/usr/bin/env bash
+set -eu
+case "$1 $2" in
+  'api '*)
+    sha="$(git rev-parse HEAD)"
+    [[ "$CASE" != wrong_sha ]] || sha=0000000000000000000000000000000000000000
+    event=push
+    [[ "$CASE" != wrong_event ]] || event=pull_request
+    if [[ "$CASE" == dispatch && ! -f "$TEST_ROOT/dispatched" ]]; then
+      data='{"workflow_runs":[]}'
+    else
+      data="{\"workflow_runs\":[{\"id\":123,\"head_sha\":\"$sha\",\"head_branch\":\"$UPDATE_BRANCH\",\"event\":\"$event\"}]}"
+    fi
+    [[ "$2" == *'/actions/workflows/ci.yml/runs?'* ]] || exit 9
+    printf '%s' "$data" | jq -r "$4"
+    ;;
+  'workflow run') touch "$TEST_ROOT/dispatched" ;;
+  'run watch') [[ "$CASE" != failed ]] ;;
+  'run view')
+    if [[ "$CASE" == drift ]]; then git --git-dir="$TEST_ROOT/remote" update-ref refs/heads/main "$DRIFT_SHA"; fi
+    job=validate
+    [[ "$CASE" != wrong_job ]] || job=unrelated
+    printf '{"headSha":"%s","headBranch":"%s","status":"completed","conclusion":"success","jobs":[{"name":"%s","conclusion":"success"}]}' "$(git rev-parse HEAD)" "$UPDATE_BRANCH" "$job" | jq -r "$7"
+    ;;
+  *) exit 9 ;;
+esac
+`, { mode: 0o755 });
+  for (const scenario of ["success", "dispatch", "failed", "wrong_sha", "wrong_event", "wrong_job", "drift", "unchanged", "staged_image", "staged_other", "main_branch", "rollback"]) {
+    const root = join(publicationDir, scenario);
+    await mkdir(root);
+    const env = { PATH: bin + ":" + process.env.PATH, HOME: root, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_AUTHOR_NAME: "test", GIT_AUTHOR_EMAIL: "test@example.invalid", GIT_COMMITTER_NAME: "test", GIT_COMMITTER_EMAIL: "test@example.invalid", GITHUB_REPOSITORY: "test/profile", UPDATE_BRANCH: "automation/update-signals-panel", TEST_ROOT: root, CASE: scenario };
+    env.REAL_PATH = process.env.PATH;
+    const git = (...args) => {
+      const result = spawnSync("git", args, { cwd: root, env, encoding: "utf8" });
+      if (result.status !== 0) throw new Error(result.stderr);
+      return result.stdout.trim();
+    };
+    git("init", "--bare", "remote");
+    git("init", "-b", "main", "local");
+    const local = join(root, "local");
+    await mkdir(join(local, "assets"));
+    await writeFile(join(local, "assets/signals.png"), "original");
+    git("-C", local, "add", "assets/signals.png");
+    git("-C", local, "commit", "-m", "Initial image");
+    if (scenario === "rollback") {
+      env.ANCESTOR_SHA = git("-C", local, "rev-parse", "HEAD");
+      git("-C", local, "commit", "--allow-empty", "-m", "Baseline");
+    }
+    git("-C", local, "remote", "add", "origin", join(root, "remote"));
+    git("-C", local, "push", "origin", "main");
+    env.GITHUB_SHA = git("-C", local, "rev-parse", "HEAD");
+    env.DRIFT_SHA = git("-C", local, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "Concurrent update");
+    git("-C", local, "push", "origin", env.DRIFT_SHA + ":refs/heads/drift");
+    if (scenario !== "unchanged") await writeFile(join(local, "assets/signals.png"), "updated");
+    if (scenario === "staged_image") git("-C", local, "add", "assets/signals.png");
+    if (scenario === "staged_other") {
+      await writeFile(join(local, "unrelated.txt"), "unrelated");
+      git("-C", local, "add", "unrelated.txt");
+    }
+    if (scenario === "main_branch") {
+      env.UPDATE_BRANCH = "main";
+      env.CASE = "failed";
+    }
+    const result = spawnSync("bash", [publisher], { cwd: local, env, encoding: "utf8", timeout: 30_000 });
+    const succeeds = ["success", "dispatch", "unchanged"].includes(scenario);
+    assert("publisher " + scenario + " exit", result.status === 0, succeeds);
+    const remoteHead = git("--git-dir", join(root, "remote"), "rev-parse", "main");
+    const expected = scenario === "rollback" ? env.ANCESTOR_SHA : scenario === "drift" ? env.DRIFT_SHA : succeeds && scenario !== "unchanged" ? git("-C", local, "rev-parse", "HEAD") : env.GITHUB_SHA;
+    assert("publisher " + scenario + " preserves expected main", remoteHead, expected);
+  }
+  for (const [name, version, delegates, expected] of [
+    ["valid", "7.1.2-34", "freetype png rsvg", true],
+    ["wrong version", "7.1.2-24", "freetype png rsvg", false],
+    ["missing rsvg", "7.1.2-34", "freetype png", false],
+  ]) {
+    const root = join(publicationDir, name);
+    const bin = join(root, "ImageMagick-7.1.2-34/bin");
+    await mkdir(bin, { recursive: true });
+    await writeFile(join(bin, "magick"), '#!/bin/sh\nprintf "%s\\n" "Version: ImageMagick ' + version + ' Q16-HDRI" "Delegates (built-in): ' + delegates + '"\n', { mode: 0o755 });
+    const pathFile = join(root, "path");
+    const result = spawnSync("bash", ["scripts/install-imagemagick-ci.sh"], { env: { PATH: process.env.PATH, RUNNER_TEMP: root, GITHUB_PATH: pathFile }, encoding: "utf8" });
+    assert("installer " + name, result.status === 0, expected);
+    assert("installer " + name + " publishes only verified binary", await readFile(pathFile, "utf8").catch(() => ""), expected ? bin + "\n" : "");
+  }
+} finally {
+  await rm(publicationDir, { recursive: true, force: true });
+}
+
+console.log("\nrenderer regressions");
+const rendererTmp = await mkdtemp(join(tmpdir(), "signals-renderer-"));
+try {
+  let siblingFinished = false;
+  await assertRejects("nested writer failure propagates after siblings finish", () => withImageLock(join(rendererTmp, "locked.png"), () => waitForWriters([
+    waitForWriters([
+      Promise.reject(new Error("writer failed")),
+      (async () => {
+        await new Promise(setImmediate);
+        await assertRejects("pending sibling excludes another image writer", () => withImageLock(join(rendererTmp, "locked.png"), () => 1), /Image writer lock exists/);
+        siblingFinished = true;
+      })(),
+    ]),
+  ])).catch((error) => {
+    assert("failed nested writer batch waits for sibling completion", siblingFinished, true);
+    throw error;
+  }), /writer failed/);
+  assert("failed batch releases lock after all writers settle", await withImageLock(join(rendererTmp, "locked.png"), () => 42), 42);
+
+  const impulse = join(rendererTmp, "impulse.png");
+  const split = join(rendererTmp, "split.png");
+  await runMagick(["-size", "9x9", "xc:rgba(0,0,0,0.5)", "-fill", "white", "-draw", "point 4,4", "-fill", "black", "-draw", "point 0,0", pngOutput(impulse)]);
+  await applyChromaticAberration(impulse, split);
+  const { stdout: channels } = await runMagick([split, "-format", "%[fx:p{5,4}.r] %[fx:p{4,4}.g] %[fx:p{3,4}.b] %[fx:p{4,4}.r] %[fx:p{4,4}.b]", "info:"]);
+  const [red, green, blue, centerRed, centerBlue] = channels.split(" ").map(Number);
+  assert("chromatic aberration shifts only red and blue in opposite directions", red > 0.8 && green > 0.9 && blue > 0.8 && centerRed < 0.1 && centerBlue < 0.1, true);
+  const { stdout: alphaDifference } = await runMagick(["(", impulse, "-alpha", "extract", ")", "(", split, "-alpha", "extract", ")", "-compose", "Difference", "-composite", "-format", "%[fx:maxima]", "info:"]);
+  assert("chromatic aberration preserves original alpha", Number(alphaDifference), 0);
+
+  await applyChromaticAberration(impulse, split, { redShift: "+2+1", blueShift: "-1-1" });
+  const { stdout: diagonalChannels } = await runMagick([split, "-format", "%[fx:p{6,5}.r] %[fx:p{4,4}.g] %[fx:p{3,3}.b]", "info:"]);
+  assert("toolchain chromatic split follows its diagonal offsets", diagonalChannels.split(" ").map(Number).every((value) => value > 0.8), true);
+  await runMagick(["-size", "9x9", "xc:rgba(100,150,200,0.5)", pngOutput(impulse)]);
+  await applyChromaticAberration(impulse, split);
+  const { stdout: flatDifference } = await runMagick([impulse, split, "-compose", "Difference", "-composite", "-format", "%[fx:maxima]", "info:"]);
+  assert("channel recombination preserves flat RGB color", Number(flatDifference), 0);
+
+  const detailSvg = join(rendererTmp, "detail.svg");
+  const raster = join(rendererTmp, "raster.png");
+  const reference = join(rendererTmp, "reference.png");
+  await writeFile(detailSvg, '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><path d="M0 0L40 20M0 20L40 0" stroke="white" stroke-width="0.7"/></svg>');
+  const { stdout: oversampledSize } = await runMagick(["-background", "none", "-density", "192", `RSVG:${detailSvg}`, "-format", "%wx%h", "info:"]);
+  assert("rsvg density192 produces two design pixels per axis", oversampledSize, "80x40");
+  await rasterizeSvg(detailSvg, raster, { width: 40, height: 20 });
+  await runMagick(["-background", "none", "-density", "192", `RSVG:${detailSvg}`, "-resize", "40x20!", "-alpha", "on", pngOutput(reference)]);
+  const { stdout: rasterDifference } = await runMagick([raster, reference, "-compose", "Difference", "-composite", "-format", "%[fx:maxima]", "info:"]);
+  assert("shared SVG rasterizer uses actual 2x rsvg oversampling", Number(rasterDifference), 0);
+
+  assert("text measurement treats ImageMagick percent syntax as literal SVG text", (await fitRepositoryRows([makeRepo("%[fx:1]", 1)]))[0].display_name, "%[fx:1]");
+  const fittedRepos = await fitRepositoryRows([makeRepo("W".repeat(18), 1, { language: "Common Workflow Language" }), makeRepo("JobSentinel", 1, { language: "Python" })]);
+  assert("short repository names retain their readable spelling", fittedRepos[1].display_name, "JobSentinel");
+  assert("short language labels retain their readable spelling", fittedRepos[1].display_language, "Python");
+  const wideSvg = renderRepositorySignSvg({ repos: fittedRepos.slice(0, 1), width: 500, height: 160 });
+  const isolateColumn = (svg, pattern) => svg.replace(/<text\b[^>]*>[\s\S]*?<\/text>/g, (node) => pattern.test(node) ? node : "")
+    .replace(/<(?:rect|circle|line)\b[^>]*\/>/g, (node) => node.includes('width="500" height="160"/>') ? node : "");
+  const nameOnly = isolateColumn(wideSvg, /x="17[89](?:\.5)?"/);
+  const nameSvgPath = join(rendererTmp, "name.svg");
+  const namePng = join(rendererTmp, "name.png");
+  await writeFile(nameSvgPath, nameOnly);
+  await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+  const { stdout: overflow } = await runMagick([namePng, "-crop", "170x35+330+65", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+  assert("wide valid repository name cannot paint over metadata columns", Number(overflow), 0);
+  assert("wide repository name uses readable ellipsis", /[.]{3}<\/text>/.test(wideSvg), true);
+  const { stdout: visibleName } = await runMagick([namePng, "-crop", "142x25+178+71", "-alpha", "extract", "-trim", "-format", "%w", "info:"]);
+  assert("width fitting keeps visible name and ellipsis inside its viewport", Number(visibleName) > 75 && Number(visibleName) < 142, true);
+  const languageOnly = isolateColumn(wideSvg, /x="405"/);
+  await writeFile(nameSvgPath, languageOnly);
+  await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+  // Check the neighboring column; downsampling may feather into the 10px gutter.
+  const { stdout: languageOverflow } = await runMagick([namePng, "-crop", "320x35+0+65", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+  assert("long GitHub language cannot paint over the repository column", Number(languageOverflow), 0);
+  const { stdout: visibleLanguage } = await runMagick([namePng, "-crop", "75x32+330+69", "-alpha", "extract", "-trim", "-format", "%w", "info:"]);
+  assert("long GitHub language remains visible with an ellipsis", Number(visibleLanguage) > 40 && Number(visibleLanguage) < 75 && fittedRepos[0].display_language.endsWith("..."), true);
+  const unfittedSvg = renderRepositorySignSvg({ repos: [makeRepo("W".repeat(18), 1, { language: "Common Workflow Language" })], width: 500, height: 160 });
+  assert("maintenance suffix cannot erase a whole repository name", renderRepositorySignSvg({ repos: [makeRepo("-fix", 1)], width: 500, height: 160 }).includes(">-fix<"), true);
+  for (const stars of [9999, 10_000, 100_000, 999_999, Number.MAX_SAFE_INTEGER]) {
+    const starsSvg = renderRepositorySignSvg({ repos: [makeRepo("public", 1, { stargazers_count: stars })], width: 500, height: 160 });
+    await writeFile(nameSvgPath, isolateColumn(starsSvg, /x="45[56](?:\.5)?"/));
+    await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+    const { stdout } = await runMagick([namePng, "-crop", "405x35+0+70", "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+    assert(`star count ${stars} cannot paint over the language column`, Number(stdout), 0);
+  }
+  for (const [column, pattern, crop] of [["name", /x="17[89](?:\.5)?"/, "170x35+330+65"], ["language", /x="405"/, "320x35+0+65"]]) {
+    await writeFile(nameSvgPath, isolateColumn(unfittedSvg, pattern));
+    await rasterizeSvg(nameSvgPath, namePng, { width: 500, height: 160 });
+    const { stdout } = await runMagick([namePng, "-crop", crop, "-alpha", "extract", "-format", "%[fx:maxima]", "info:"]);
+    assert(`unfitted ${column} text stays out of the neighboring column`, Number(stdout), 0);
+  }
+} finally {
+  await rm(rendererTmp, { recursive: true, force: true });
+}
 
 // Summary
 

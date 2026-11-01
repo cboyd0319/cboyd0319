@@ -1,13 +1,9 @@
-import { USERNAME, LANGUAGE_COLORS, TOKYO_NEON_PALETTE } from "./config.mjs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { rasterizeSvg, runMagick } from "./imagemagick.mjs";
+import { DISPLAY_ROUTE_CODE, USERNAME } from "./config.mjs";
 import { escapeHtml, relativeTime, shortText } from "./utils.mjs";
-
-export const PANEL_ACCENTS = {
-  TypeScript: "#CC8800",
-  Python: "#CC8800",
-  Shell: "#995C00",
-  PowerShell: "#995C00",
-  Other: "#7A5200",
-};
 
 const SIGN_COLORS = {
   textPrimary: "#D6A33A",
@@ -17,10 +13,13 @@ const SIGN_COLORS = {
   ruleLine: "#242018",
 };
 
-const DISPLAY_ROUTE_CODE = "M03";
 const STATUS_LED_GREEN = "#7FB95A";
 const TEXT_FONT_FAMILY = "'Noto Sans JP','Source Han Sans JP','Hiragino Sans','Yu Gothic','Helvetica Neue',Arial,sans-serif";
 const REPOSITORY_BOARD_NAME_MAX = 18;
+const REPOSITORY_NAME_WIDTH = 142;
+const REPOSITORY_LANGUAGE_WIDTH = 75;
+const REPOSITORY_NAME_TEXT = { size: 15.6, weight: 600, style: "letter-spacing:0", shadow: true };
+const REPOSITORY_LANGUAGE_TEXT = { size: 10.4, weight: 500, style: "letter-spacing:0.018em" };
 const BOARD_COLS = {
   time: 64,
   statusDot: 88,
@@ -31,46 +30,41 @@ const BOARD_COLS = {
 };
 
 export function ownActiveRepos(allRepos) {
-  return allRepos.filter((repo) => repo && !repo.fork && !repo.archived && repo.name !== USERNAME);
+  return allRepos.filter((repo) => repo && typeof repo.name === "string" && repo.name.trim()
+    && !repo.fork && !repo.archived && !repo.private && (!repo.visibility || repo.visibility === "public")
+    && repo.name.toLowerCase() !== USERNAME.toLowerCase());
 }
 
 export function languageSummary(allRepos) {
   const activeRepos = ownActiveRepos(allRepos);
   const languageMaps = activeRepos.map((repo) => repo.languages).filter(isLanguageMap);
 
-  // Use whatever byte-level maps we have. Requiring full coverage meant a single
-  // failed /languages fetch silently discarded all byte data and fell back to the
-  // crude per-repo count path, shifting the published mix on one transient 5xx.
+  // Live collection requires every active repository's byte map.
   if (languageMaps.length) {
     const totals = new Map();
     for (const languages of languageMaps) {
       for (const [language, bytes] of Object.entries(languages)) {
-        const count = Number(bytes);
-        if (!Number.isFinite(count) || count <= 0) continue;
+        const count = bytes;
+        if (!Number.isSafeInteger(count) || count <= 0) continue;
         totals.set(language, (totals.get(language) || 0) + count);
       }
     }
-    if (totals.size) return summarizeLanguageEntries([...totals.entries()]);
+    return summarizeLanguageEntries([...totals.entries()]);
   }
 
-  const weighted = activeRepos.filter((repo) => repo.language && Number.isFinite(Number(repo.language_pct)));
+  const weighted = activeRepos.filter((repo) => typeof repo.language === "string" && repo.language
+    && Number.isFinite(repo.language_pct) && repo.language_pct > 0);
 
   if (weighted.length) {
     const totals = new Map();
     for (const repo of weighted) {
-      totals.set(repo.language, (totals.get(repo.language) || 0) + Math.max(0, Number(repo.language_pct)));
+      totals.set(repo.language, (totals.get(repo.language) || 0) + repo.language_pct);
     }
 
     return summarizeLanguageEntries([...totals.entries()], { sort: false });
   }
 
-  const counts = new Map();
-  for (const repo of activeRepos) {
-    if (!repo.language) continue;
-    counts.set(repo.language, (counts.get(repo.language) || 0) + 1);
-  }
-
-  return summarizeLanguageEntries([...counts.entries()]);
+  return [];
 }
 
 function isLanguageMap(value) {
@@ -78,7 +72,7 @@ function isLanguageMap(value) {
 }
 
 function summarizeLanguageEntries(entries, { sort = true } = {}) {
-  const sorted = sort ? entries.sort((a, b) => b[1] - a[1]) : entries;
+  const sorted = sort || entries.length > 4 ? entries.sort((a, b) => b[1] - a[1]) : entries;
   const total = sorted.reduce((sum, [, count]) => sum + count, 0) || 1;
   const summarized = sorted.length > 4
     ? [
@@ -87,20 +81,19 @@ function summarizeLanguageEntries(entries, { sort = true } = {}) {
       ]
     : sorted;
 
-  return summarized.map(([name, count]) => ({
+  const shares = summarized.map(([, count]) => count / total * 100);
+  const percentages = shares.map(Math.floor);
+  const remainderOrder = shares.map((_, index) => index)
+    .sort((a, b) => (shares[b] - percentages[b]) - (shares[a] - percentages[a]));
+  const remainder = 100 - percentages.reduce((sum, value) => sum + value, 0);
+  for (const index of remainderOrder.slice(0, remainder)) percentages[index]++;
+  return summarized.map(([name], index) => ({
     name,
-    pct: Math.round((count / total) * 100),
-    color: PANEL_ACCENTS[name] || LANGUAGE_COLORS.get(name) || TOKYO_NEON_PALETTE.lavender,
+    pct: percentages[index],
   }));
 }
 
-function svgFontFace({ fontCss, fontDataUrl }) {
-  if (fontCss) return fontCss;
-  if (!fontDataUrl) return "";
-  return `@font-face{font-family:"Noto Sans JP";src:url("${fontDataUrl}") format("woff2");font-weight:500 700;font-display:block;}`;
-}
-
-function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl }) {
+function svgHeader({ width, height, viewWidth, viewHeight }) {
   return `<svg width="${width}" height="${height}" viewBox="0 0 ${viewWidth} ${viewHeight}" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <clipPath id="display-clip" clipPathUnits="userSpaceOnUse">
@@ -122,43 +115,77 @@ function svgHeader({ width, height, viewWidth, viewHeight, fontCss, fontDataUrl 
   </radialGradient>
 </defs>
 <style>
-${svgFontFace({ fontCss, fontDataUrl })}
 text{font-family:${TEXT_FONT_FAMILY};text-rendering:geometricPrecision}
 </style>`;
 }
 
-function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600, anchor = "start", opacity = 1, style = "", extra = "", shadow = false }) {
+function text(value, { x, y, size, fill = SIGN_COLORS.textPrimary, weight = 600, anchor = "start", opacity = 1, style = "", extra = "", shadow = false, clipWidth }) {
   const styleAttr = style ? `style="${escapeHtml(style)}"` : "";
   const mainText = `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" font-family="${TEXT_FONT_FAMILY}" text-anchor="${anchor}" fill="${fill}" opacity="${opacity}" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
-  if (!shadow) return mainText;
   const shadowText = `<text x="${x + 1.5}" y="${y + 1.5}" font-size="${size}" font-weight="${weight}" font-family="${TEXT_FONT_FAMILY}" text-anchor="${anchor}" fill="#000000" opacity="0.6" ${styleAttr} ${extra}>${escapeHtml(value)}</text>`;
-  return `${shadowText}
-${mainText}`;
+  const glyphs = shadow ? `${shadowText}\n${mainText}` : mainText;
+  if (!clipWidth) return glyphs;
+  const left = anchor === "end" ? x - clipWidth : x;
+  return `<svg x="${left}" y="${y - 22}" width="${clipWidth}" height="32" viewBox="${left} ${y - 22} ${clipWidth} 32" overflow="hidden">${glyphs}</svg>`;
 }
 
-function repoDisplayName(name, compact) {
-  const displayName = String(name ?? "").replace(/-fix$/i, "");
-  return shortText(displayName, compact ? REPOSITORY_BOARD_NAME_MAX : 24);
+function repoDisplayName(name) {
+  const original = String(name ?? "");
+  return shortText(original.replace(/-fix$/i, "") || original, REPOSITORY_BOARD_NAME_MAX);
 }
 
-function statusForRepo(repo, index) {
-  const configured = String(repo?.security_status || repo?.status || "").trim();
-  if (configured) return configured.toUpperCase();
-  const alerts = Number(repo?.dependabot_alerts ?? repo?.security_alerts ?? repo?.vulnerability_alerts ?? 0);
-  if (Number.isFinite(alerts) && alerts > 0) return "DEPS CHECK";
-  if (repo?.archived) return "ARCHIVED";
-  return index === 0 ? "ACTIVE" : "DEPS CHECK";
+export async function fitRepositoryRows(repos) {
+  const directory = await mkdtemp(join(tmpdir(), "signals-text-"));
+  const svgPath = join(directory, "text.svg");
+  const rasterPath = join(directory, "text.png");
+  const fit = async (value, maxWidth, options) => {
+    const measure = async (label) => {
+      await writeFile(svgPath, `${svgHeader({ width: 500, height: 40, viewWidth: 500, viewHeight: 40 })}${text(label, { x: 0, y: 24, ...options })}</svg>`);
+      await rasterizeSvg(svgPath, rasterPath, { width: 500, height: 40 });
+      const { stdout } = await runMagick([rasterPath, "-trim", "-format", "%w %X", "info:"]);
+      const [width, left] = stdout.trim().split(" ").map(Number);
+      if (!Number.isFinite(width + left) || width <= 0) throw new Error("Invalid repository text width.");
+      return width + left;
+    };
+    if (await measure(value) <= maxWidth - 4) return value;
+    const full = value.replace(/\.\.\.$/, "");
+    let low = 0;
+    let high = full.length;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (await measure(`${full.slice(0, middle)}...`) <= maxWidth - 4) low = middle;
+      else high = middle - 1;
+    }
+    return `${full.slice(0, low)}...`;
+  };
+  try {
+    const fitted = [];
+    for (const repo of repos) {
+      const displayName = await fit(repoDisplayName(repo.name), REPOSITORY_NAME_WIDTH, REPOSITORY_NAME_TEXT);
+      const displayLanguage = await fit(shortText(repo.language || "PUBLIC", 14), REPOSITORY_LANGUAGE_WIDTH, REPOSITORY_LANGUAGE_TEXT);
+      fitted.push({ ...repo, display_name: displayName, display_language: displayLanguage });
+    }
+    return fitted;
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 }
 
-function repoRowText(repo, { y, index, emissiveOnly = false }) {
+function statusForRepo(repo) {
+  return String(repo?.status || "").trim().toUpperCase() || "ACTIVE";
+}
+
+function repoRowText(repo, { y, emissiveOnly = false }) {
   const updated = (repo.updated_label || relativeTime(repo.pushed_at)).replace(/\s+ago$/i, "");
-  const status = statusForRepo(repo, index);
+  const status = statusForRepo(repo);
   const alertStatus = /CHECK|WARN|REVIEW|FAIL|ARCHIVED/.test(status);
   const statusFill = alertStatus ? SIGN_COLORS.alertRed : SIGN_COLORS.textSecondary;
   const dotColor = status === "ACTIVE" ? STATUS_LED_GREEN : statusFill;
   const statusOpacity = status === "IDLE" ? 0.58 : alertStatus ? 0.8 : 0.7;
-  const language = shortText(repo.language || "PUBLIC", 14);
+  const language = repo.display_language ?? shortText(repo.language || "PUBLIC", 14);
   const stars = Math.max(0, Number(repo.stargazers_count) || 0);
+  const compactStars = stars < 10_000 ? String(stars) : new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 0 }).format(stars);
+  const displayedStars = compactStars.length <= 4 ? compactStars : stars.toExponential(0).replace("e+", "e");
   const dotX = BOARD_COLS.statusDot;
   const dotY = y - 5;
   const statusSize = status.length > 7 ? 9.4 : 10.8;
@@ -166,18 +193,18 @@ function repoRowText(repo, { y, index, emissiveOnly = false }) {
 ${emissiveOnly ? "" : `<circle cx="${dotX + 1.5}" cy="${dotY + 1.5}" r="3" fill="#000000" opacity="0.55"/>`}
 ${emissiveOnly ? "" : `<circle data-status-led="${escapeHtml(status)}" cx="${dotX}" cy="${dotY}" r="3" fill="${dotColor}" opacity="${statusOpacity}" filter="url(#soft-glow)"/>`}
 ${text(status, { x: BOARD_COLS.status, y, size: statusSize, fill: statusFill, weight: 600, opacity: emissiveOnly ? Math.min(0.78, statusOpacity + 0.04) : Math.max(0.7, statusOpacity), style: "letter-spacing:0.01em" })}
-${text(repoDisplayName(repo.name, true), { x: BOARD_COLS.repo, y, size: 15.6, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.88 : 0.96, style: "letter-spacing:0", shadow: !emissiveOnly })}
-${text(language, { x: BOARD_COLS.language, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 500, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.018em" })}
-${text(`★ ${stars}`, { x: BOARD_COLS.stars, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
+${text(repo.display_name ?? repoDisplayName(repo.name), { ...REPOSITORY_NAME_TEXT, x: BOARD_COLS.repo, y, fill: SIGN_COLORS.textPrimary, opacity: emissiveOnly ? 0.88 : 0.96, shadow: !emissiveOnly, clipWidth: REPOSITORY_NAME_WIDTH })}
+${text(language, { ...REPOSITORY_LANGUAGE_TEXT, x: BOARD_COLS.language, y, fill: SIGN_COLORS.textSecondary, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, clipWidth: REPOSITORY_LANGUAGE_WIDTH })}
+${text(`★ ${displayedStars}`, { x: BOARD_COLS.stars, y, size: 10.4, fill: SIGN_COLORS.textSecondary, weight: 600, anchor: "end", opacity: emissiveOnly ? 0.74 : 0.82, style: "letter-spacing:0.02em", shadow: !emissiveOnly })}`;
 }
 
-export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
+export function renderRepositorySignSvg({ repos, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const rowBaselines = [91, 127];
 
   const rows = repos.map((repo, index) => {
     const baseline = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
     return `<g data-repo="${escapeHtml(repo.name)}">
-  ${repoRowText(repo, { y: baseline, index, emissiveOnly })}
+  ${repoRowText(repo, { y: baseline, emissiveOnly })}
 </g>`;
   }).join("");
 
@@ -188,9 +215,8 @@ export function renderRepositorySignSvg({ repos, allRepos, fontCss, fontDataUrl,
 <line x1="36" y1="50" x2="456" y2="50" stroke="${SIGN_COLORS.marunouchiRed}" stroke-opacity="0.55" stroke-width="2" filter="url(#soft-glow)"/>
 <line x1="37.5" y1="113.5" x2="457.5" y2="113.5" stroke="#000000" stroke-opacity="0.3" stroke-width="1"/>
 <line x1="36" y1="112" x2="456" y2="112" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.09"/>`;
-  const displayTexture = "";
 
-  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
+  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height })}
 <rect width="${width}" height="${height}" fill="transparent"/>
 <g clip-path="url(#display-clip)">
 ${surface}
@@ -205,12 +231,11 @@ ${text("LANG  ★", { x: BOARD_COLS.stars, y: 67, size: 8.2, fill: SIGN_COLORS.t
 ${structure}
 ${rows}
 </g>
-${displayTexture}
 </g>
 </svg>`;
 }
 
-export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
+export function renderToolchainSpectrumSvg({ allRepos, width, height, outputWidth = width, outputHeight = height, emissiveOnly = false }) {
   const langs = languageSummary(allRepos)
     .map((lang, index) => ({ ...lang, index }))
     .sort((a, b) => b.pct - a.pct || a.index - b.index);
@@ -219,18 +244,10 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   const valueOpacities = [0.96, 0.94, 0.92, 0.9];
   const signalRows = langs.map((lang, index) => {
     const y = rowBaselines[index] ?? rowBaselines[rowBaselines.length - 1];
-    const displayName = {
-      TypeScript: "TYPESCRIPT",
-      JavaScript: "JAVASCRIPT",
-      Python: "PYTHON",
-      Shell: "SHELL",
-      PowerShell: "POWERSHELL",
-      Rust: "RUST",
-      Ruby: "RUBY",
-      Dockerfile: "DOCKER",
-      Makefile: "MAKE",
-      Other: "OTHER",
-    }[lang.name] ?? lang.name;
+    const displayName = shortText(
+      lang.name === "Dockerfile" ? "DOCKER" : lang.name === "Makefile" ? "MAKE" : lang.name.toUpperCase(),
+      10,
+    );
     const labelSize = displayName.length > 8 ? 8.4 : 9.4;
     return `<g data-lang="${escapeHtml(lang.name)}">
   ${text(displayName, { x: 20, y, size: labelSize, fill: SIGN_COLORS.textPrimary, weight: 600, opacity: emissiveOnly ? 0.86 : codeOpacities[index], style: "letter-spacing:0.035em" })}
@@ -240,9 +257,8 @@ export function renderToolchainSpectrumSvg({ allRepos, fontCss, fontDataUrl, wid
   const surface = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#unlit-leds)" opacity="0.08"/>`;
   const glassWash = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="#050403" opacity="0.09"/>`;
   const screenFalloff = emissiveOnly ? "" : `<rect width="${width}" height="${height}" fill="url(#screen-falloff)" opacity="0.18"/>`;
-  const displayTexture = "";
 
-  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height, fontCss, fontDataUrl })}
+  return `${svgHeader({ width: outputWidth, height: outputHeight, viewWidth: width, viewHeight: height })}
 <rect width="${width}" height="${height}" fill="transparent"/>
 <g clip-path="url(#display-clip)">
 ${surface}
@@ -261,7 +277,6 @@ ${emissiveOnly ? "" : `<line x1="20.5" y1="106.5" x2="109.5" y2="106.5" stroke="
 <line x1="19" y1="202" x2="108" y2="202" stroke="${SIGN_COLORS.ruleLine}" stroke-opacity="0.055"/>`}
 ${signalRows}
 </g>
-${displayTexture}
 </g>
 </svg>`;
 }

@@ -9,9 +9,9 @@ Use this skill for precise image-renderer, perspective, and compositing work in 
 
 ## Non-Negotiables
 
-- ImageMagick 7.1.2-25 `magick` owns raster work.
+- ImageMagick 7.1.2-34 `magick` owns raster work.
 - Local default: `/opt/homebrew/opt/imagemagick-full/bin/magick`.
-- CI installs pinned source via `scripts/install-imagemagick-ci.sh`; do not swap to Linux AppImage because it lacks the needed rsvg delegate behavior.
+- CI builds pinned source and verifies required delegates via `scripts/install-imagemagick-ci.sh`; do not substitute an unverified prebuilt binary.
 - JavaScript may fetch data, calculate layout, validate contracts, and emit SVG/text templates.
 - Do not add custom JavaScript pixel homography/compositing, Sharp, resvg, browser screenshots, or dashboard renderers.
 
@@ -41,7 +41,7 @@ Use focused ImageMagick checks before judging the full image:
 /opt/homebrew/opt/imagemagick-full/bin/magick assets/generated/repository-overlay.png -alpha extract -threshold 0 -format 'repo nonzero alpha ratio=%[fx:mean]\n' info:
 /opt/homebrew/opt/imagemagick-full/bin/magick assets/signals.png -crop 690x285+360+0 /tmp/cboyd-top-sign.png
 /opt/homebrew/opt/imagemagick-full/bin/magick assets/signals.png -crop 340x690+1305+90 /tmp/cboyd-right-sign.png
-/opt/homebrew/opt/imagemagick-full/bin/magick assets/signals.png -resize 1000x /tmp/cboyd-signals-preview.png
+/opt/homebrew/opt/imagemagick-full/bin/magick assets/signals.png -resize 1070x /tmp/cboyd-signals-preview.png
 ```
 
 High nonzero alpha can be expected because the SVG includes low-opacity clipped

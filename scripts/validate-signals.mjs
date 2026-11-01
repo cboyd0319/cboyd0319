@@ -3,15 +3,17 @@ import { dirname, join } from "node:path";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
+import { applyLayoutEnv, DISPLAY_ROUTE_CODE, resolveBackground, staticRepos } from "./lib/config.mjs";
 import { applyFinalGrade } from "./lib/final-grade.mjs";
 import { ensureImageMagick, identifyImage, pngOutput, runMagick } from "./lib/imagemagick.mjs";
-import { renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
+import { ownActiveRepos, renderRepositorySignSvg, renderToolchainSpectrumSvg } from "./lib/svg.mjs";
 import { selectRepos } from "./lib/utils.mjs";
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OVERLAY_BOX_PAD = 18;
 const MIN_INSIDE_DIFF_MEAN = 0.0001;
 const MIN_INSIDE_DIFF_MAX = 0.05;
+const MAX_REGION_DIFF_MEAN = 0.05;
 const MAX_OUTSIDE_DIFF_MEAN = 0.000001;
 const MAX_OUTSIDE_DIFF_MAX = 0.001;
 
@@ -22,13 +24,6 @@ function fail(message) {
 function requireIncludes(label, haystack, needles) {
   for (const needle of needles) {
     if (!haystack.includes(needle)) fail(`${label} missing ${needle}`);
-  }
-}
-
-function requireExcludes(label, haystack, needles) {
-  const upper = haystack.toUpperCase();
-  for (const needle of needles) {
-    if (upper.includes(String(needle).toUpperCase())) fail(`${label} contains prohibited ${needle}`);
   }
 }
 
@@ -46,12 +41,18 @@ function sum(items) {
 function requireQuad(label, box) {
   if (!Array.isArray(box.quad) || box.quad.length !== 4) fail(`${label} quad missing`);
   for (const [index, point] of box.quad.entries()) {
-    if (!Number.isFinite(Number(point?.x)) || !Number.isFinite(Number(point?.y))) {
+    if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) {
       fail(`${label} quad point ${index} is invalid: ${JSON.stringify(point)}`);
     }
   }
   const area = polygonArea(box.quad);
   if (area < 1) fail(`${label} quad area is too small: ${area}`);
+  const turns = box.quad.map((a, i, points) => {
+    const b = points[(i + 1) % 4];
+    const c = points[(i + 2) % 4];
+    return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+  });
+  if (!turns.every((turn) => turn > 0)) fail(`${label} quad must be convex and ordered clockwise`);
 }
 
 function polygonArea(points) {
@@ -64,28 +65,14 @@ function polygonArea(points) {
 }
 
 function requireDesignSize(label, box, expected) {
-  if (Number(box.designWidth) !== expected.width || Number(box.designHeight) !== expected.height) {
+  if (box.designWidth !== expected.width || box.designHeight !== expected.height) {
     fail(`${label} design size ${box.designWidth}x${box.designHeight}, expected ${expected.width}x${expected.height}`);
   }
 }
 
-function staticRepos(staticData) {
-  const baseTime = Date.UTC(2026, 0, 1, 0, 0, 0);
-  return staticData.repos.map((repo, index) => ({
-    name: repo.name,
-    language: repo.language,
-    language_pct: repo.language_pct,
-    updated_label: repo.updated,
-    pushed_at: new Date(baseTime - index * 1000).toISOString(),
-    stargazers_count: repo.stars,
-    fork: false,
-    archived: false,
-  }));
-}
-
-function renderStaticSvgs(staticData, layout) {
+export function renderStaticSvgs(staticData, layout) {
   const repos = staticRepos(staticData);
-  const selectedRepos = selectRepos(repos, 2);
+  const selectedRepos = selectRepos(ownActiveRepos(repos), 2);
   return {
     repositorySvg: renderRepositorySignSvg({
       repos: selectedRepos,
@@ -105,12 +92,7 @@ function scaledOverlayBoxes(layout, width, height) {
   const scaleX = width / layout.sourceWidth;
   const scaleY = height / layout.sourceHeight;
   return [layout.board, layout.toolchain].map((box) => {
-    const points = (box.quad || [
-      { x: box.left, y: box.top },
-      { x: box.left + box.width, y: box.top },
-      { x: box.left + box.width, y: box.top + box.height },
-      { x: box.left, y: box.top + box.height },
-    ]).map((point) => ({ x: point.x * scaleX, y: point.y * scaleY }));
+    const points = box.quad.map((point) => ({ x: point.x * scaleX, y: point.y * scaleY }));
     const left = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x)) - OVERLAY_BOX_PAD));
     const top = Math.max(0, Math.floor(Math.min(...points.map((point) => point.y)) - OVERLAY_BOX_PAD));
     const right = Math.min(width - 1, Math.ceil(Math.max(...points.map((point) => point.x)) + OVERLAY_BOX_PAD));
@@ -147,6 +129,11 @@ async function maskedDiffMetric(diffPath, maskPath) {
 }
 
 export function assertOverlayPixelMetrics(metrics) {
+  for (const region of [metrics.outside, metrics.inside]) {
+    if (![region?.mean, region?.max].every((value) => Number.isFinite(value) && value >= 0 && value <= 1)) {
+      fail("invalid overlay pixel metrics");
+    }
+  }
   if (metrics.outside.mean > MAX_OUTSIDE_DIFF_MEAN || metrics.outside.max > MAX_OUTSIDE_DIFF_MAX) {
     fail(`output changed outside overlay region: mean ${metrics.outside.mean}, max ${metrics.outside.max}`);
   }
@@ -169,16 +156,17 @@ async function overlayPixelMetrics({ output, background, layout, width, height }
     await runMagick([background, "-resize", `${width}x${height}!`, pngOutput(resizedBackground)]);
     await applyFinalGrade(resizedBackground, gradedBackground, { width, height, workDir: tempDir });
     await runMagick([gradedBackground, output, "-compose", "difference", "-composite", pngOutput(diffPath)]);
-    await Promise.all([
-      runMagick(["-size", `${width}x${height}`, "xc:white", "-fill", "black", "-draw", draw, pngOutput(outsideMask)]),
-      runMagick(["-size", `${width}x${height}`, "xc:black", "-fill", "white", "-draw", draw, pngOutput(insideMask)]),
-    ]);
-
-    const [outside, inside] = await Promise.all([
-      maskedDiffMetric(diffPath, outsideMask),
-      maskedDiffMetric(diffPath, insideMask),
-    ]);
-    return { outside, inside };
+    await runMagick(["-size", `${width}x${height}`, "xc:white", "-fill", "black", "-draw", draw, pngOutput(outsideMask)]);
+    const outside = await maskedDiffMetric(diffPath, outsideMask);
+    for (const box of boxes) {
+      await runMagick(["-size", `${width}x${height}`, "xc:black", "-fill", "white", "-draw", maskDraw([box]), pngOutput(insideMask)]);
+      const inside = await maskedDiffMetric(diffPath, insideMask);
+      assertOverlayPixelMetrics({ outside, inside });
+      const area = (box.right - box.left + 1) * (box.bottom - box.top + 1);
+      // Coarse corruption bound; pixel differences do not prove text content.
+      const regionMean = inside.mean * width * height / area;
+      if (regionMean > MAX_REGION_DIFF_MEAN) fail(`excessive changes in overlay region: mean ${regionMean}`);
+    }
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -209,11 +197,12 @@ export async function validateSignals({
   height,
 } = {}) {
   if (!scene) fail("scene config not loaded");
-  if (!staticData?.repos?.length) fail("static repo data missing");
+  if (!Array.isArray(staticData?.repos) || !staticData.repos.length) fail("static repo data missing");
   if (!layout?.board || !layout?.toolchain) fail("layout boxes missing");
+  expectedOutputSize(layout, {});
 
   requireIncludes("repository SVG", repositorySvg || "", [
-    "M03",
+    DISPLAY_ROUTE_CODE,
     "リポジトリ状況",
     "REPOSITORY SIGNALS",
   ]);
@@ -221,29 +210,25 @@ export async function validateSignals({
   requireIncludes("repository SVG status LEDs", repositorySvg || "", ['data-status-led="']);
   requireIncludes("toolchain SVG", toolchainSvg || "", [
     "コード構成",
-    "M03 CODE MIX",
+    `${DISPLAY_ROUTE_CODE} CODE MIX`,
   ]);
-  requireExcludes("generated SVG", `${repositorySvg || ""}\n${toolchainSvg || ""}`, [
-    "#FFFFFF",
-    "#ffffff",
-    "SPECTRUM",
-    "TOOLCHAIN",
-    "M03 SERVICE",
-    "CODE LINES",
-    "運行情報",
-    "新高円寺",
-    "M03 LOCAL",
-    "リポジトリ信号",
-    "ACTIVE REPOS",
-    "M03-TS",
-    "M03-PY",
-    "M03-SH",
-    "M03-PS",
-    "<path",
-  ]);
+  // Historical label checks belong in static template tests, not public repo text.
+  if (/<path\b|(?:fill|stroke)=["']#ffffff["']/i.test(`${repositorySvg}\n${toolchainSvg}`)) {
+    fail("generated SVG contains prohibited path or pure-white paint");
+  }
 
+  for (const repo of staticData.repos) {
+    if (typeof repo?.name !== "string" || !repo.name.trim()) fail("static repo name missing");
+    if (!Number.isSafeInteger(repo.stars) || repo.stars < 0) fail(`invalid static stars for ${repo.name}`);
+    if (!Number.isFinite(repo.language_pct) || repo.language_pct < 0 || repo.language_pct > 100) {
+      fail(`invalid static language percentage for ${repo.name}`);
+    }
+    if (repo.language_pct > 0 && (typeof repo.language !== "string" || !repo.language.trim())) {
+      fail(`static language missing for ${repo.name}`);
+    }
+  }
   const languagePct = sum(staticData.repos.map((repo) => repo.language_pct));
-  if (languagePct !== 100) fail(`toolchain percentages sum to ${languagePct}, expected 100`);
+  if (Math.abs(languagePct - 100) > 1e-9) fail(`toolchain percentages sum to ${languagePct}, expected 100`);
 
   const stars = sum(staticData.repos.map((repo) => repo.stars));
   if (stars !== Number(staticData.summary?.starsTotal)) {
@@ -261,12 +246,7 @@ export async function validateSignals({
   if (scene.mode === "fictional_tokyo_inspired" && scene.operator?.show_real_tokyo_metro_branding) {
     fail("fictional mode cannot enable real Tokyo Metro branding");
   }
-  if (!/^[A-Z]\d{2}$/.test(String(scene.station?.code || ""))) {
-    fail(`station code must use line prefix plus two digits, got ${scene.station?.code}`);
-  }
-  if (/^\d+$/.test(String(scene.station?.code || ""))) {
-    fail(`station code uses bare digits instead of line prefix: ${scene.station?.code}`);
-  }
+  if (scene.station?.code !== DISPLAY_ROUTE_CODE) fail(`station code must match the approved ${DISPLAY_ROUTE_CODE} background`);
   if (scene.servicePanel?.items?.includes(scene.servicePanel?.title)) {
     fail(`service panel duplicates title ${scene.servicePanel.title} in items`);
   }
@@ -282,6 +262,7 @@ export async function validateSignals({
   }
 
   for (const [name, box] of Object.entries({ board: layout.board, toolchain: layout.toolchain })) {
+    if (![box.left, box.top, box.width, box.height].every(Number.isFinite)) fail(`${name} layout dimensions must be finite numbers`);
     if (box.left < 0 || box.top < 0 || box.width <= 0 || box.height <= 0) fail(`${name} layout has invalid dimensions`);
     if (box.left + box.width > layout.sourceWidth || box.top + box.height > layout.sourceHeight) {
       fail(`${name} layout exceeds source image bounds`);
@@ -298,11 +279,13 @@ export async function validateSignals({
 
   if (output) {
     const metadata = await identifyImage(output);
+    if (metadata.animated) fail("animated PNG output is not allowed");
+    if (metadata.format !== "PNG" || !metadata.opaque) fail("output must be an opaque PNG");
     if (metadata.width !== width || metadata.height !== height) {
       fail(`output dimensions ${metadata.width}x${metadata.height}, expected ${width}x${height}`);
     }
     if (background) {
-      assertOverlayPixelMetrics(await overlayPixelMetrics({ output, background, layout, width, height }));
+      await overlayPixelMetrics({ output, background, layout, width, height });
     }
   }
 
@@ -310,24 +293,26 @@ export async function validateSignals({
 }
 
 export function expectedOutputSize(layout, env = process.env) {
+  for (const key of ["sourceWidth", "sourceHeight"]) {
+    if (!Number.isSafeInteger(layout[key]) || layout[key] <= 0) fail(`${key} must be a positive integer`);
+  }
   const outputWidthText = env.OUTPUT_WIDTH?.trim();
-  const outputWidth = outputWidthText ? Number(outputWidthText) : layout.sourceWidth;
-  const width = Number.isFinite(outputWidth) ? outputWidth : layout.sourceWidth;
+  const width = outputWidthText ? Number(outputWidthText) : layout.sourceWidth;
+  if (!Number.isSafeInteger(width) || width <= 0) fail("OUTPUT_WIDTH must be a positive integer");
   const scale = width / layout.sourceWidth;
-  return {
-    width,
-    height: Math.round(layout.sourceHeight * scale),
-  };
+  const height = Math.round(layout.sourceHeight * scale);
+  if (!Number.isSafeInteger(height) || height <= 0) fail("output height must be a positive integer");
+  return { width, height };
 }
 
 async function main() {
   await ensureImageMagick();
   const output = join(ROOT_DIR, "assets/signals.png");
-  const background = join(ROOT_DIR, "assets/subway_blank_original.png");
+  const background = resolveBackground(join(ROOT_DIR, "assets"));
   const [scene, staticData, layout] = await Promise.all([
     readFile(join(ROOT_DIR, "config/scene.json"), "utf8").then(JSON.parse),
     readFile(join(ROOT_DIR, "config/static-data.json"), "utf8").then(JSON.parse),
-    readFile(join(ROOT_DIR, "config/layouts/subway-default.json"), "utf8").then(JSON.parse),
+    readFile(join(ROOT_DIR, "config/layouts/subway-default.json"), "utf8").then(JSON.parse).then(applyLayoutEnv),
   ]);
   const { repositorySvg, toolchainSvg } = await readGeneratedSvgs(staticData, layout);
   const { width, height } = expectedOutputSize(layout);
@@ -345,6 +330,6 @@ async function main() {
   console.log("Signals validation OK");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   await main();
 }

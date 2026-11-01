@@ -2,11 +2,9 @@
 
 ## Source Reviewed
 
-Local source:
-
-```text
-/Users/c/Downloads/awesome-github-profile-readme-master/README.md
-```
+Historical input: a downloaded `awesome-github-profile-readme` catalog; its
+upstream URL and revision were not recorded. These are optional design ideas,
+not implementation requirements; [AGENTS.md](../AGENTS.md) owns the active contract.
 
 That README is a broad catalog of profile README patterns: GitHub Actions,
 game-like profiles, code-mode profiles, dynamic realtime widgets, badges,

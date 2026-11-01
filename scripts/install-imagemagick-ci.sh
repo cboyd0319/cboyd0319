@@ -1,34 +1,69 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="7.1.2-25"
-sha256="c4ce2d982fbedf0347aeca804326308311d767c8da6a69e91ed39371f8de137b"
-url="https://imagemagick.org/archive/releases/ImageMagick-${version}.tar.gz"
+version="7.1.2-34"
+sha256="55fe0ec246245b46c429f9e6bc65294ad4a78a66b88abd9817971ca157856323"
+url="https://github.com/ImageMagick/ImageMagick/releases/download/${version}/ImageMagick-${version}.tar.xz"
 prefix="${RUNNER_TEMP:-${PWD}/.tools}/ImageMagick-${version}"
 
-# Official 7.1.2-25 Linux AppImages omit the rsvg delegate and render this
-# repo's SVG text incorrectly under MSVG, so CI builds the pinned source.
-if [[ -x "${prefix}/bin/magick" ]]; then
-  detected="$("${prefix}/bin/magick" -version | sed -n 's/^Version: ImageMagick \([^ ]*\).*/\1/p')"
-  if [[ "${detected}" == "${version}" ]]; then
-    echo "${prefix}/bin" >> "${GITHUB_PATH:-/dev/null}"
-    "${prefix}/bin/magick" -version
-    exit 0
+# Build from source to require rsvg for this repo's SVG text.
+verify_install() {
+  local output
+  output="$("${prefix}/bin/magick" -version)"
+  if [[ "$(sed -n 's/^Version: ImageMagick \([^ ]*\).*/\1/p' <<< "$output")" != "$version" ]]; then
+    echo "ImageMagick $version required" >&2
+    return 1
   fi
+  for delegate in freetype png rsvg; do
+    if ! grep '^Delegates ' <<< "$output" | grep -qw "$delegate"; then
+      echo "ImageMagick $version missing required $delegate delegate" >&2
+      return 1
+    fi
+  done
+  printf '%s\n' "$output"
+}
+
+if [[ -x "${prefix}/bin/magick" ]]; then
+  verify_install
+  echo "${prefix}/bin" >> "${GITHUB_PATH:-/dev/null}"
+  exit 0
 fi
+
+# Ubuntu 26.04's current production packages; keep both CI callers here.
+source /etc/os-release
+if [[ "$ID" != ubuntu || "$VERSION_ID" != 26.04 ]]; then
+  echo "ImageMagick CI build requires Ubuntu 26.04" >&2
+  exit 1
+fi
+privilege=()
+if (( EUID != 0 )); then privilege=(sudo); fi
+"${privilege[@]}" apt-get update
+"${privilege[@]}" apt-get install -y --no-install-recommends \
+  build-essential=12.12ubuntu2.26.04.2 \
+  ca-certificates=20260816ubuntu0.26.04.1 \
+  curl=8.18.0-1ubuntu2.8 \
+  libfontconfig1-dev=2.17.1-3ubuntu1 \
+  libfreetype-dev=2.14.2+dfsg-1ubuntu0.2 \
+  libpng-dev=1.6.57-1ubuntu0.1 \
+  librsvg2-dev=2.61.3+dfsg-3ubuntu0.1 \
+  pkg-config=2.5.1-4 \
+  xz-utils=5.8.3-1ubuntu0.1 \
+  zlib1g-dev=1:1.3.dfsg+really1.3.1-1ubuntu3.2
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "${tmpdir}"' EXIT
-archive="${tmpdir}/ImageMagick-${version}.tar.gz"
+archive="${tmpdir}/ImageMagick-${version}.tar.xz"
 
 curl -fsSL "${url}" -o "${archive}"
 printf '%s  %s\n' "${sha256}" "${archive}" | sha256sum -c -
-tar -xzf "${archive}" -C "${tmpdir}"
+tar -xJf "${archive}" -C "${tmpdir}"
 
 cd "${tmpdir}/ImageMagick-${version}"
 ./configure \
   --prefix="${prefix}" \
   --disable-dependency-tracking \
+  --disable-docs \
+  --without-magick-plus-plus \
   --without-perl \
   --with-fontconfig=yes \
   --with-freetype=yes \
@@ -37,5 +72,5 @@ cd "${tmpdir}/ImageMagick-${version}"
 make -j"$(nproc)"
 make install
 
+verify_install
 echo "${prefix}/bin" >> "${GITHUB_PATH:-/dev/null}"
-"${prefix}/bin/magick" -version

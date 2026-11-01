@@ -9,6 +9,7 @@
     },
     {
       "name": "PyGuard",
+      "status": "DEPS CHECK",
       "language": "Python",
       "language_pct": 35,
       "updated": "2w ago",

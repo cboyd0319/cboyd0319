@@ -12,7 +12,8 @@ Use this skill for workflow, CI, dependency pinning, and publication changes in 
 - Keep GitHub Actions minimal and profile-image scoped.
 - Prefer local validation. Do not manually dispatch workflows unless user explicitly asks.
 - `.github/workflows/update-profile.yml` owns scheduled and manual profile image refresh.
-- `.github/workflows/ci.yml` exists to provide the `validate` check for `automation/update-signals-panel` and manual dispatch only.
+- `.github/workflows/ci.yml` provides required `validate` checks for PRs to `main` and automation-branch pushes; manual dispatch is diagnostic only for PRs.
+- Keep the PR trigger free of path filters so required checks are always reported.
 - Do not restore broad push/PR CI without concrete reason.
 
 ## Current Flow

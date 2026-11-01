@@ -12,17 +12,17 @@ Use this skill for workflow, CI, dependency pinning, and publication changes in 
 - Keep GitHub Actions minimal and profile-image scoped.
 - Prefer local validation. Do not manually dispatch workflows unless user explicitly asks.
 - `.github/workflows/update-profile.yml` owns scheduled and manual profile image refresh.
-- `.github/workflows/ci.yml` provides required `validate` checks for PRs to `main` and automation-branch pushes; manual dispatch is diagnostic only for PRs.
+- `.github/workflows/ci.yml` provides required `validate` checks for PRs to `main` and automation-branch pushes; manual dispatch is diagnostic only.
 - Keep the PR trigger free of path filters so required checks are always reported.
 - Do not restore broad push/PR CI without concrete reason.
 
 ## Current Flow
 
 1. `update-profile.yml` runs daily at `23:00 UTC` or by explicit `workflow_dispatch`.
-2. Render job installs pinned Node/npm dependencies and pinned ImageMagick source build.
+2. Main runs check the publishing credential prerequisite in [AGENTS.md](../../../AGENTS.md#deployment-and-automation), then render installs pinned Node/npm and ImageMagick.
 3. Render job runs `npm run generate`, `npm run optimize-signals`, and uploads `assets/signals.png`.
 4. Publish job writes changed image to `automation/update-signals-panel`.
-5. Publish job waits for `validate`; if absent it dispatches `ci.yml` for that branch.
+5. Publish job polls Actions REST for the exact successful `ci.yml` push run and `validate` job; absent or manual checks cannot publish.
 6. Publish job pushes validated `assets/signals.png` to `main`.
 
 ## Pinning Rules

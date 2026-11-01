@@ -828,6 +828,15 @@ for (const file of ["ci.yml", "update-profile.yml"]) {
   const workflow = await readFile(join(".github/workflows", file), "utf8");
   assert(`${file} delegates package installation to one owner`, (workflow.match(/\.\/scripts\/install-imagemagick-ci\.sh/g) ?? []).length === 1 && !workflow.includes("apt-get install"), true);
 }
+const updateWorkflow = await readFile(".github/workflows/update-profile.yml", "utf8");
+const tokenGate = updateWorkflow.match(/- name: Require publishing credential on main\n        if: github.ref == 'refs\/heads\/main'\n        env:\n          HAS_PROFILE_UPDATE_TOKEN: \$\{\{ secrets.PROFILE_UPDATE_TOKEN != '' \}\}\n        run: \|\n((?:          .+\n)+)/)?.[1];
+assert("publication credential gate precedes checkout", !!tokenGate && updateWorkflow.indexOf(tokenGate) < updateWorkflow.indexOf("actions/checkout@"), true);
+for (const present of ["true", "false"]) {
+  const result = spawnSync("bash", ["-c", tokenGate ?? "exit 99"], { env: { HAS_PROFILE_UPDATE_TOKEN: present }, encoding: "utf8" });
+  assert("publication credential gate " + present, result.status === 0, present === "true");
+}
+assert("render receives only credential presence", (updateWorkflow.split("\n  publish:")[0].match(/secrets\.PROFILE_UPDATE_TOKEN/g) ?? []).length === 1, true);
+assert("publication has no GITHUB_TOKEN fallback", updateWorkflow.includes("GH_TOKEN: ${{ secrets.PROFILE_UPDATE_TOKEN }}") && !updateWorkflow.includes(": write"), true);
 const publisher = join(process.cwd(), "scripts/publish-signals.sh");
 const publicationDir = await mkdtemp(join(tmpdir(), "signals-publish-"));
 try {
@@ -847,32 +856,51 @@ case "$1 $2" in
   'api '*)
     sha="$(git rev-parse HEAD)"
     [[ "$CASE" != wrong_sha ]] || sha=0000000000000000000000000000000000000000
+    branch="$UPDATE_BRANCH"
+    [[ "$CASE" != wrong_branch ]] || branch=unrelated
+    workflow=.github/workflows/ci.yml
+    [[ "$CASE" != wrong_workflow ]] || workflow=.github/workflows/unrelated.yml
     event=push
     [[ "$CASE" != wrong_event ]] || event=pull_request
-    if [[ "$CASE" == dispatch && ! -f "$TEST_ROOT/dispatched" ]]; then
-      data='{"workflow_runs":[]}'
-    else
-      data="{\"workflow_runs\":[{\"id\":123,\"head_sha\":\"$sha\",\"head_branch\":\"$UPDATE_BRANCH\",\"event\":\"$event\"}]}"
-    fi
-    [[ "$2" == *'/actions/workflows/ci.yml/runs?'* ]] || exit 9
+    [[ "$CASE" != manual_only ]] || event=workflow_dispatch
+    status=completed
+    conclusion=success
+    [[ "$CASE" != failed ]] || conclusion=failure
+    case "$2" in
+      *'/actions/workflows/ci.yml/runs?'*)
+        if [[ "$CASE" == pending ]]; then
+          count=0
+          [[ ! -f "$TEST_ROOT/polls" ]] || read -r count < "$TEST_ROOT/polls"
+          count=$((count + 1))
+          printf '%s\n' "$count" > "$TEST_ROOT/polls"
+          [[ "$count" -gt 1 ]] || status=queued
+          [[ "$count" -ne 2 ]] || status=in_progress
+        fi
+        data="{\"workflow_runs\":[{\"id\":123,\"path\":\"$workflow\",\"head_sha\":\"$sha\",\"head_branch\":\"$branch\",\"event\":\"$event\",\"status\":\"$status\",\"conclusion\":\"$conclusion\"}]}"
+        [[ "$CASE" != missing_run ]] || data='{"workflow_runs":[]}'
+        ;;
+      *'/actions/runs/123/jobs?filter=latest&per_page=100')
+        if [[ "$CASE" == drift ]]; then git --git-dir="$TEST_ROOT/remote" update-ref refs/heads/main "$DRIFT_SHA"; fi
+        job=validate
+        [[ "$CASE" != wrong_job ]] || job=unrelated
+        [[ "$CASE" != wrong_job_sha ]] || sha=0000000000000000000000000000000000000000
+        [[ "$CASE" != pending_job ]] || status=in_progress
+        [[ "$CASE" != failed_job ]] || conclusion=failure
+        data="{\"jobs\":[{\"name\":\"$job\",\"head_sha\":\"$sha\",\"status\":\"$status\",\"conclusion\":\"$conclusion\"}]}"
+        ;;
+      *) exit 9 ;;
+    esac
     printf '%s' "$data" | jq -r "$4"
-    ;;
-  'workflow run') touch "$TEST_ROOT/dispatched" ;;
-  'run watch') [[ "$CASE" != failed ]] ;;
-  'run view')
-    if [[ "$CASE" == drift ]]; then git --git-dir="$TEST_ROOT/remote" update-ref refs/heads/main "$DRIFT_SHA"; fi
-    job=validate
-    [[ "$CASE" != wrong_job ]] || job=unrelated
-    printf '{"headSha":"%s","headBranch":"%s","status":"completed","conclusion":"success","jobs":[{"name":"%s","conclusion":"success"}]}' "$(git rev-parse HEAD)" "$UPDATE_BRANCH" "$job" | jq -r "$7"
     ;;
   *) exit 9 ;;
 esac
 `, { mode: 0o755 });
-  for (const scenario of ["success", "dispatch", "failed", "wrong_sha", "wrong_event", "wrong_job", "drift", "unchanged", "staged_image", "staged_other", "main_branch", "rollback"]) {
+  for (const scenario of ["success", "pending", "missing_token", "missing_run", "manual_only", "failed", "wrong_sha", "wrong_branch", "wrong_workflow", "wrong_event", "wrong_job", "wrong_job_sha", "pending_job", "failed_job", "drift", "unchanged", "staged_image", "staged_other", "main_branch", "rollback"]) {
     const root = join(publicationDir, scenario);
     await mkdir(root);
     const env = { PATH: bin + ":" + process.env.PATH, HOME: root, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_AUTHOR_NAME: "test", GIT_AUTHOR_EMAIL: "test@example.invalid", GIT_COMMITTER_NAME: "test", GIT_COMMITTER_EMAIL: "test@example.invalid", GITHUB_REPOSITORY: "test/profile", UPDATE_BRANCH: "automation/update-signals-panel", TEST_ROOT: root, CASE: scenario };
     env.REAL_PATH = process.env.PATH;
+    if (scenario !== "missing_token") env.GH_TOKEN = "publisher-test-token";
     const git = (...args) => {
       const result = spawnSync("git", args, { cwd: root, env, encoding: "utf8" });
       if (result.status !== 0) throw new Error(result.stderr);
@@ -905,11 +933,13 @@ esac
       env.CASE = "failed";
     }
     const result = spawnSync("bash", [publisher], { cwd: local, env, encoding: "utf8", timeout: 30_000 });
-    const succeeds = ["success", "dispatch", "unchanged"].includes(scenario);
+    const succeeds = ["success", "pending", "unchanged"].includes(scenario);
     assert("publisher " + scenario + " exit", result.status === 0, succeeds);
     const remoteHead = git("--git-dir", join(root, "remote"), "rev-parse", "main");
     const expected = scenario === "rollback" ? env.ANCESTOR_SHA : scenario === "drift" ? env.DRIFT_SHA : succeeds && scenario !== "unchanged" ? git("-C", local, "rev-parse", "HEAD") : env.GITHUB_SHA;
     assert("publisher " + scenario + " preserves expected main", remoteHead, expected);
+    if (scenario === "missing_token") assert("missing credential cannot stage an update", git("--git-dir", join(root, "remote"), "for-each-ref", "--format=%(refname)", "refs/heads/automation"), "");
+    if (scenario === "pending") assert("publisher waits for completed CI", await readFile(join(root, "polls"), "utf8"), "3\n");
   }
   for (const [name, version, delegates, expected] of [
     ["valid", "7.1.2-34", "freetype png rsvg", true],

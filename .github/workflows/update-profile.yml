@@ -19,6 +19,16 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Require publishing credential on main
+        if: github.ref == 'refs/heads/main'
+        env:
+          HAS_PROFILE_UPDATE_TOKEN: ${{ secrets.PROFILE_UPDATE_TOKEN != '' }}
+        run: |
+          if [[ "$HAS_PROFILE_UPDATE_TOKEN" != true ]]; then
+            echo "::error::Configure PROFILE_UPDATE_TOKEN; GITHUB_TOKEN cannot trigger required push CI."
+            exit 1
+          fi
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,9 +70,6 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs: render
-    permissions:
-      actions: write
-      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -86,6 +93,6 @@ jobs:
       - name: Publish validated update if changed
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.PROFILE_UPDATE_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.PROFILE_UPDATE_TOKEN }}
           UPDATE_BRANCH: automation/update-signals-panel
         run: ./scripts/publish-signals.sh
